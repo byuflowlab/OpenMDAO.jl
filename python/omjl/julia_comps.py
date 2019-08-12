@@ -24,15 +24,17 @@ def _julia_setup(self):
     output_data = comp_data.outputs
 
     for var in input_data:
-        self.add_input(var.name,
-                       shape=var.shape,
-                       val=var.val)
+        self.add_input(var.name, shape=tuple(var.shape), val=var.val,
+                       units=var.units)
 
     for var in output_data:
-        self.add_output(var.name, shape=var.shape, val=var.val)
+        self.add_output(var.name, shape=tuple(var.shape), val=var.val,
+                        units=var.units)
 
     for data in comp_data.partials:
-        self.declare_partials(data.of, data.wrt)
+        self.declare_partials(data.of, data.wrt,
+                              rows=data.rows, cols=data.cols,
+                              val=data.val)
 
 
 class JuliaExplicitComp(om.ExplicitComponent):
@@ -100,3 +102,15 @@ class JuliaImplicitComp(om.ImplicitComponent):
 
         comp_data.linearize(self._julia_options, inputs_dict, outputs_dict,
                             partials_dict)
+        # print(f"partials_dict['Np', 'phi'] = {partials_dict['Np', 'phi']}")
+        # print(f"partials['Np', 'phi'] = {partials['Np', 'phi']}")
+
+    def guess_nonlinear(self, inputs, outputs, residuals):
+        comp_data = self.options['julia_comp_data']
+        if comp_data.guess_nonlinear:
+            inputs_dict = dict(inputs)
+            outputs_dict = dict(outputs)
+            residuals_dict = dict(residuals)
+
+            comp_data.guess_nonlinear(self._julia_options, inputs_dict,
+                                      outputs_dict, residuals_dict)

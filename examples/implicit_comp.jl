@@ -37,24 +37,25 @@ square_it_linearize2! = pyfunction(square_it_linearize!,
                                    PyDict{String, PyArray},
                                    PyDict{Tuple{String, String}, PyArray})
 
-options_data = [OM_Options_Data("a", Int, 2)]
-input_data = [OM_Var_Data("x", 1, [2.0]), OM_Var_Data("y", 1, [3.0])]
-output_data = [OM_Var_Data("z1", 1, [2.0]), OM_Var_Data("z2", 1, [3.0])]
+options_data = [OptionsData("a", Int, 2)]
+input_data = [VarData("x", [1], [2.0]), VarData("y", [1], [3.0])]
+output_data = [VarData("z1", [1], [2.0]), VarData("z2", [1], [3.0])]
 partials_data = [
-                 OM_Partials_Data("z1", "z1")
-                 OM_Partials_Data("z1", "x")
-                 OM_Partials_Data("z1", "y")
-                 OM_Partials_Data("z2", "z2")
-                 OM_Partials_Data("z2", "x")
-                 OM_Partials_Data("z2", "y")
+                 PartialsData("z1", "z1"),
+                 PartialsData("z1", "x"),
+                 PartialsData("z1", "y"),
+                 PartialsData("z2", "z2"),
+                 PartialsData("z2", "x"),
+                 PartialsData("z2", "y"),
                 ]
 
-square_it_data = OM_Icomp_Data(square_it_apply_nonlinear2!,
-                               square_it_linearize2!,
-                               options_data,
-                               input_data,
-                               output_data,
-                               partials_data)
+square_it_data = ICompData(input_data,
+                           output_data,
+                           options=options_data,
+                           partials=partials_data,
+                           apply_nonlinear=square_it_apply_nonlinear2!,
+                           linearize=square_it_linearize2!,
+                           guess_nonlinear=nothing)
 
 prob = om.Problem()
 

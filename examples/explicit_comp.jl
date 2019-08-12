@@ -32,22 +32,22 @@ square_it_compute_partials2! = pyfunction(square_it_compute_partials!,
                                           PyDict{String, PyArray},
                                           PyDict{Tuple{String, String}, PyArray})
 
-options_data = [OM_Options_Data("a", Int, 2)]
-input_data = [OM_Var_Data("x", 1, [2.0]), OM_Var_Data("y", 1, [3.0])]
-output_data = [OM_Var_Data("z1", 1, [2.0]), OM_Var_Data("z2", 1, [3.0])]
+options_data = [OptionsData("a", Int, 2)]
+input_data = [VarData("x", [1], [2.0]), VarData("y", [1], [3.0])]
+output_data = [VarData("z1", [1], [2.0]), VarData("z2", [1], [3.0])]
 partials_data = [
-                 OM_Partials_Data("z1", "x")
-                 OM_Partials_Data("z1", "y")
-                 OM_Partials_Data("z2", "x")
-                 OM_Partials_Data("z2", "y")
+                 PartialsData("z1", "x")
+                 PartialsData("z1", "y")
+                 PartialsData("z2", "x")
+                 PartialsData("z2", "y")
                 ]
 
-square_it_data = OM_Ecomp_Data(square_it_compute2!,
-                               square_it_compute_partials2!,
-                               options_data,
-                               input_data,
-                               output_data,
-                               partials_data)
+square_it_data = ECompData(input_data,
+                           output_data,
+                           options_data,
+                           partials_data,
+                           square_it_compute2!,
+                           square_it_compute_partials2!)
 
 prob = om.Problem()
 

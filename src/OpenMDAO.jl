@@ -1,43 +1,53 @@
 module OpenMDAO
 
-export OM_Ecomp_Data, OM_Icomp_Data, OM_Options_Data, OM_Var_Data, OM_Partials_Data
+export ECompData, ICompData, OptionsData, VarData, PartialsData
 
-struct OM_Ecomp_Data
+struct ECompData
+    inputs
+    outputs
+    options
+    partials
     compute
     compute_partials
-    options
-    inputs
-    outputs
-    partials
 end
 
-struct OM_Icomp_Data
+ECompData(inputs, outputs; options=nothing, partials=nothing, compute=nothing, compute_partials=nothing) = ICompData(inputs, outputs, options, partials, compute, compute_partials)
+
+struct ICompData
+    inputs
+    outputs
+    options
+    partials
     apply_nonlinear
     linearize
-    options
-    inputs
-    outputs
-    partials
+    guess_nonlinear
 end
 
-struct OM_Options_Data
+ICompData(inputs, outputs; options=nothing, partials=nothing, apply_nonlinear=nothing, linearize=nothing, guess_nonlinear=nothing) = ICompData(inputs, outputs, options, partials, apply_nonlinear, linearize, guess_nonlinear)
+
+struct OptionsData
     name
     type
     val
 end
 
-struct OM_Var_Data
+struct VarData
     name
     shape
     val
     units
 end
 
-OM_Var_Data(name, shape, val) = OM_Var_Data(name, shape, val, "")
+VarData(name, shape, val; units=nothing) = VarData(name, shape, val, units)
 
-struct OM_Partials_Data
+struct PartialsData
     of
     wrt
+    rows
+    cols
+    val
 end
+
+PartialsData(of, wrt; rows=nothing, cols=nothing, val=nothing) = PartialsData(of, wrt, rows, cols, val)
 
 end # module

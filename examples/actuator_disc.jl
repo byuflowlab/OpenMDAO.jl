@@ -65,36 +65,41 @@ actuator_disc_compute_partials2! = pyfunction(actuator_disc_compute_partials!,
                                               PyDict{Tuple{String, String}, PyArray})
 options_data = []
 input_data = [
-              OM_Var_Data("a", 1, [0.5]),
-              OM_Var_Data("Area", 1, [10.0]),
-              OM_Var_Data("rho", 1, [1.225]),
-              OM_Var_Data("Vu", 1, [10.0])
+              VarData("a", [1], [0.5]),
+              VarData("Area", [1], [10.0]),
+              VarData("rho", [1], [1.225]),
+              VarData("Vu", [1], [10.0])
              ]
-output_data = [OM_Var_Data("Vr", 1, [0.0]),
-               OM_Var_Data("Vd", 1, [0.0]),
-               OM_Var_Data("Ct", 1, [0.0]),
-               OM_Var_Data("thrust", 1, [0.0]),
-               OM_Var_Data("Cp", 1, [0.0]),
-               OM_Var_Data("power", 1, [0.0])
+output_data = [VarData("Vr", [1], [0.0]),
+               VarData("Vd", [1], [0.0]),
+               VarData("Ct", [1], [0.0]),
+               VarData("thrust", [1], [0.0]),
+               VarData("Cp", [1], [0.0]),
+               VarData("power", [1], [0.0])
               ]
 
 partials_data = [
-                 OM_Partials_Data("Vr", "a"),
-                 OM_Partials_Data("Vr", "Vu"),
-                 OM_Partials_Data("Vd", "a"),
-                 OM_Partials_Data("Ct", "a"),
-                 OM_Partials_Data("thrust", "a"),
-                 OM_Partials_Data("thrust", "Area"),
-                 OM_Partials_Data("thrust", "rho"),
-                 OM_Partials_Data("thrust", "Vu"),
-                 OM_Partials_Data("Cp", "a"),
-                 OM_Partials_Data("power", "a"),
-                 OM_Partials_Data("power", "Area"),
-                 OM_Partials_Data("power", "rho"),
-                 OM_Partials_Data("power", "Vu")
+                 PartialsData("Vr", "a"),
+                 PartialsData("Vr", "Vu"),
+                 PartialsData("Vd", "a"),
+                 PartialsData("Ct", "a"),
+                 PartialsData("thrust", "a"),
+                 PartialsData("thrust", "Area"),
+                 PartialsData("thrust", "rho"),
+                 PartialsData("thrust", "Vu"),
+                 PartialsData("Cp", "a"),
+                 PartialsData("power", "a"),
+                 PartialsData("power", "Area"),
+                 PartialsData("power", "rho"),
+                 PartialsData("power", "Vu")
                 ]
 
-actuator_disc_data = OM_Ecomp_Data(actuator_disc_compute2!, actuator_disc_compute_partials2!, options_data, input_data, output_data, partials_data)
+actuator_disc_data = ECompData(input_data,
+                               output_data,
+                               options_data,
+                               partials_data,
+                               actuator_disc_compute2!,
+                               actuator_disc_compute_partials2!)
 
 actuator_disc = julia_comps.JuliaExplicitComp(julia_comp_data=actuator_disc_data)
 
