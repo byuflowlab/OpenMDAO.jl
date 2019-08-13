@@ -1,34 +1,35 @@
 using OpenMDAO
 using PyCall
+import Base.convert
 
 julia_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
-function actuator_disc_compute!(options, inputs, outputs)
-        a = inputs["a"]
-        Vu = inputs["Vu"]
-
-        qA = @. .5 * inputs["rho"] * inputs["Area"] * Vu ^ 2
-
-        @. outputs["Vd"] = Vu * (1 - 2 * a)
-        Vd = outputs["Vd"]
-        @. outputs["Vr"] = .5 * (Vu + Vd)
-
-        @. outputs["Ct"] = 4 * a * (1 - a)
-        Ct = outputs["Ct"]
-        @. outputs["thrust"] = Ct * qA
-
-        @. outputs["Cp"] = Ct * (1 - a)
-        Cp = outputs["Cp"]
-        @. outputs["power"] = Cp * qA * Vu
+struct ActuatorDisc
 end
 
-actuator_disc_compute2! = pyfunction(actuator_disc_compute!,
-                                     PyDict{String, PyAny},
-                                     PyDict{String, PyArray},
-                                     PyDict{String, PyArray})
+convert(::Type{ActuatorDisc}, po::PyObject) = ActuatorDisc()
 
-function actuator_disc_compute_partials!(options, inputs, J)
+function OpenMDAO.compute!(self::ActuatorDisc, inputs, outputs)
+    a = inputs["a"]
+    Vu = inputs["Vu"]
+
+    qA = @. .5 * inputs["rho"] * inputs["Area"] * Vu ^ 2
+
+    @. outputs["Vd"] = Vu * (1 - 2 * a)
+    Vd = outputs["Vd"]
+    @. outputs["Vr"] = .5 * (Vu + Vd)
+
+    @. outputs["Ct"] = 4 * a * (1 - a)
+    Ct = outputs["Ct"]
+    @. outputs["thrust"] = Ct * qA
+
+    @. outputs["Cp"] = Ct * (1 - a)
+    Cp = outputs["Cp"]
+    @. outputs["power"] = Cp * qA * Vu
+end
+
+function OpenMDAO.compute_partials!(self::ActuatorDisc, inputs, J)
         a = inputs["a"]
         Vu = inputs["Vu"]
         Area = inputs["Area"]
@@ -59,11 +60,6 @@ function actuator_disc_compute_partials!(options, inputs, J)
         @. J["power", "Vu"] = 6.0 * Area * Vu^2 * a * rho * one_minus_a^2
 end
 
-actuator_disc_compute_partials2! = pyfunction(actuator_disc_compute_partials!,
-                                              PyDict{String, PyAny},
-                                              PyDict{String, PyArray},
-                                              PyDict{Tuple{String, String}, PyArray})
-options_data = []
 input_data = [
               VarData("a", [1], [0.5]),
               VarData("Area", [1], [10.0]),
@@ -94,12 +90,10 @@ partials_data = [
                  PartialsData("power", "Vu")
                 ]
 
-actuator_disc_data = ECompData(input_data,
+actuator_disc_data = ECompData(ActuatorDisc(),
+                               input_data,
                                output_data,
-                               options_data,
-                               partials_data,
-                               actuator_disc_compute2!,
-                               actuator_disc_compute_partials2!)
+                               partials=partials_data)
 
 actuator_disc = julia_comps.JuliaExplicitComp(julia_comp_data=actuator_disc_data)
 
@@ -115,8 +109,7 @@ prob.model.add_subsystem("indeps", indeps, promotes=["*"])
 prob.model.add_subsystem("a_disc", actuator_disc, promotes_inputs=["a", "Area", "rho", "Vu"])
 
 # setup the optimization
-prob.driver = om.ScipyOptimizeDriver()
-prob.driver.options["optimizer"] = "SLSQP"
+prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP")
 
 prob.model.add_design_var("a", lower=0., upper=1.)
 prob.model.add_design_var("Area", lower=0., upper=1.)

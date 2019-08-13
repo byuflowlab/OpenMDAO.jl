@@ -1,24 +1,27 @@
 using OpenMDAO
 using PyCall
+import Base.convert
 
 juila_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
-function square_it_compute!(options, inputs, outputs)
-    a = options["a"]
+struct SquareIt
+    a
+end
+SquareIt() = SquareIt(2)
+
+convert(::Type{SquareIt}, po::PyObject) = SquareIt(po.a)
+
+function OpenMDAO.compute!(self::SquareIt, inputs, outputs)
+    a = self.a
     x = inputs["x"]
     y = inputs["y"]
     @. outputs["z1"] = a*x*x + y*y
     @. outputs["z2"] = a*x + y
 end
 
-square_it_compute2! = pyfunction(square_it_compute!,
-                                PyDict{String, PyAny},
-                                PyDict{String, PyArray},
-                                PyDict{String, PyArray})
-
-function square_it_compute_partials!(options, inputs, partials)
-    a = options["a"]
+function OpenMDAO.compute_partials!(self::SquareIt, inputs, partials)
+    a = self.a
     x = inputs["x"]
     y = inputs["y"]
     @. partials["z1", "x"] = 2*a*x
@@ -27,12 +30,6 @@ function square_it_compute_partials!(options, inputs, partials)
     @. partials["z2", "y"] = 1.
 end
 
-square_it_compute_partials2! = pyfunction(square_it_compute_partials!,
-                                          PyDict{String, PyAny},
-                                          PyDict{String, PyArray},
-                                          PyDict{Tuple{String, String}, PyArray})
-
-options_data = [OptionsData("a", Int, 2)]
 input_data = [VarData("x", [1], [2.0]), VarData("y", [1], [3.0])]
 output_data = [VarData("z1", [1], [2.0]), VarData("z2", [1], [3.0])]
 partials_data = [
@@ -42,12 +39,10 @@ partials_data = [
                  PartialsData("z2", "y")
                 ]
 
-square_it_data = ECompData(input_data,
+square_it_data = ECompData(SquareIt(),
+                           input_data,
                            output_data,
-                           options_data,
-                           partials_data,
-                           square_it_compute2!,
-                           square_it_compute_partials2!)
+                           partials=partials_data)
 
 prob = om.Problem()
 

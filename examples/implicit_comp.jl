@@ -1,25 +1,27 @@
 using OpenMDAO
 using PyCall
+import Base.convert
 
 juila_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
-function square_it_apply_nonlinear!(options, inputs, outputs, residuals)
-    a = options["a"]
+struct SquareIt
+    a
+end
+SquareIt() = SquareIt(2)
+
+convert(::Type{SquareIt}, po::PyObject) = SquareIt(po.a)
+
+function OpenMDAO.apply_nonlinear!(self::SquareIt, inputs, outputs, residuals)
+    a = self.a
     x = inputs["x"]
     y = inputs["y"]
     @. residuals["z1"] = outputs["z1"] - (a*x*x + y*y)
     @. residuals["z2"] = outputs["z2"] - (a*x + y)
 end
 
-square_it_apply_nonlinear2! = pyfunction(square_it_apply_nonlinear!,
-                                         PyDict{String, PyAny},
-                                         PyDict{String, PyArray},
-                                         PyDict{String, PyArray},
-                                         PyDict{String, PyArray})
-
-function square_it_linearize!(options, inputs, outputs, partials)
-    a = options["a"]
+function OpenMDAO.linearize!(self::SquareIt, inputs, outputs, partials)
+    a = self.a
     x = inputs["x"]
     y = inputs["y"]
     @. partials["z1", "z1"] = 1.0
@@ -31,13 +33,6 @@ function square_it_linearize!(options, inputs, outputs, partials)
     @. partials["z2", "y"] = -1.0
 end
 
-square_it_linearize2! = pyfunction(square_it_linearize!,
-                                   PyDict{String, PyAny},
-                                   PyDict{String, PyArray},
-                                   PyDict{String, PyArray},
-                                   PyDict{Tuple{String, String}, PyArray})
-
-options_data = [OptionsData("a", Int, 2)]
 input_data = [VarData("x", [1], [2.0]), VarData("y", [1], [3.0])]
 output_data = [VarData("z1", [1], [2.0]), VarData("z2", [1], [3.0])]
 partials_data = [
@@ -49,13 +44,10 @@ partials_data = [
                  PartialsData("z2", "y"),
                 ]
 
-square_it_data = ICompData(input_data,
+square_it_data = ICompData(SquareIt(),
+                           input_data,
                            output_data,
-                           options=options_data,
-                           partials=partials_data,
-                           apply_nonlinear=square_it_apply_nonlinear2!,
-                           linearize=square_it_linearize2!,
-                           guess_nonlinear=nothing)
+                           partials=partials_data)
 
 prob = om.Problem()
 
@@ -66,10 +58,9 @@ prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
 comp = juila_comps.JuliaImplicitComp(julia_comp_data=square_it_data)
 comp.linear_solver = om.DirectSolver(assemble_jac=true)
-comp.nonlinear_solver = om.NewtonSolver()
-comp.nonlinear_solver.options["solve_subsystems"] = true
-comp.nonlinear_solver.options["iprint"] = 2
-comp.nonlinear_solver.options["err_on_non_converge"] = true
+comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=true,
+                                       iprint=2,
+                                       err_on_non_converge=true)
 prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
 prob.setup()

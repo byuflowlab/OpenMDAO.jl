@@ -2,16 +2,16 @@ import openmdao.api as om
 
 
 def _julia_init(self, **kwargs):
+    pass
+    # comp_data = self.options['julia_comp_data']
+    # self._julia_options = {}
+    # for option in comp_data.options:
+    #     self.options.declare(option.name,
+    #                          # types=option.type,
+    #                          default=option.val)
+    #     self._julia_options[option.name] = option.val
 
-    comp_data = self.options['julia_comp_data']
-    self._julia_options = {}
-    for option in comp_data.options:
-        self.options.declare(option.name,
-                             # types=option.type,
-                             default=option.val)
-        self._julia_options[option.name] = option.val
-
-    self.options.update(kwargs)
+    # self.options.update(kwargs)
 
 
 def _julia_initialize(self):
@@ -54,19 +54,20 @@ class JuliaExplicitComp(om.ExplicitComponent):
         inputs_dict = dict(inputs)
         outputs_dict = dict(outputs)
 
-        comp_data.compute(self._julia_options, inputs_dict, outputs_dict)
+        comp_data.compute(comp_data.self, inputs_dict, outputs_dict)
 
     def compute_partials(self, inputs, partials):
         comp_data = self.options['julia_comp_data']
-        inputs_dict = dict(inputs)
+        if comp_data.compute_partials:
+            inputs_dict = dict(inputs)
 
-        partials_dict = {}
-        for part_names in comp_data.partials:
-            of_wrt = part_names.of, part_names.wrt
-            partials_dict[of_wrt] = partials[of_wrt]
+            partials_dict = {}
+            for part_names in comp_data.partials:
+                of_wrt = part_names.of, part_names.wrt
+                partials_dict[of_wrt] = partials[of_wrt]
 
-        comp_data.compute_partials(self._julia_options, inputs_dict,
-                                   partials_dict)
+            comp_data.compute_partials(comp_data.self, inputs_dict,
+                                       partials_dict)
 
 
 class JuliaImplicitComp(om.ImplicitComponent):
@@ -87,23 +88,22 @@ class JuliaImplicitComp(om.ImplicitComponent):
         outputs_dict = dict(outputs)
         residuals_dict = dict(residuals)
 
-        comp_data.apply_nonlinear(self._julia_options, inputs_dict,
-                                  outputs_dict, residuals_dict)
+        comp_data.apply_nonlinear(comp_data.self, inputs_dict, outputs_dict,
+                                  residuals_dict)
 
     def linearize(self, inputs, outputs, partials):
         comp_data = self.options['julia_comp_data']
-        inputs_dict = dict(inputs)
-        outputs_dict = dict(outputs)
+        if comp_data.linearize:
+            inputs_dict = dict(inputs)
+            outputs_dict = dict(outputs)
 
-        partials_dict = {}
-        for part_names in comp_data.partials:
-            of_wrt = part_names.of, part_names.wrt
-            partials_dict[of_wrt] = partials[of_wrt]
+            partials_dict = {}
+            for part_names in comp_data.partials:
+                of_wrt = part_names.of, part_names.wrt
+                partials_dict[of_wrt] = partials[of_wrt]
 
-        comp_data.linearize(self._julia_options, inputs_dict, outputs_dict,
-                            partials_dict)
-        # print(f"partials_dict['Np', 'phi'] = {partials_dict['Np', 'phi']}")
-        # print(f"partials['Np', 'phi'] = {partials['Np', 'phi']}")
+            comp_data.linearize(comp_data.self, inputs_dict, outputs_dict,
+                                partials_dict)
 
     def guess_nonlinear(self, inputs, outputs, residuals):
         comp_data = self.options['julia_comp_data']
@@ -112,5 +112,5 @@ class JuliaImplicitComp(om.ImplicitComponent):
             outputs_dict = dict(outputs)
             residuals_dict = dict(residuals)
 
-            comp_data.guess_nonlinear(self._julia_options, inputs_dict,
+            comp_data.guess_nonlinear(comp_data.self, inputs_dict,
                                       outputs_dict, residuals_dict)
