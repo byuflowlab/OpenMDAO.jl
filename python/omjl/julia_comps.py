@@ -1,19 +1,6 @@
 import openmdao.api as om
 
 
-def _julia_init(self, **kwargs):
-    pass
-    # comp_data = self.options['julia_comp_data']
-    # self._julia_options = {}
-    # for option in comp_data.options:
-    #     self.options.declare(option.name,
-    #                          # types=option.type,
-    #                          default=option.val)
-    #     self._julia_options[option.name] = option.val
-
-    # self.options.update(kwargs)
-
-
 def _julia_initialize(self):
     self.options.declare('julia_comp_data')
 
@@ -38,10 +25,6 @@ def _julia_setup(self):
 
 
 class JuliaExplicitComp(om.ExplicitComponent):
-
-    def __init__(self, **kwargs):
-        super(JuliaExplicitComp, self).__init__(**kwargs)
-        _julia_init(self, **kwargs)
 
     def initialize(self):
         _julia_initialize(self)
@@ -71,10 +54,6 @@ class JuliaExplicitComp(om.ExplicitComponent):
 
 
 class JuliaImplicitComp(om.ImplicitComponent):
-
-    def __init__(self, **kwargs):
-        super(JuliaImplicitComp, self).__init__(**kwargs)
-        _julia_init(self, **kwargs)
 
     def initialize(self):
         _julia_initialize(self)
