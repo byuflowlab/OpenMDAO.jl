@@ -1,49 +1,48 @@
 using OpenMDAO
 using PyCall
+import Base.convert
 
 juila_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
-function compute_square_it(inputs, outputs)
+struct SquareIt
+    a
+end
+SquareIt() = SquareIt(2)
+
+convert(::Type{SquareIt}, po::PyObject) = SquareIt(po.a)
+
+function OpenMDAO.compute!(self::SquareIt, inputs, outputs)
+    a = self.a
     x = inputs["x"]
     y = inputs["y"]
-    @. outputs["z1"] = x*x + y*y
-    @. outputs["z2"] = x + y
+    @. outputs["z1"] = a*x*x + y*y
+    @. outputs["z2"] = a*x + y
 end
 
-compute_square_it2 = pyfunction(compute_square_it,
-                                PyDict{String, PyArray},
-                                PyDict{String, PyArray})
-
-function compute_partials_square_it(inputs, partials)
+function OpenMDAO.compute_partials!(self::SquareIt, inputs, partials)
+    a = self.a
     x = inputs["x"]
     y = inputs["y"]
-    @. partials["z1", "x"] = 2*x
+    @. partials["z1", "x"] = 2*a*x
     @. partials["z1", "y"] = 2*y
-    @. partials["z2", "x"] = 1.
+    @. partials["z2", "x"] = a
     @. partials["z2", "y"] = 1.
 end
 
-compute_partials_square_it2 = pyfunction(compute_partials_square_it,
-                                         PyDict{String, PyArray},
-                                         PyDict{Tuple{String, String}, PyArray})
-
-input_data = [OM_Var_Data("x", 1, [2.0]), OM_Var_Data("y", 1, [3.0])]
-output_data = [OM_Var_Data("z1", 1, [2.0]), OM_Var_Data("z2", 1, [3.0])]
+input_data = [VarData("x", [1], [2.0]), VarData("y", [1], [3.0])]
+output_data = [VarData("z1", [1], [2.0]), VarData("z2", [1], [3.0])]
 partials_data = [
-                 OM_Partials_Data("z1", "x")
-                 OM_Partials_Data("z1", "y")
-                 OM_Partials_Data("z2", "x")
-                 OM_Partials_Data("z2", "y")
+                 PartialsData("z1", "x")
+                 PartialsData("z1", "y")
+                 PartialsData("z2", "x")
+                 PartialsData("z2", "y")
                 ]
 
-square_it_data = OM_Ecomp_Data(compute_square_it2,
-                               compute_partials_square_it2,
-                               input_data,
-                               output_data,
-                               partials_data)
-
-explicit_comp = juila_comps.JuliaExplicitComp(julia_comp_data=square_it_data)
+square_it_data = ECompData(SquareIt(),
+                           input_data,
+                           output_data,
+                           partials=partials_data)
 
 prob = om.Problem()
 
@@ -52,11 +51,11 @@ ivc.add_output("x", 2.0)
 ivc.add_output("y", 2.0)
 prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-prob.model.add_subsystem("square_it_comp", explicit_comp, promotes=["*"])
+comp = juila_comps.JuliaExplicitComp(julia_comp_data=square_it_data)
+prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
 prob.setup()
 prob.final_setup()
-explicit_comp.setup()
 prob.run_model()
 @show prob.get_val("z1")
 @show prob.get_val("z2")
