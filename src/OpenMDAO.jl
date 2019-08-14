@@ -52,7 +52,7 @@ function ECompData(self, inputs, outputs; partials=nothing)
         method = which(compute_partials!, args)
         pycompute_partials = pyfunction(compute_partials!, args...)
     catch err
-        println("No compute_partials! method found for $(typeof(self))")
+        @warn "No compute_partials! method found for $(typeof(self))" 
     end
 
     data = ECompData(self, inputs, outputs, partials, pycompute, pycompute_partials)
@@ -89,7 +89,7 @@ function ICompData(self, inputs, outputs; partials=nothing)
         method = which(linearize!, args)
         pylinearize = pyfunction(linearize!, args...)
     catch err
-        println("No linearize! method found for $(typeof(self))")
+        @warn "No linearize! method found for $(typeof(self))" 
     end
 
     # Initialize pyguess_nonlinear to a dummy value.
@@ -103,7 +103,7 @@ function ICompData(self, inputs, outputs; partials=nothing)
         method = which(guess_nonlinear!, args)
         pyguess_nonlinear = pyfunction(guess_nonlinear!, args...)
     catch err
-        println("No guess_nonlinear! method found for $(typeof(self))")
+        @warn "No guess_nonlinear! method found for $(typeof(self))" 
     end
 
     data = ICompData(self, inputs, outputs, partials, pyapply_nonlinear, pylinearize, pyguess_nonlinear)
