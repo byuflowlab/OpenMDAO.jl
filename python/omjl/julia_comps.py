@@ -1,4 +1,7 @@
 import openmdao.api as om
+from julia.OpenMDAO import (get_pycompute, get_pycompute_partials,
+                            get_pyapply_nonlinear, get_pylinearize,
+                            get_pyguess_nonlinear, get_pysolve_nonlinear)
 
 
 def _julia_initialize(self):
@@ -9,6 +12,7 @@ def _julia_setup(self):
     comp_data = self.options['julia_comp_data']
     input_data = comp_data.inputs
     output_data = comp_data.outputs
+    partials_data = comp_data.partials
 
     for var in input_data:
         self.add_input(var.name, shape=tuple(var.shape), val=var.val,
@@ -18,7 +22,7 @@ def _julia_setup(self):
         self.add_output(var.name, shape=tuple(var.shape), val=var.val,
                         units=var.units)
 
-    for data in comp_data.partials:
+    for data in partials_data:
         self.declare_partials(data.of, data.wrt,
                               rows=data.rows, cols=data.cols,
                               val=data.val)
@@ -31,17 +35,20 @@ class JuliaExplicitComp(om.ExplicitComponent):
 
     def setup(self):
         _julia_setup(self)
+        comp_data = self.options['julia_comp_data']
+        self._julia_compute = get_pycompute(comp_data)
+        self._julia_compute_partials = get_pycompute_partials(comp_data)
 
     def compute(self, inputs, outputs):
         comp_data = self.options['julia_comp_data']
         inputs_dict = dict(inputs)
         outputs_dict = dict(outputs)
 
-        comp_data.compute(comp_data.self, inputs_dict, outputs_dict)
+        self._julia_compute(comp_data, inputs_dict, outputs_dict)
 
     def compute_partials(self, inputs, partials):
         comp_data = self.options['julia_comp_data']
-        if comp_data.compute_partials:
+        if self._julia_compute_partials:
             inputs_dict = dict(inputs)
 
             partials_dict = {}
@@ -49,8 +56,7 @@ class JuliaExplicitComp(om.ExplicitComponent):
                 of_wrt = part_names.of, part_names.wrt
                 partials_dict[of_wrt] = partials[of_wrt]
 
-            comp_data.compute_partials(comp_data.self, inputs_dict,
-                                       partials_dict)
+            self._julia_compute_partials(comp_data, inputs_dict, partials_dict)
 
 
 class JuliaImplicitComp(om.ImplicitComponent):
@@ -60,6 +66,11 @@ class JuliaImplicitComp(om.ImplicitComponent):
 
     def setup(self):
         _julia_setup(self)
+        comp_data = self.options['julia_comp_data']
+        self._julia_apply_nonlinear = get_pyapply_nonlinear(comp_data)
+        self._julia_linearize = get_pylinearize(comp_data)
+        self._julia_guess_nonlinear = get_pyguess_nonlinear(comp_data)
+        self._julia_solve_nonlinear = get_pysolve_nonlinear(comp_data)
 
     def apply_nonlinear(self, inputs, outputs, residuals):
         comp_data = self.options['julia_comp_data']
@@ -67,12 +78,12 @@ class JuliaImplicitComp(om.ImplicitComponent):
         outputs_dict = dict(outputs)
         residuals_dict = dict(residuals)
 
-        comp_data.apply_nonlinear(comp_data.self, inputs_dict, outputs_dict,
-                                  residuals_dict)
+        self._julia_apply_nonlinear(comp_data, inputs_dict, outputs_dict,
+                                    residuals_dict)
 
     def linearize(self, inputs, outputs, partials):
-        comp_data = self.options['julia_comp_data']
-        if comp_data.linearize:
+        if self._julia_linearize:
+            comp_data = self.options['julia_comp_data']
             inputs_dict = dict(inputs)
             outputs_dict = dict(outputs)
 
@@ -81,15 +92,23 @@ class JuliaImplicitComp(om.ImplicitComponent):
                 of_wrt = part_names.of, part_names.wrt
                 partials_dict[of_wrt] = partials[of_wrt]
 
-            comp_data.linearize(comp_data.self, inputs_dict, outputs_dict,
-                                partials_dict)
+            self._julia_linearize(comp_data, inputs_dict, outputs_dict,
+                                  partials_dict)
 
     def guess_nonlinear(self, inputs, outputs, residuals):
-        comp_data = self.options['julia_comp_data']
-        if comp_data.guess_nonlinear:
+        if self._julia_guess_nonlinear:
+            comp_data = self.options['julia_comp_data']
             inputs_dict = dict(inputs)
             outputs_dict = dict(outputs)
             residuals_dict = dict(residuals)
 
-            comp_data.guess_nonlinear(comp_data.self, inputs_dict,
-                                      outputs_dict, residuals_dict)
+            self._julia_guess_nonlinear(comp_data, inputs_dict, outputs_dict,
+                                        residuals_dict)
+
+    def solve_nonlinear(self, inputs, outputs):
+        if self._julia_solve_nonlinear:
+            comp_data = self.options['julia_comp_data']
+            inputs_dict = dict(inputs)
+            outputs_dict = dict(outputs)
+
+            self._julia_solve_nonlinear(comp_data, inputs_dict, outputs_dict)
