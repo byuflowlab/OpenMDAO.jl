@@ -62,11 +62,6 @@ ivc.add_output("x", 2.0)
 ivc.add_output("y", 2.0)
 prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-# square_it_data = ICompData(SquareIt(),
-#                            input_data,
-#                            output_data,
-#                            partials=partials_data)
-# comp = juila_comps.JuliaImplicitComp(julia_comp_data=square_it_data)
 comp = juila_comps.JuliaImplicitComp(julia_comp_data=SquareIt())
 comp.linear_solver = om.DirectSolver(assemble_jac=true)
 comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=true,

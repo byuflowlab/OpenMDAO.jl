@@ -67,7 +67,7 @@ function get_pycompute_partials(self::T) where {T}
         method = which(compute_partials!, args)
         pycompute_partials = pyfunction(compute_partials!, args...)
     catch err
-        @warn "No compute_partials! method found for $(typeof(self))" 
+        @warn "No compute_partials! method found for $(T)" 
     end
 
     return pycompute_partials
@@ -94,7 +94,7 @@ function get_pylinearize(self::T) where {T}
         method = which(linearize!, args)
         pylinearize = pyfunction(linearize!, args...)
     catch err
-        @warn "No linearize! method found for $(typeof(self))" 
+        @warn "No linearize! method found for $(T)" 
     end
     return pylinearize
 end
@@ -111,7 +111,7 @@ function get_pyguess_nonlinear(self::T) where {T}
         method = which(guess_nonlinear!, args)
         pyguess_nonlinear = pyfunction(guess_nonlinear!, args...)
     catch err
-        @warn "No guess_nonlinear! method found for $(typeof(self))" 
+        @warn "No guess_nonlinear! method found for $(T)" 
     end
 
     return pyguess_nonlinear
@@ -128,7 +128,7 @@ function get_pysolve_nonlinear(self::T) where {T}
         method = which(solve_nonlinear!, args)
         pysolve_nonlinear = pyfunction(solve_nonlinear!, args...)
     catch err
-        @warn "No solve_nonlinear! method found for $(typeof(self))" 
+        @warn "No solve_nonlinear! method found for $(T)" 
     end
 
     return pysolve_nonlinear

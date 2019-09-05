@@ -58,8 +58,6 @@ ivc.add_output("x", 2.0)
 ivc.add_output("y", 2.0)
 prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-# square_it_data = ECompData(SquareIt())
-# comp = julia_comps.JuliaExplicitComp(julia_comp_data=square_it_data)
 comp = julia_comps.JuliaExplicitComp(julia_comp_data=SquareIt())
 prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
