@@ -6,9 +6,45 @@ julia_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
 struct ActuatorDisc
+    inputs
+    outputs
+    partials
 end
 
-convert(::Type{ActuatorDisc}, po::PyObject) = ActuatorDisc()
+convert(::Type{ActuatorDisc}, po::PyObject) = ActuatorDisc(po.inputs, po.outputs, po.partials)
+
+function ActuatorDisc()
+    inputs = [
+        VarData("a", [1], [0.5]),
+        VarData("Area", [1], [10.0]),
+        VarData("rho", [1], [1.225]),
+        VarData("Vu", [1], [10.0])]
+
+    outputs = [
+        VarData("Vr", [1], [0.0]),
+        VarData("Vd", [1], [0.0]),
+        VarData("Ct", [1], [0.0]),
+        VarData("thrust", [1], [0.0]),
+        VarData("Cp", [1], [0.0]),
+        VarData("power", [1], [0.0])]
+
+    partials = [
+        PartialsData("Vr", "a"),
+        PartialsData("Vr", "Vu"),
+        PartialsData("Vd", "a"),
+        PartialsData("Ct", "a"),
+        PartialsData("thrust", "a"),
+        PartialsData("thrust", "Area"),
+        PartialsData("thrust", "rho"),
+        PartialsData("thrust", "Vu"),
+        PartialsData("Cp", "a"),
+        PartialsData("power", "a"),
+        PartialsData("power", "Area"),
+        PartialsData("power", "rho"),
+        PartialsData("power", "Vu")]
+
+    return ActuatorDisc(inputs, outputs, partials)
+end
 
 function OpenMDAO.compute!(self::ActuatorDisc, inputs, outputs)
     a = inputs["a"]
@@ -60,43 +96,6 @@ function OpenMDAO.compute_partials!(self::ActuatorDisc, inputs, J)
         @. J["power", "Vu"] = 6.0 * Area * Vu^2 * a * rho * one_minus_a^2
 end
 
-input_data = [
-              VarData("a", [1], [0.5]),
-              VarData("Area", [1], [10.0]),
-              VarData("rho", [1], [1.225]),
-              VarData("Vu", [1], [10.0])
-             ]
-output_data = [VarData("Vr", [1], [0.0]),
-               VarData("Vd", [1], [0.0]),
-               VarData("Ct", [1], [0.0]),
-               VarData("thrust", [1], [0.0]),
-               VarData("Cp", [1], [0.0]),
-               VarData("power", [1], [0.0])
-              ]
-
-partials_data = [
-                 PartialsData("Vr", "a"),
-                 PartialsData("Vr", "Vu"),
-                 PartialsData("Vd", "a"),
-                 PartialsData("Ct", "a"),
-                 PartialsData("thrust", "a"),
-                 PartialsData("thrust", "Area"),
-                 PartialsData("thrust", "rho"),
-                 PartialsData("thrust", "Vu"),
-                 PartialsData("Cp", "a"),
-                 PartialsData("power", "a"),
-                 PartialsData("power", "Area"),
-                 PartialsData("power", "rho"),
-                 PartialsData("power", "Vu")
-                ]
-
-actuator_disc_data = ECompData(ActuatorDisc(),
-                               input_data,
-                               output_data,
-                               partials=partials_data)
-
-actuator_disc = julia_comps.JuliaExplicitComp(julia_comp_data=actuator_disc_data)
-
 prob = om.Problem()
 
 indeps = om.IndepVarComp()
@@ -106,7 +105,8 @@ indeps.add_output("rho", 1.125)
 indeps.add_output("Vu", 10.0)
 prob.model.add_subsystem("indeps", indeps, promotes=["*"])
 
-prob.model.add_subsystem("a_disc", actuator_disc, promotes_inputs=["a", "Area", "rho", "Vu"])
+comp = julia_comps.JuliaExplicitComp(julia_comp_data=ActuatorDisc())
+prob.model.add_subsystem("a_disc", comp, promotes_inputs=["a", "Area", "rho", "Vu"])
 
 # setup the optimization
 prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP")
@@ -121,5 +121,5 @@ prob.setup()
 prob.run_driver()
 
 # minimum value
-@show prob.get_val("a_disc.Cp")
-@show prob.get_val("a")
+println("a_disc.Cp = $(prob.get_val("a_disc.Cp")) (should be 0.59259259)")
+println("a = $(prob.get_val("a")) (should be 0.33335528)")

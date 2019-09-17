@@ -7,10 +7,32 @@ om = pyimport("openmdao.api")
 
 struct SquareIt
     a
+    inputs
+    outputs
+    partials
 end
+
+function SquareIt(a)
+    inputs = [
+        VarData("x", [1], [2.0]), 
+        VarData("y", [1], [3.0])]
+    outputs = [
+        VarData("z1", [1], [2.0]), 
+        VarData("z2", [1], [3.0])]
+    partials = [
+        PartialsData("z1", "z1"),
+        PartialsData("z1", "x"),
+        PartialsData("z1", "y"),
+        PartialsData("z2", "z2"),
+        PartialsData("z2", "x"),
+        PartialsData("z2", "y")]
+    return SquareIt(a, inputs, outputs, partials)
+end
+
 SquareIt() = SquareIt(2)
 
-convert(::Type{SquareIt}, po::PyObject) = SquareIt(po.a)
+convert(::Type{SquareIt}, po::PyObject) = SquareIt(
+    po.a, po.inputs, po.outputs, po.partials)
 
 function OpenMDAO.apply_nonlinear!(self::SquareIt, inputs, outputs, residuals)
     a = self.a
@@ -33,22 +55,6 @@ function OpenMDAO.linearize!(self::SquareIt, inputs, outputs, partials)
     @. partials["z2", "y"] = -1.0
 end
 
-input_data = [VarData("x", [1], [2.0]), VarData("y", [1], [3.0])]
-output_data = [VarData("z1", [1], [2.0]), VarData("z2", [1], [3.0])]
-partials_data = [
-                 PartialsData("z1", "z1"),
-                 PartialsData("z1", "x"),
-                 PartialsData("z1", "y"),
-                 PartialsData("z2", "z2"),
-                 PartialsData("z2", "x"),
-                 PartialsData("z2", "y"),
-                ]
-
-square_it_data = ICompData(SquareIt(),
-                           input_data,
-                           output_data,
-                           partials=partials_data)
-
 prob = om.Problem()
 
 ivc = om.IndepVarComp()
@@ -56,7 +62,7 @@ ivc.add_output("x", 2.0)
 ivc.add_output("y", 2.0)
 prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-comp = juila_comps.JuliaImplicitComp(julia_comp_data=square_it_data)
+comp = juila_comps.JuliaImplicitComp(julia_comp_data=SquareIt())
 comp.linear_solver = om.DirectSolver(assemble_jac=true)
 comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=true,
                                        iprint=2,
