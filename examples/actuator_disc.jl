@@ -1,49 +1,46 @@
 using OpenMDAO
 using PyCall
-import Base.convert
 
 julia_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
-struct ActuatorDisc
-    inputs
-    outputs
-    partials
+struct ActuatorDisc <: OpenMDAO.OpenMDAOComp
+    options::Dict{AbstractString, Any}
+    inputs::AbstractVector{VarData}
+    outputs::AbstractVector{VarData}
+    partials::AbstractVector{PartialsData}
 end
 
-convert(::Type{ActuatorDisc}, po::PyObject) = ActuatorDisc(po.inputs, po.outputs, po.partials)
+ActuatorDisc() = ActuatorDisc(Dict{String, Any}(), VarData[], VarData[], PartialsData[])
 
-function ActuatorDisc()
-    inputs = [
-        VarData("a", [1], [0.5]),
-        VarData("Area", [1], [10.0]),
-        VarData("rho", [1], [1.225]),
-        VarData("Vu", [1], [10.0])]
+function OpenMDAO.setup!(self::ActuatorDisc)
+    push!(self.inputs, VarData("a", [1], [0.5]))
+    push!(self.inputs, VarData("Area", [1], [10.0]))
+    push!(self.inputs, VarData("rho", [1], [1.225]))
+    push!(self.inputs, VarData("Vu", [1], [10.0]))
 
-    outputs = [
-        VarData("Vr", [1], [0.0]),
-        VarData("Vd", [1], [0.0]),
-        VarData("Ct", [1], [0.0]),
-        VarData("thrust", [1], [0.0]),
-        VarData("Cp", [1], [0.0]),
-        VarData("power", [1], [0.0])]
+    push!(self.outputs, VarData("Vr", [1], [0.0]))
+    push!(self.outputs, VarData("Vd", [1], [0.0]))
+    push!(self.outputs, VarData("Ct", [1], [0.0]))
+    push!(self.outputs, VarData("thrust", [1], [0.0]))
+    push!(self.outputs, VarData("Cp", [1], [0.0]))
+    push!(self.outputs, VarData("power", [1], [0.0]))
 
-    partials = [
-        PartialsData("Vr", "a"),
-        PartialsData("Vr", "Vu"),
-        PartialsData("Vd", "a"),
-        PartialsData("Ct", "a"),
-        PartialsData("thrust", "a"),
-        PartialsData("thrust", "Area"),
-        PartialsData("thrust", "rho"),
-        PartialsData("thrust", "Vu"),
-        PartialsData("Cp", "a"),
-        PartialsData("power", "a"),
-        PartialsData("power", "Area"),
-        PartialsData("power", "rho"),
-        PartialsData("power", "Vu")]
+    push!(self.partials, PartialsData("Vr", "a"))
+    push!(self.partials, PartialsData("Vr", "Vu"))
+    push!(self.partials, PartialsData("Vd", "a"))
+    push!(self.partials, PartialsData("Ct", "a"))
+    push!(self.partials, PartialsData("thrust", "a"))
+    push!(self.partials, PartialsData("thrust", "Area"))
+    push!(self.partials, PartialsData("thrust", "rho"))
+    push!(self.partials, PartialsData("thrust", "Vu"))
+    push!(self.partials, PartialsData("Cp", "a"))
+    push!(self.partials, PartialsData("power", "a"))
+    push!(self.partials, PartialsData("power", "Area"))
+    push!(self.partials, PartialsData("power", "rho"))
+    push!(self.partials, PartialsData("power", "Vu"))
 
-    return ActuatorDisc(inputs, outputs, partials)
+    return nothing
 end
 
 function OpenMDAO.compute!(self::ActuatorDisc, inputs, outputs)
@@ -105,7 +102,9 @@ indeps.add_output("rho", 1.125)
 indeps.add_output("Vu", 10.0)
 prob.model.add_subsystem("indeps", indeps, promotes=["*"])
 
-comp = julia_comps.JuliaExplicitComp(julia_comp_data=ActuatorDisc())
+actuator_disc = ActuatorDisc()
+OpenMDAO.setup!(actuator_disc)
+comp = julia_comps.JuliaExplicitComp(julia_comp_data=actuator_disc)
 prob.model.add_subsystem("a_disc", comp, promotes_inputs=["a", "Area", "rho", "Vu"])
 
 # setup the optimization

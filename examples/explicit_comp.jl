@@ -1,53 +1,53 @@
 using OpenMDAO
 using PyCall
-import Base.convert
 
 julia_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
-struct SquareIt
-    a
-    inputs
-    outputs
-    partials
+struct SquareIt <: OpenMDAO.OpenMDAOComp
+    options::Dict{AbstractString, Any}
+    inputs::AbstractVector{VarData}
+    outputs::AbstractVector{VarData}
+    partials::AbstractVector{PartialsData}
 end
 
-function SquareIt(a)
-    inputs = [
-        VarData("x", [1], [2.0]), 
-        VarData("y", [1], [3.0])]
-    outputs = [
-        VarData("z1", [1], [2.0]), 
-        VarData("z2", [1], [3.0])]
-    partials = [
-        PartialsData("z1", "x"),
-        PartialsData("z1", "y"),
-        PartialsData("z2", "x"),
-        PartialsData("z2", "y")]
-    return SquareIt(a, inputs, outputs, partials)
+SquareIt() = SquareIt(Dict{String, Any}(), VarData[], VarData[], PartialsData[])
+
+function OpenMDAO.setup!(self::SquareIt; a=2.0)
+    self.options["a"] = a
+
+    push!(self.inputs, VarData("x", [1], [2.0]))
+    push!(self.inputs, VarData("y", [1], [3.0]))
+
+    push!(self.outputs, VarData("z1", [1], [2.0]))
+    push!(self.outputs, VarData("z2", [1], [3.0]))
+
+    push!(self.partials, PartialsData("z1", "x"))
+    push!(self.partials, PartialsData("z1", "y"))
+    push!(self.partials, PartialsData("z2", "x"))
+    push!(self.partials, PartialsData("z2", "y"))
+
+    return nothing
 end
-
-SquareIt() = SquareIt(2)
-
-convert(::Type{SquareIt}, po::PyObject) = SquareIt(
-    po.a, po.inputs, po.outputs, po.partials)
 
 function OpenMDAO.compute!(self::SquareIt, inputs, outputs)
-    a = self.a
+    a = self.options["a"]
     x = inputs["x"]
     y = inputs["y"]
     @. outputs["z1"] = a*x*x + y*y
     @. outputs["z2"] = a*x + y
+    return nothing
 end
 
 function OpenMDAO.compute_partials!(self::SquareIt, inputs, partials)
-    a = self.a
+    a = self.options["a"]
     x = inputs["x"]
     y = inputs["y"]
     @. partials["z1", "x"] = 2*a*x
     @. partials["z1", "y"] = 2*y
     @. partials["z2", "x"] = a
     @. partials["z2", "y"] = 1.
+    return nothing
 end
 
 
@@ -58,7 +58,9 @@ ivc.add_output("x", 2.0)
 ivc.add_output("y", 2.0)
 prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-comp = julia_comps.JuliaExplicitComp(julia_comp_data=SquareIt())
+square_it = SquareIt()
+OpenMDAO.setup!(square_it)
+comp = julia_comps.JuliaExplicitComp(julia_comp_data=square_it)
 prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
 prob.setup()

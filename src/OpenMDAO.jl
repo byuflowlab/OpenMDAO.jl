@@ -1,7 +1,17 @@
 module OpenMDAO
 using PyCall
+import Base.convert
 
 export VarData, PartialsData
+
+abstract type OpenMDAOComp end
+
+# Needed to avoid "Don't know how to convert PyObject to <some type> errors."
+convert(::Type{T}, po::PyObject) where {T<:OpenMDAOComp} = T(po.options, po.inputs, po.outputs, po.partials)
+
+function setup!(self::UnionAll)
+    error("called dummy base setup! with self{$(typeof(self))}")
+end
 
 function compute!(self::UnionAll, inputs, outputs)
     error("called dummy base compute! with self{$(typeof(self))}")
