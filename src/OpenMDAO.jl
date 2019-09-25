@@ -1,7 +1,31 @@
 module OpenMDAO
 using PyCall
+import Base.convert
 
-export VarData, PartialsData
+# Importing the OpenMDAO Python module with pyimport and then exporting it makes
+# om a "NULL PyObject." Seems like any modules imported with pyimport have to be
+# used in the same scope they're imported in.
+# om = pyimport("openmdao.api")
+# export VarData, PartialsData, make_component, om
+
+export VarData, PartialsData, make_component
+
+abstract type AbstractComp end
+abstract type AbstractExplicitComp <: AbstractComp end
+abstract type AbstractImplicitComp <: AbstractComp end
+
+# Needed to avoid "Don't know how to convert PyObject to <some type> errors."
+function convert(::Type{T}, po::PyObject) where {T<:AbstractComp}
+    # Explaination of the difference between fields and properties:
+    # https://discourse.julialang.org/t/whats-the-difference-between-fields-and-properties/12495
+    args = [getproperty(po, n) for n in fieldnames(T)]
+    return T(args...)
+end
+
+
+function setup(self::UnionAll)
+    error("called dummy base setup with self{$(typeof(self))}")
+end
 
 function compute!(self::UnionAll, inputs, outputs)
     error("called dummy base compute! with self{$(typeof(self))}")
@@ -45,6 +69,14 @@ struct PartialsData
 end
 
 PartialsData(of, wrt; rows=nothing, cols=nothing, val=nothing) = PartialsData(of, wrt, rows, cols, val)
+
+function get_pysetup(self::T) where {T}
+    args = (T,)  # self
+    ret = Tuple{Vector{VarData},  # input metadata
+                Vector{VarData},  # output metadata
+                Vector{PartialsData}}  # partials metadata
+    return pyfunctionret(setup, ret, args...)
+end
 
 function get_pycompute(self::T) where {T}
     args = (T,  # self
@@ -132,6 +164,18 @@ function get_pysolve_nonlinear(self::T) where {T}
     end
 
     return pysolve_nonlinear
+end
+
+function make_component(self::T where {T<:AbstractExplicitComp})
+    julia_comps = pyimport("omjl.julia_comps")
+    comp = julia_comps.JuliaExplicitComp(julia_comp_data=self)
+    return comp
+end
+
+function make_component(self::T where {T<:AbstractImplicitComp})
+    julia_comps = pyimport("omjl.julia_comps")
+    comp = julia_comps.JuliaImplicitComp(julia_comp_data=self)
+    return comp
 end
 
 end # module

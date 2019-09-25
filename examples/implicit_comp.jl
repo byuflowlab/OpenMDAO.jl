@@ -1,38 +1,33 @@
 using OpenMDAO
 using PyCall
-import Base.convert
 
-juila_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
-struct SquareIt
+struct SquareIt <: OpenMDAO.AbstractImplicitComp
     a
-    inputs
-    outputs
-    partials
 end
 
-function SquareIt(a)
-    inputs = [
-        VarData("x", [1], [2.0]), 
-        VarData("y", [1], [3.0])]
-    outputs = [
-        VarData("z1", [1], [2.0]), 
-        VarData("z2", [1], [3.0])]
-    partials = [
-        PartialsData("z1", "z1"),
-        PartialsData("z1", "x"),
-        PartialsData("z1", "y"),
-        PartialsData("z2", "z2"),
-        PartialsData("z2", "x"),
-        PartialsData("z2", "y")]
-    return SquareIt(a, inputs, outputs, partials)
+SquareIt() = SquareIt(2.0)
+
+function OpenMDAO.setup(self::SquareIt)
+    inputs = VarData[]
+    push!(inputs, VarData("x", [1], [2.0]))
+    push!(inputs, VarData("y", [1], [3.0]))
+
+    outputs = VarData[]
+    push!(outputs, VarData("z1", [1], [2.0]))
+    push!(outputs, VarData("z2", [1], [3.0]))
+
+    partials = PartialsData[]
+    push!(partials, PartialsData("z1", "x"))
+    push!(partials, PartialsData("z1", "y"))
+    push!(partials, PartialsData("z1", "z1"))
+    push!(partials, PartialsData("z2", "x"))
+    push!(partials, PartialsData("z2", "y"))
+    push!(partials, PartialsData("z2", "z2"))
+
+    return inputs, outputs, partials
 end
-
-SquareIt() = SquareIt(2)
-
-convert(::Type{SquareIt}, po::PyObject) = SquareIt(
-    po.a, po.inputs, po.outputs, po.partials)
 
 function OpenMDAO.apply_nonlinear!(self::SquareIt, inputs, outputs, residuals)
     a = self.a
@@ -62,11 +57,10 @@ ivc.add_output("x", 2.0)
 ivc.add_output("y", 2.0)
 prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-comp = juila_comps.JuliaImplicitComp(julia_comp_data=SquareIt())
+comp = make_component(SquareIt())
 comp.linear_solver = om.DirectSolver(assemble_jac=true)
-comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=true,
-                                       iprint=2,
-                                       err_on_non_converge=true)
+comp.nonlinear_solver = om.NewtonSolver(
+    solve_subsystems=true, iprint=2, err_on_non_converge=true)
 prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
 prob.setup()

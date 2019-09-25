@@ -1,18 +1,17 @@
 import openmdao.api as om
-from julia.OpenMDAO import (get_pycompute, get_pycompute_partials,
+from julia.OpenMDAO import (get_pysetup, get_pycompute, get_pycompute_partials,
                             get_pyapply_nonlinear, get_pylinearize,
                             get_pyguess_nonlinear, get_pysolve_nonlinear)
 
 
-def _julia_initialize(self):
+def _initialize_common(self):
     self.options.declare('julia_comp_data')
 
 
-def _julia_setup(self):
+def _setup_common(self):
     comp_data = self.options['julia_comp_data']
-    input_data = comp_data.inputs
-    output_data = comp_data.outputs
-    partials_data = comp_data.partials
+    self._julia_setup = get_pysetup(comp_data)
+    input_data, output_data, partials_data = self._julia_setup(comp_data)
 
     for var in input_data:
         self.add_input(var.name, shape=tuple(var.shape), val=var.val,
@@ -31,10 +30,10 @@ def _julia_setup(self):
 class JuliaExplicitComp(om.ExplicitComponent):
 
     def initialize(self):
-        _julia_initialize(self)
+        _initialize_common(self)
 
     def setup(self):
-        _julia_setup(self)
+        _setup_common(self)
         comp_data = self.options['julia_comp_data']
         self._julia_compute = get_pycompute(comp_data)
         self._julia_compute_partials = get_pycompute_partials(comp_data)
@@ -52,8 +51,7 @@ class JuliaExplicitComp(om.ExplicitComponent):
             inputs_dict = dict(inputs)
 
             partials_dict = {}
-            for part_names in comp_data.partials:
-                of_wrt = part_names.of, part_names.wrt
+            for of_wrt in self._declared_partials:
                 partials_dict[of_wrt] = partials[of_wrt]
 
             self._julia_compute_partials(comp_data, inputs_dict, partials_dict)
@@ -62,10 +60,10 @@ class JuliaExplicitComp(om.ExplicitComponent):
 class JuliaImplicitComp(om.ImplicitComponent):
 
     def initialize(self):
-        _julia_initialize(self)
+        _initialize_common(self)
 
     def setup(self):
-        _julia_setup(self)
+        _setup_common(self)
         comp_data = self.options['julia_comp_data']
         self._julia_apply_nonlinear = get_pyapply_nonlinear(comp_data)
         self._julia_linearize = get_pylinearize(comp_data)
@@ -88,8 +86,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
             outputs_dict = dict(outputs)
 
             partials_dict = {}
-            for part_names in comp_data.partials:
-                of_wrt = part_names.of, part_names.wrt
+            for of_wrt in self._declared_partials:
                 partials_dict[of_wrt] = partials[of_wrt]
 
             self._julia_linearize(comp_data, inputs_dict, outputs_dict,
