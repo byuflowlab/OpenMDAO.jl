@@ -4,13 +4,21 @@ import Base.convert
 
 export VarData, PartialsData
 
-abstract type OpenMDAOComp end
+abstract type AbstractComp end
+abstract type AbstractExplicitComp <: AbstractComp end
+abstract type AbstractImplicitComp <: AbstractComp end
 
 # Needed to avoid "Don't know how to convert PyObject to <some type> errors."
-convert(::Type{T}, po::PyObject) where {T<:OpenMDAOComp} = T(po.options, po.inputs, po.outputs, po.partials)
+function convert(::Type{T}, po::PyObject) where {T<:AbstractComp}
+    # Explaination of the difference between fields and properties:
+    # https://discourse.julialang.org/t/whats-the-difference-between-fields-and-properties/12495
+    args = [getproperty(po, n) for n in fieldnames(T)]
+    return T(args...)
+end
 
-function setup!(self::UnionAll)
-    error("called dummy base setup! with self{$(typeof(self))}")
+
+function setup(self::UnionAll)
+    error("called dummy base setup with self{$(typeof(self))}")
 end
 
 function compute!(self::UnionAll, inputs, outputs)
@@ -55,6 +63,14 @@ struct PartialsData
 end
 
 PartialsData(of, wrt; rows=nothing, cols=nothing, val=nothing) = PartialsData(of, wrt, rows, cols, val)
+
+function get_pysetup(self::T) where {T}
+    args = (T,)  # self
+    ret = Tuple{Vector{VarData},  # input metadata
+                Vector{VarData},  # output metadata
+                Vector{PartialsData}}  # partials metadata
+    return pyfunctionret(setup, ret, args...)
+end
 
 function get_pycompute(self::T) where {T}
     args = (T,  # self
