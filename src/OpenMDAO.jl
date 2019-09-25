@@ -2,7 +2,7 @@ module OpenMDAO
 using PyCall
 import Base.convert
 
-export VarData, PartialsData
+export VarData, PartialsData, make_component
 
 abstract type AbstractComp end
 abstract type AbstractExplicitComp <: AbstractComp end
@@ -158,6 +158,18 @@ function get_pysolve_nonlinear(self::T) where {T}
     end
 
     return pysolve_nonlinear
+end
+
+function make_component(self::T where {T<:AbstractExplicitComp})
+    julia_comps = pyimport("omjl.julia_comps")
+    comp = julia_comps.JuliaExplicitComp(julia_comp_data=self)
+    return comp
+end
+
+function make_component(self::T where {T<:AbstractImplicitComp})
+    julia_comps = pyimport("omjl.julia_comps")
+    comp = julia_comps.JuliaImplicitComp(julia_comp_data=self)
+    return comp
 end
 
 end # module
