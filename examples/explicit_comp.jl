@@ -1,7 +1,6 @@
 using OpenMDAO
 using PyCall
 
-julia_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
 struct SquareIt <: OpenMDAO.AbstractExplicitComp

@@ -2,6 +2,12 @@ module OpenMDAO
 using PyCall
 import Base.convert
 
+# Importing the OpenMDAO Python module with pyimport and then exporting it makes
+# om a "NULL PyObject." Seems like any modules imported with pyimport have to be
+# used in the same scope they're imported in.
+# om = pyimport("openmdao.api")
+# export VarData, PartialsData, make_component, om
+
 export VarData, PartialsData, make_component
 
 abstract type AbstractComp end

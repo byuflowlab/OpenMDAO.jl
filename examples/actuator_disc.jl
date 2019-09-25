@@ -1,8 +1,6 @@
 using OpenMDAO
 using PyCall
-import Base.convert
 
-julia_comps = pyimport("omjl.julia_comps")
 om = pyimport("openmdao.api")
 
 struct ActuatorDisc <: OpenMDAO.AbstractExplicitComp
