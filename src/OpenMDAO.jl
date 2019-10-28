@@ -8,7 +8,7 @@ import Base.convert
 # om = pyimport("openmdao.api")
 # export VarData, PartialsData, make_component, om
 
-export VarData, PartialsData, make_component
+export VarData, PartialsData, make_component, AbstractExplicitComp, AbstractImplicitComp
 
 abstract type AbstractComp end
 abstract type AbstractExplicitComp <: AbstractComp end
