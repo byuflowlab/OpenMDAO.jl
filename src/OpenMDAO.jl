@@ -143,7 +143,8 @@ function get_pyguess_nonlinear(self::T) where {T}
         method = which(guess_nonlinear!, args)
         pyguess_nonlinear = pyfunction(guess_nonlinear!, args...)
     catch err
-        @warn "No guess_nonlinear! method found for $(T)" 
+        nothing
+        # @warn "No guess_nonlinear! method found for $(T)" 
     end
 
     return pyguess_nonlinear
