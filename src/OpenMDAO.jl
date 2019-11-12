@@ -13,7 +13,10 @@ export om  # direct access to Python module: openmdao.api
 
 # load python api
 const om = PyNULL()
-copy!(om, pyimport("openmdao.api"))
+
+function __init__()
+    copy!(om, pyimport("openmdao.api"))
+end
 
 
 abstract type AbstractComp end
