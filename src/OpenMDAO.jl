@@ -62,12 +62,13 @@ end
 
 struct VarData
     name
-    shape
     val
+    shape
     units
 end
 
-VarData(name, shape, val; units=nothing) = VarData(name, shape, val, units)
+# VarData(name, shape, val; units=nothing) = VarData(name, shape, val, units)
+VarData(name; val=[1.0], shape=[1], units=nothing) = VarData(name, val, shape, units)
 
 struct PartialsData
     of
@@ -170,7 +171,8 @@ function get_pysolve_nonlinear(self::T) where {T}
         method = which(solve_nonlinear!, args)
         pysolve_nonlinear = pyfunction(solve_nonlinear!, args...)
     catch err
-        @warn "No solve_nonlinear! method found for $(T)" 
+        nothing
+        # @warn "No solve_nonlinear! method found for $(T)" 
     end
 
     return pysolve_nonlinear
