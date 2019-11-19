@@ -16,7 +16,7 @@ function OpenMDAO.setup(::SquareIt)
 
     outputs = [
         VarData("z1", shape=(1,), val=[2.0]),
-        VarData("z2", shape=(1,), val=3.0)
+        VarData("z2")  #default is just 1.0  , shape=(1,), val=3.0)
     ]
 
     partials = [

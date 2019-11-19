@@ -32,31 +32,31 @@ function convert(::Type{T}, po::PyObject) where {T<:AbstractComp}
 end
 
 
-function setup(self::UnionAll)
+function setup(self::AbstractComp)
     error("called dummy base setup with self{$(typeof(self))}")
 end
 
-function compute!(self::UnionAll, inputs, outputs)
+function compute!(self::AbstractComp, inputs, outputs)
     error("called dummy base compute! with self{$(typeof(self))}")
 end
 
-function compute_partials!(self::UnionAll, inputs, partials)
+function compute_partials!(self::AbstractComp, inputs, partials)
     error("called dummy base compute_partials! with self{$(typeof(self))}")
 end
 
-function apply_nonlinear!(self::UnionAll, inputs, outputs, residuals)
+function apply_nonlinear!(self::AbstractComp, inputs, outputs, residuals)
     error("called dummy base compute_partials! with self{$(typeof(self))}")
 end
 
-function linearize!(self::UnionAll, inputs, outputs, partials)
+function linearize!(self::AbstractComp, inputs, outputs, partials)
     error("called dummy base linearize! with self{$(typeof(self))}")
 end
 
-function guess_nonlinear!(self::UnionAll, inputs, outputs, residuals)
+function guess_nonlinear!(self::AbstractComp, inputs, outputs, residuals)
     error("called dummy base guess_nonlinear! with self{$(typeof(self))}")
 end
 
-function solve_nonlinear!(self::UnionAll, inputs, outputs)
+function solve_nonlinear!(self::AbstractComp, inputs, outputs)
     error("called dummy base guess_nonlinear! with self{$(typeof(self))}")
 end
 
@@ -68,7 +68,7 @@ struct VarData
 end
 
 # VarData(name, shape, val; units=nothing) = VarData(name, shape, val, units)
-VarData(name; val=[1.0], shape=1, units=nothing) = VarData(name, val, shape, units)
+VarData(name; val=1.0, shape=1, units=nothing) = VarData(name, val, shape, units)
 
 struct PartialsData
     of
