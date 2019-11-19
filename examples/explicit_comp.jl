@@ -7,14 +7,16 @@ end
 
 
 function OpenMDAO.setup(::SquareIt)
+    # Trying out different combinations of tuple vs scalar for shape, and array
+    # vs scalar for val.
     inputs = [
-        VarData("x", shape=[1], val=[2.0]),
-        VarData("y", shape=[1], val=[3.0])
+        VarData("x", shape=1, val=[2.0]),
+        VarData("y", shape=1, val=3.0)
     ]
 
     outputs = [
-        VarData("z1", shape=[1], val=[2.0]),
-        VarData("z2", shape=[1], val=[3.0])
+        VarData("z1", shape=(1,), val=[2.0]),
+        VarData("z2", shape=(1,), val=3.0)
     ]
 
     partials = [

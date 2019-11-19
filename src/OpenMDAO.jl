@@ -68,7 +68,7 @@ struct VarData
 end
 
 # VarData(name, shape, val; units=nothing) = VarData(name, shape, val, units)
-VarData(name; val=[1.0], shape=[1], units=nothing) = VarData(name, val, shape, units)
+VarData(name; val=[1.0], shape=1, units=nothing) = VarData(name, val, shape, units)
 
 struct PartialsData
     of

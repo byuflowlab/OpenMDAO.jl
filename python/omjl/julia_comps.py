@@ -14,11 +14,11 @@ def _setup_common(self):
     input_data, output_data, partials_data = self._julia_setup(comp_data)
 
     for var in input_data:
-        self.add_input(var.name, shape=tuple(var.shape), val=var.val,
+        self.add_input(var.name, shape=var.shape, val=var.val,
                        units=var.units)
 
     for var in output_data:
-        self.add_output(var.name, shape=tuple(var.shape), val=var.val,
+        self.add_output(var.name, shape=var.shape, val=var.val,
                         units=var.units)
 
     for data in partials_data:
