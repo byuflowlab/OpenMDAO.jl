@@ -10,13 +10,13 @@ end
 
 function OpenMDAO.setup(self::SquareIt)
     inputs = [
-        VarData("x", [1], [2.0]),
-        VarData("y", [1], [3.0])
+        VarData("x", 1, 2.0),
+        VarData("y", 1, [3.0])
     ]
 
     outputs = [
-        VarData("z1", [1], [2.0]),
-        VarData("z2", [1], [3.0])
+        VarData("z1", (1,), 2.0),
+        VarData("z2", (1,), [3.0])
     ]
 
     partials = [

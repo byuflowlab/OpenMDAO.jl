@@ -8,18 +8,18 @@ end
 
 function OpenMDAO.setup(self::ActuatorDisc)
     inputs = VarData[]
-    push!(inputs, VarData("a", [1], [0.5]))
-    push!(inputs, VarData("Area", [1], [10.0]))
-    push!(inputs, VarData("rho", [1], [1.225]))
-    push!(inputs, VarData("Vu", [1], [10.0]))
+    push!(inputs, VarData("a", 1, [0.5]))
+    push!(inputs, VarData("Area", 1, [10.0]))
+    push!(inputs, VarData("rho", 1, [1.225]))
+    push!(inputs, VarData("Vu", 1, [10.0]))
 
     outputs = VarData[]
-    push!(outputs, VarData("Vr", [1], [0.0]))
-    push!(outputs, VarData("Vd", [1], [0.0]))
-    push!(outputs, VarData("Ct", [1], [0.0]))
-    push!(outputs, VarData("thrust", [1], [0.0]))
-    push!(outputs, VarData("Cp", [1], [0.0]))
-    push!(outputs, VarData("power", [1], [0.0]))
+    push!(outputs, VarData("Vr", 1, [0.0]))
+    push!(outputs, VarData("Vd", 1, [0.0]))
+    push!(outputs, VarData("Ct", 1, [0.0]))
+    push!(outputs, VarData("thrust", 1, [0.0]))
+    push!(outputs, VarData("Cp", 1, [0.0]))
+    push!(outputs, VarData("power", 1, [0.0]))
 
     partials = PartialsData[]
     push!(partials, PartialsData("Vr", "a"))
