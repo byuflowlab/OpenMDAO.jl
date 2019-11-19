@@ -30,6 +30,8 @@ function OpenMDAO.setup(::SquareIt2)
     return inputs, outputs, partials
 end
 
+OpenMDAO.detect_guess_nonlinear(::Type{<:SquareIt2}) = false
+
 function OpenMDAO.apply_nonlinear!(square::SquareIt2, inputs, outputs, residuals)
     a = square.a
     x = inputs["x"]
@@ -52,6 +54,9 @@ function OpenMDAO.linearize!(square::SquareIt2, inputs, outputs, partials)
     @. partials["z2", "x"] = -a
     @. partials["z2", "y"] = -1.0
 end
+
+@show OpenMDAO.detect_solve_nonlinear(SquareIt2)
+@show OpenMDAO.detect_solve_nonlinear(SquareIt2{Float64})
 
 prob = om.Problem()
 
