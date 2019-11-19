@@ -9,6 +9,15 @@ import Base.convert
 # export VarData, PartialsData, make_component, om
 
 export VarData, PartialsData, make_component, AbstractExplicitComp, AbstractImplicitComp
+export om  # direct access to Python module: openmdao.api
+
+# load python api
+const om = PyNULL()
+
+function __init__()
+    copy!(om, pyimport("openmdao.api"))
+end
+
 
 abstract type AbstractComp end
 abstract type AbstractExplicitComp <: AbstractComp end
@@ -53,12 +62,13 @@ end
 
 struct VarData
     name
-    shape
     val
+    shape
     units
 end
 
-VarData(name, shape, val; units=nothing) = VarData(name, shape, val, units)
+# VarData(name, shape, val; units=nothing) = VarData(name, shape, val, units)
+VarData(name; val=[1.0], shape=1, units=nothing) = VarData(name, val, shape, units)
 
 struct PartialsData
     of
@@ -143,7 +153,8 @@ function get_pyguess_nonlinear(self::T) where {T}
         method = which(guess_nonlinear!, args)
         pyguess_nonlinear = pyfunction(guess_nonlinear!, args...)
     catch err
-        @warn "No guess_nonlinear! method found for $(T)" 
+        nothing
+        # @warn "No guess_nonlinear! method found for $(T)" 
     end
 
     return pyguess_nonlinear
@@ -160,7 +171,8 @@ function get_pysolve_nonlinear(self::T) where {T}
         method = which(solve_nonlinear!, args)
         pysolve_nonlinear = pyfunction(solve_nonlinear!, args...)
     catch err
-        @warn "No solve_nonlinear! method found for $(T)" 
+        nothing
+        # @warn "No solve_nonlinear! method found for $(T)" 
     end
 
     return pysolve_nonlinear

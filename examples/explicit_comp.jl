@@ -1,22 +1,22 @@
 using OpenMDAO
 import PyCall
 
-om = PyCall.pyimport("openmdao.api")
-
 struct SquareIt{TF} <: AbstractExplicitComp
-    a::TF
+    a::TF  # these would be like "options" in openmdao
 end
 
 
-function OpenMDAO.setup(self::SquareIt)
+function OpenMDAO.setup(::SquareIt)
+    # Trying out different combinations of tuple vs scalar for shape, and array
+    # vs scalar for val.
     inputs = [
-        VarData("x", 1, 2.0),
-        VarData("y", 1, [3.0])
+        VarData("x", shape=1, val=[2.0]),
+        VarData("y", shape=1, val=3.0)
     ]
 
     outputs = [
-        VarData("z1", (1,), 2.0),
-        VarData("z2", (1,), [3.0])
+        VarData("z1", shape=(1,), val=[2.0]),
+        VarData("z2", shape=(1,), val=3.0)
     ]
 
     partials = [
@@ -29,17 +29,17 @@ function OpenMDAO.setup(self::SquareIt)
     return inputs, outputs, partials
 end
 
-function OpenMDAO.compute!(self::SquareIt, inputs, outputs)
-    a = self.a
+function OpenMDAO.compute!(square::SquareIt, inputs, outputs)
+    a = square.a
     x = inputs["x"]
     y = inputs["y"]
 
-    @. outputs["z1"] = a*x*x + y*y
+    @. outputs["z1"] = a*x*x + y*y  # change arrays in-place, thus dot syntax
     @. outputs["z2"] = a*x + y
 end
 
-function OpenMDAO.compute_partials!(self::SquareIt, inputs, partials)
-    a = self.a
+function OpenMDAO.compute_partials!(square::SquareIt, inputs, partials)
+    a = square.a
     x = inputs["x"]
     y = inputs["y"]
 
@@ -57,11 +57,11 @@ ivc.add_output("x", 2.0)
 ivc.add_output("y", 3.0)
 prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-comp = make_component(SquareIt(4.0))
+comp = make_component(SquareIt(4.0))  # Need to convert Julia obj to Python obj
 prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
 prob.setup()
 prob.run_model()
-@show prob.get_val("z1")
-@show prob.get_val("z2")
-@show prob.compute_totals(of=["z1", "z2"], wrt=["x", "y"])
+println(prob.get_val("z1"))
+println(prob.get_val("z2"))
+println(prob.compute_totals(of=["z1", "z2"], wrt=["x", "y"]))
