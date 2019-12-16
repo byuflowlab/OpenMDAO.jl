@@ -55,9 +55,6 @@ function OpenMDAO.linearize!(square::SquareIt2, inputs, outputs, partials)
     @. partials["z2", "y"] = -1.0
 end
 
-@show OpenMDAO.detect_solve_nonlinear(SquareIt2)
-@show OpenMDAO.detect_solve_nonlinear(SquareIt2{Float64})
-
 prob = om.Problem()
 
 ivc = om.IndepVarComp()
