@@ -1,12 +1,11 @@
 using OpenMDAO
-import PyCall
 
-struct SquareIt{TF} <: AbstractExplicitComp
+struct SimpleExplicit{TF} <: AbstractExplicitComp
     a::TF  # these would be like "options" in openmdao
 end
 
 
-function OpenMDAO.setup(::SquareIt)
+function OpenMDAO.setup(::SimpleExplicit)
     # Trying out different combinations of tuple vs scalar for shape, and array
     # vs scalar for val.
     inputs = [
@@ -29,7 +28,7 @@ function OpenMDAO.setup(::SquareIt)
     return inputs, outputs, partials
 end
 
-function OpenMDAO.compute!(square::SquareIt, inputs, outputs)
+function OpenMDAO.compute!(square::SimpleExplicit, inputs, outputs)
     a = square.a
     x = inputs["x"]
     y = inputs["y"]
@@ -38,7 +37,7 @@ function OpenMDAO.compute!(square::SquareIt, inputs, outputs)
     @. outputs["z2"] = a*x + y
 end
 
-function OpenMDAO.compute_partials!(square::SquareIt, inputs, partials)
+function OpenMDAO.compute_partials!(square::SimpleExplicit, inputs, partials)
     a = square.a
     x = inputs["x"]
     y = inputs["y"]
@@ -48,20 +47,3 @@ function OpenMDAO.compute_partials!(square::SquareIt, inputs, partials)
     @. partials["z2", "x"] = a
     @. partials["z2", "y"] = 1.0
 end
-
-
-prob = om.Problem()
-
-ivc = om.IndepVarComp()
-ivc.add_output("x", 2.0)
-ivc.add_output("y", 3.0)
-prob.model.add_subsystem("ivc", ivc, promotes=["*"])
-
-comp = make_component(SquareIt(4.0))  # Need to convert Julia obj to Python obj
-prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
-
-prob.setup()
-prob.run_model()
-println(prob.get_val("z1"))
-println(prob.get_val("z2"))
-println(prob.compute_totals(of=["z1", "z2"], wrt=["x", "y"]))

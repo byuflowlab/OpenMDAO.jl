@@ -1,0 +1,8 @@
+name = "ExampleOpenMDAOComponents"
+uuid = "0a6d4cdc-6dca-4418-a7bf-79c3bd64506a"
+authors = ["Ingraham, Daniel James (GRC-LTV0) <daniel.j.ingraham@nasa.gov>"]
+version = "0.1.0"
+
+[deps]
+OpenMDAO = "2d3f9b48-ba2d-11e9-1a3f-97e029ee3d3c"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"

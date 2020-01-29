@@ -1,12 +1,10 @@
 using OpenMDAO
-using PyCall
 
-struct SquareIt2{TF} <: AbstractImplicitComp
-    a::TF
+struct SimpleImplicit{TF} <: AbstractImplicitComp
+    a::TF  # these would be like "options" in openmdao
 end
 
-
-function OpenMDAO.setup(::SquareIt2)
+function OpenMDAO.setup(::SimpleImplicit)
  
     inputs = VarData[
         VarData("x", shape=(1,), val=[2.0]),
@@ -30,9 +28,13 @@ function OpenMDAO.setup(::SquareIt2)
     return inputs, outputs, partials
 end
 
-OpenMDAO.detect_guess_nonlinear(::Type{<:SquareIt2}) = false
+# This tells OpenMDAO.jl that it shouldn't bother looking for a guess_nonlinear
+# function for the SimpleImplicit type, because we didn't write one. If this
+# line was removed (or the right-hand side was true), then it would print out a
+# warning about not finding the guess_nonlinear function.
+OpenMDAO.detect_guess_nonlinear(::Type{<:SimpleImplicit}) = false
 
-function OpenMDAO.apply_nonlinear!(square::SquareIt2, inputs, outputs, residuals)
+function OpenMDAO.apply_nonlinear!(square::SimpleImplicit, inputs, outputs, residuals)
     a = square.a
     x = inputs["x"]
     y = inputs["y"]
@@ -41,7 +43,7 @@ function OpenMDAO.apply_nonlinear!(square::SquareIt2, inputs, outputs, residuals
     @. residuals["z2"] = outputs["z2"] - (a*x + y)
 end
 
-function OpenMDAO.linearize!(square::SquareIt2, inputs, outputs, partials)
+function OpenMDAO.linearize!(square::SimpleImplicit, inputs, outputs, partials)
     a = square.a
     x = inputs["x"]
     y = inputs["y"]
@@ -54,23 +56,3 @@ function OpenMDAO.linearize!(square::SquareIt2, inputs, outputs, partials)
     @. partials["z2", "x"] = -a
     @. partials["z2", "y"] = -1.0
 end
-
-prob = om.Problem()
-
-ivc = om.IndepVarComp()
-ivc.add_output("x", 2.0)
-ivc.add_output("y", 2.0)
-prob.model.add_subsystem("ivc", ivc, promotes=["*"])
-
-comp = make_component(SquareIt2(2.0))
-comp.linear_solver = om.DirectSolver(assemble_jac=true)
-comp.nonlinear_solver = om.NewtonSolver(
-    solve_subsystems=true, iprint=2, err_on_non_converge=true)
-prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
-
-prob.setup()
-prob.final_setup()
-prob.run_model()
-println(prob.get_val("z1"))
-println(prob.get_val("z2"))
-println(prob.compute_totals(of=["z1", "z2"], wrt=["x", "y"]))

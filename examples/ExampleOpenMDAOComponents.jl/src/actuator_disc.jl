@@ -1,7 +1,5 @@
 using OpenMDAO
-using PyCall
 
-om = pyimport("openmdao.api")
 
 struct ActuatorDisc <: OpenMDAO.AbstractExplicitComp
 end
@@ -36,7 +34,7 @@ function OpenMDAO.setup(self::ActuatorDisc)
     push!(partials, PartialsData("power", "rho"))
     push!(partials, PartialsData("power", "Vu"))
 
-    return (inputs, outputs, partials)
+    return inputs, outputs, partials
 end
 
 function OpenMDAO.compute!(self::ActuatorDisc, inputs, outputs)
@@ -88,31 +86,3 @@ function OpenMDAO.compute_partials!(self::ActuatorDisc, inputs, J)
         @. J["power", "rho"] = 2.0 * a_times_area * Vu ^ 3 * (one_minus_a)^2
         @. J["power", "Vu"] = 6.0 * Area * Vu^2 * a * rho * one_minus_a^2
 end
-
-prob = om.Problem()
-
-indeps = om.IndepVarComp()
-indeps.add_output("a", 0.5)
-indeps.add_output("Area", 10.0)
-indeps.add_output("rho", 1.125)
-indeps.add_output("Vu", 10.0)
-prob.model.add_subsystem("indeps", indeps, promotes=["*"])
-
-comp = make_component(ActuatorDisc())
-prob.model.add_subsystem("a_disc", comp, promotes_inputs=["a", "Area", "rho", "Vu"])
-
-# setup the optimization
-prob.driver = om.ScipyOptimizeDriver(optimizer="SLSQP")
-
-prob.model.add_design_var("a", lower=0., upper=1.)
-prob.model.add_design_var("Area", lower=0., upper=1.)
-
-# negative one so we maximize the objective
-prob.model.add_objective("a_disc.Cp", scaler=-1)
-
-prob.setup()
-prob.run_driver()
-
-# minimum value
-println("a_disc.Cp = $(prob.get_val("a_disc.Cp")) (should be 0.59259259)")
-println("a = $(prob.get_val("a")) (should be 0.33335528)")
