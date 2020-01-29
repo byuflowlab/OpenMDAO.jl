@@ -1,5 +1,5 @@
 using OpenMDAO
 using Test
 
-include("get_rows_cols.jl")
+include("utils.jl")
 include("examples.jl")

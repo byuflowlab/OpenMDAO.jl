@@ -1,5 +1,4 @@
 @testset "simple explicit check" begin
-    using PyCall  # Apparently needed, despite not being used directly in this script.
     using OpenMDAO: om, make_component, SimpleExplicit
 
 
@@ -26,7 +25,6 @@
 end
 
 @testset "simple implicit check" begin
-    using PyCall  # Apparently needed, despite not being used directly in this script.
     using OpenMDAO: om, make_component, SimpleImplicit
 
 
@@ -58,7 +56,6 @@ end
 end
 
 @testset "actuator disc example check" begin
-    using PyCall  # Apparently needed, despite not being used directly in this script.
     using OpenMDAO: om, make_component, ActuatorDisc
 
 
