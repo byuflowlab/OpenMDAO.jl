@@ -1,6 +1,6 @@
 import openmdao.api as om
 from omjl.julia_comps import JuliaImplicitComp
-from julia.ExampleOpenMDAOComponents import SimpleImplicit
+from julia.OpenMDAO import SimpleImplicit
 
 
 prob = om.Problem()

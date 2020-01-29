@@ -1,6 +1,6 @@
-using PyCall  # Apparently needed, despite not being used directly in this script.
-using OpenMDAO: om, make_component
-using ExampleOpenMDAOComponents: ActuatorDisc
+import openmdao.api as om
+from omjl.julia_comps import JuliaExplicitComp
+from julia.OpenMDAO import ActuatorDisc
 
 
 prob = om.Problem()
@@ -12,7 +12,7 @@ indeps.add_output("rho", 1.125)
 indeps.add_output("Vu", 10.0)
 prob.model.add_subsystem("indeps", indeps, promotes=["*"])
 
-comp = make_component(ActuatorDisc())
+comp = JuliaExplicitComp(julia_comp_data=ActuatorDisc())
 prob.model.add_subsystem("a_disc", comp, promotes_inputs=["a", "Area", "rho", "Vu"])
 
 # setup the optimization
@@ -28,5 +28,5 @@ prob.setup()
 prob.run_driver()
 
 # minimum value
-println("a_disc.Cp = $(prob.get_val("a_disc.Cp")) (should be 0.59259259)")
-println("a = $(prob.get_val("a")) (should be 0.33335528)")
+print(f"a_disc.Cp = {prob.get_val('a_disc.Cp')} (should be 0.59259259)")
+print(f"a = {prob.get_val('a')} (should be 0.33335528)")

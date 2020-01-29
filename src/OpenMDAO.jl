@@ -211,4 +211,8 @@ function make_component(self::T where {T<:AbstractImplicitComp})
     return comp
 end
 
+include("example_components/simple_explicit.jl")
+include("example_components/simple_implicit.jl")
+include("example_components/actuator_disc.jl")
+
 end # module
