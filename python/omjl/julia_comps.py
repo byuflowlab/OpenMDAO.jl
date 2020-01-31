@@ -1,3 +1,4 @@
+import time
 import openmdao.api as om
 from julia.OpenMDAO import (get_pysetup, get_pycompute, get_pycompute_partials,
                             get_pyapply_nonlinear, get_pylinearize,
@@ -89,8 +90,12 @@ class JuliaImplicitComp(om.ImplicitComponent):
             for of_wrt in self._declared_partials:
                 partials_dict[of_wrt] = partials[of_wrt]
 
-            self._julia_linearize(comp_data, inputs_dict, outputs_dict,
-                                  partials_dict)
+            tstart_python = time.time()
+            print(f"starting time of Python linearize = {tstart_python} s")
+            tstart_julia = self._julia_linearize(
+                comp_data, inputs_dict, outputs_dict, partials_dict)
+            tend = time.time()
+            print(f"elapsed time = {tend - tstart_python} s, python-to-julia time = {tstart_julia-tstart_python} s")
 
     def guess_nonlinear(self, inputs, outputs, residuals):
         if self._julia_guess_nonlinear:

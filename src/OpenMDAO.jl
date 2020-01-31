@@ -27,10 +27,13 @@ abstract type AbstractImplicitComp <: AbstractComp end
 
 # Needed to avoid "Don't know how to convert PyObject to <some type> errors."
 function convert(::Type{T}, po::PyObject) where {T<:AbstractComp}
+    tstart = time()
     # Explaination of the difference between fields and properties:
     # https://discourse.julialang.org/t/whats-the-difference-between-fields-and-properties/12495
     args = [getproperty(po, n) for n in fieldnames(T)]
-    return T(args...)
+    out = T(args...)
+    println("elapsed time of convert = $(time() - tstart) s")
+    return out
 end
 
 detect_compute_partials(::Type{<:AbstractExplicitComp}) = true
