@@ -1,5 +1,5 @@
 import openmdao.api as om
-from omjl.julia_comps import JuliaExplicitComp
+from omjl import make_component
 from julia.OpenMDAO import ActuatorDisc
 
 
@@ -12,7 +12,7 @@ indeps.add_output("rho", 1.125)
 indeps.add_output("Vu", 10.0)
 prob.model.add_subsystem("indeps", indeps, promotes=["*"])
 
-comp = JuliaExplicitComp(julia_comp_data=ActuatorDisc())
+comp = make_component(ActuatorDisc())
 prob.model.add_subsystem("a_disc", comp, promotes_inputs=["a", "Area", "rho", "Vu"])
 
 # setup the optimization

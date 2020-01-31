@@ -1,5 +1,5 @@
 import openmdao.api as om
-from omjl.julia_comps import JuliaExplicitComp
+from omjl import make_component
 from julia.OpenMDAO import SimpleExplicit
 
 
@@ -10,7 +10,7 @@ ivc.add_output("x", 2.0)
 ivc.add_output("y", 3.0)
 prob.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-comp = JuliaExplicitComp(julia_comp_data=SimpleExplicit(4.0))
+comp = make_component(SimpleExplicit(4.0))
 prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
 prob.setup()
