@@ -1,18 +1,25 @@
-import time
 import openmdao.api as om
 
-import omjl
+# These get_py2jl methods are julia functions that create python wrappers which
+# avoid memory copying when passing the inputs and outputs down to julia.
+from julia.OpenMDAO import (get_py2jl_setup,
+                            get_py2jl_compute,
+                            get_py2jl_compute_partials,
+                            get_py2jl_apply_nonlinear,
+                            get_py2jl_linearize,
+                            get_py2jl_guess_nonlinear,
+                            get_py2jl_solve_nonlinear)
+
 
 
 def _initialize_common(self):
-    print("adding 'jl_id' option")
-    self.options.declare('jl_id')
+    self.options.declare('jl_id', types=int)
 
 
 def _setup_common(self):
-    jl_id = self.jl_id = self.options['jl_id']
-    self._julia_setup = omjl.setup(jl_id)
-    input_data, output_data, partials_data = self._julia_setup(jl_id)
+    self._jl_id = self.options['jl_id']
+    self._julia_setup = get_py2jl_setup(self._jl_id)
+    input_data, output_data, partials_data = self._julia_setup(self._jl_id)
 
     for var in input_data:
         self.add_input(var.name, shape=var.shape, val=var.val,
@@ -35,14 +42,14 @@ class JuliaExplicitComp(om.ExplicitComponent):
 
     def setup(self):
         _setup_common(self)
-        self._julia_compute = omjl.compute(self.jl_id)
-        self._julia_compute_partials = omjl.compute_partials(self.jl_id)
+        self._julia_compute = get_py2jl_compute(self._jl_id)
+        self._julia_compute_partials = get_py2jl_compute_partials(self._jl_id)
 
     def compute(self, inputs, outputs):
         inputs_dict = dict(inputs)
         outputs_dict = dict(outputs)
 
-        self._julia_compute(self.jl_id, inputs_dict, outputs_dict)
+        self._julia_compute(self._jl_id, inputs_dict, outputs_dict)
 
     def compute_partials(self, inputs, partials):
         if self._julia_compute_partials:
@@ -52,7 +59,7 @@ class JuliaExplicitComp(om.ExplicitComponent):
             for of_wrt in self._declared_partials:
                 partials_dict[of_wrt] = partials[of_wrt]
 
-            self._julia_compute_partials(self.jl_id, inputs_dict, partials_dict)
+            self._julia_compute_partials(self._jl_id, inputs_dict, partials_dict)
 
 
 class JuliaImplicitComp(om.ImplicitComponent):
@@ -62,17 +69,17 @@ class JuliaImplicitComp(om.ImplicitComponent):
 
     def setup(self):
         _setup_common(self)
-        self._julia_apply_nonlinear = omjl.apply_nonlinear(self.jl_id)
-        self._julia_linearize = omjl.linearize(self.jl_id)
-        self._julia_guess_nonlinear = omjl.guess_nonlinear(self.jl_id)
-        self._julia_solve_nonlinear = omjl.solve_nonlinear(self.jl_id)
+        self._julia_apply_nonlinear = get_py2jl_apply_nonlinear(self._jl_id)
+        self._julia_linearize = get_py2jl_linearize(self._jl_id)
+        self._julia_guess_nonlinear = get_py2jl_guess_nonlinear(self._jl_id)
+        self._julia_solve_nonlinear = get_py2jl_solve_nonlinear(self._jl_id)
 
     def apply_nonlinear(self, inputs, outputs, residuals):
         inputs_dict = dict(inputs)
         outputs_dict = dict(outputs)
         residuals_dict = dict(residuals)
 
-        self._julia_apply_nonlinear(self.jl_id, inputs_dict, outputs_dict,
+        self._julia_apply_nonlinear(self._jl_id, inputs_dict, outputs_dict,
                                     residuals_dict)
 
     def linearize(self, inputs, outputs, partials):
@@ -84,13 +91,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
             for of_wrt in self._declared_partials:
                 partials_dict[of_wrt] = partials[of_wrt]
 
-            tstart_python = time.time()
-            print(f"starting time of Python linearize = {tstart_python} s")
-            self._julia_linearize(self.jl_id, inputs_dict, outputs_dict,
+            self._julia_linearize(self._jl_id, inputs_dict, outputs_dict,
                                   partials_dict)
-            # print(f"elapsed time = {tend - tstart_python} s, python-to-julia time = {tstart_julia-tstart_python} s")
-            tend = time.time()
-            print(f"elapsed time of Pyton linearize = {tend - tstart_python} s")
 
     def guess_nonlinear(self, inputs, outputs, residuals):
         if self._julia_guess_nonlinear:
@@ -98,7 +100,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
             outputs_dict = dict(outputs)
             residuals_dict = dict(residuals)
 
-            self._julia_guess_nonlinear(self.jl_id, inputs_dict, outputs_dict,
+            self._julia_guess_nonlinear(self._jl_id, inputs_dict, outputs_dict,
                                         residuals_dict)
 
     def solve_nonlinear(self, inputs, outputs):
@@ -106,4 +108,4 @@ class JuliaImplicitComp(om.ImplicitComponent):
             inputs_dict = dict(inputs)
             outputs_dict = dict(outputs)
 
-            self._julia_solve_nonlinear(self.jl_id, inputs_dict, outputs_dict)
+            self._julia_solve_nonlinear(self._jl_id, inputs_dict, outputs_dict)

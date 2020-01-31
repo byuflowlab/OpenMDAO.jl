@@ -1,14 +1,18 @@
 import unittest
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_rel_error
-from omjl.julia_comps import JuliaExplicitComp, JuliaImplicitComp
-from julia.OpenMDAO import SimpleExplicit, SimpleImplicit
+import julia.Main as julia
+from omjl import make_component
+
+julia.include("../../../examples/components/simple_explicit.jl")
+julia.include("../../../examples/components/simple_implicit.jl")
+julia.include("../../../examples/components/actuator_disc.jl")
 
 
 class TestExplicitComp(unittest.TestCase):
 
     def test_default_values(self):
-        p = om.Problem(model=JuliaExplicitComp(julia_comp_data=SimpleExplicit(2.0)))
+        p = om.Problem(model=make_component(julia.SimpleExplicit(2.0)))
 
         p.setup()
 
@@ -17,7 +21,7 @@ class TestExplicitComp(unittest.TestCase):
         assert_rel_error(self, p['z1'], 2.0)
 
     def test_same_data_after_run_model(self):
-        p = om.Problem(model=JuliaExplicitComp(julia_comp_data=SimpleExplicit(2.0)))
+        p = om.Problem(model=make_component(julia.SimpleExplicit(2.0)))
 
         p.setup()
         p.final_setup()  # Seems like I need this for the id checks to be the same?
@@ -47,7 +51,7 @@ class TestExplicitComp(unittest.TestCase):
         ivc.add_output("y", 3.0)
         p.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-        comp = JuliaExplicitComp(julia_comp_data=SimpleExplicit(4.0))
+        comp = make_component(julia.SimpleExplicit(4.0))
         p.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
         p.setup()
@@ -104,7 +108,7 @@ class TestExplicitComp(unittest.TestCase):
 class TestImplicitComp(unittest.TestCase):
 
     def test_default_values(self):
-        p = om.Problem(model=JuliaImplicitComp(julia_comp_data=SimpleImplicit(2.0)))
+        p = om.Problem(model=make_component(julia.SimpleImplicit(2.0)))
 
         p.setup()
 
@@ -114,7 +118,7 @@ class TestImplicitComp(unittest.TestCase):
         assert_rel_error(self, p['z2'], 3.0)
 
     def test_same_data_after_run_model(self):
-        p = om.Problem(model=JuliaImplicitComp(julia_comp_data=SimpleImplicit(2.0)))
+        p = om.Problem(model=make_component(julia.SimpleImplicit(2.0)))
 
         p.setup()
         p.final_setup()  # Seems like I need this for the id checks to be the same?
@@ -144,7 +148,7 @@ class TestImplicitComp(unittest.TestCase):
         ivc.add_output("y", 3.0)
         p.model.add_subsystem("ivc", ivc, promotes=["*"])
 
-        comp = JuliaImplicitComp(julia_comp_data=SimpleImplicit(4.0))
+        comp = make_component(julia.SimpleImplicit(4.0))
         p.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
         p.setup()

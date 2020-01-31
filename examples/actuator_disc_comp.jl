@@ -1,6 +1,7 @@
-using PyCall  # Apparently needed, despite not being used directly in this script.
-using OpenMDAO: om, make_component, ActuatorDisc
+using OpenMDAO: om, make_component
 
+
+include("components/actuator_disc.jl")
 
 prob = om.Problem()
 

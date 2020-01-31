@@ -1,4 +1,5 @@
-using OpenMDAO
+# using PyCall  # Apparently needed, despite not being used directly in this script.
+using OpenMDAO: AbstractExplicitComp, VarData, PartialsData
 
 struct SimpleExplicit{TF} <: AbstractExplicitComp
     a::TF  # these would be like "options" in openmdao

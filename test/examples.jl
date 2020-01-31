@@ -1,5 +1,7 @@
 @testset "simple explicit check" begin
-    using OpenMDAO: om, make_component, SimpleExplicit
+    using OpenMDAO: om, make_component
+    
+    include("../examples/components/simple_explicit.jl")
 
 
     prob = om.Problem()
@@ -25,8 +27,9 @@
 end
 
 @testset "simple implicit check" begin
-    using OpenMDAO: om, make_component, SimpleImplicit
+    using OpenMDAO: om, make_component
 
+    include("../examples/components/simple_implicit.jl")
 
     prob = om.Problem()
 
@@ -56,8 +59,9 @@ end
 end
 
 @testset "actuator disc example check" begin
-    using OpenMDAO: om, make_component, ActuatorDisc
+    using OpenMDAO: om, make_component
 
+    include("../examples/components/actuator_disc.jl")
 
     prob = om.Problem()
 

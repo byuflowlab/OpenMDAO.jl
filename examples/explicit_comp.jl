@@ -1,6 +1,6 @@
-using PyCall  # Apparently needed, despite not being used directly in this script.
-using OpenMDAO: om, make_component, SimpleExplicit
+using OpenMDAO: om, make_component
 
+include("components/simple_explicit.jl")
 
 prob = om.Problem()
 
