@@ -34,6 +34,7 @@ end
 # warning about not finding the guess_nonlinear function.
 OpenMDAO.detect_guess_nonlinear(::Type{<:SimpleImplicit}) = false
 OpenMDAO.detect_solve_nonlinear(::Type{<:SimpleImplicit}) = false
+OpenMDAO.detect_apply_linear(::Type{<:SimpleImplicit}) = false
 
 function OpenMDAO.apply_nonlinear!(square::SimpleImplicit, inputs, outputs, residuals)
     a = square.a

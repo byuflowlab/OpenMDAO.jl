@@ -45,6 +45,7 @@ detect_linearize(::Type{<:AbstractImplicitComp}) = true
 detect_apply_nonlinear(::Type{<:AbstractImplicitComp}) = true
 detect_guess_nonlinear(::Type{<:AbstractImplicitComp}) = true
 detect_solve_nonlinear(::Type{<:AbstractImplicitComp}) = true
+detect_apply_linear(::Type{<:AbstractImplicitComp}) = true
 
 function setup(comp_id::Integer)
     comp = component_registry[comp_id]
@@ -81,6 +82,11 @@ function solve_nonlinear!(comp_id::Integer, inputs, outputs)
     solve_nonlinear!(comp, inputs, outputs)
 end
 
+function apply_linear!(comp_id::Integer, inputs, outputs, d_inputs, d_outputs, d_residuals, mode)
+    comp = component_registry[comp_id]
+    apply_linear!(comp, inputs, outputs, d_inputs, d_outputs, d_residuals, mode)
+end
+
 function setup(self::AbstractComp)
     error("called dummy base setup with self::$(typeof(self))")
 end
@@ -88,26 +94,6 @@ end
 function compute!(self::AbstractExplicitComp, inputs, outputs)
     error("called dummy base compute! with self::$(typeof(self))")
 end
-
-# function compute_partials!(self::AbstractExplicitComp, inputs, residuals)
-#     @warn "called dummy base compute_partials! with self::$(typeof(self))"
-# end
-
-# function linearize!(self::AbstractImplicitComp, inputs, outputs, residuals)
-#     @warn "called dummy base linearize! with self::$(typeof(self))"
-# end
-
-# function apply_nonlinear!(self::AbstractImplicitComp, inputs, outputs, residuals)
-#     @warn "called dummy base apply_nonlinear! with self::$(typeof(self))"
-# end
-
-# function guess_nonlinear!(self::AbstractImplicitComp, inputs, outputs, residuals)
-#     @warn "called dummy base guess_nonlinear! with self::$(typeof(self))"
-# end
-
-# function solve_nonlinear!(self::AbstractImplicitComp, inputs, outputs, residuals)
-#     @warn "called dummy base solve_nonlinear! with self::$(typeof(self))"
-# end
 
 struct VarData
     name
@@ -263,6 +249,38 @@ function get_py2jl_solve_nonlinear(comp_id::Integer)
             return pyfunction(solve_nonlinear!, args...)
         catch err
             @warn "No solve_nonlinear! method found for $(T)" 
+            return nothing
+        end
+    else
+        return nothing
+    end
+end
+
+function get_py2jl_apply_linear(comp_id::Integer)
+    comp = component_registry[comp_id]
+    T = typeof(comp)
+    if detect_apply_linear(T)
+        try
+            # Look for the method for type T.
+            method = which(apply_linear!, (T, 
+                                           PyDict{String, PyArray}, 
+                                           PyDict{String, PyArray},
+                                           PyDict{String, PyArray},
+                                           PyDict{String, PyArray},
+                                           PyDict{String, PyArray},
+                                           String))
+
+            # Create a Python wrapper for the method.
+            args = (Integer,  # self
+                    PyDict{String, PyArray},  # inputs
+                    PyDict{String, PyArray},  # outputs
+                    PyDict{String, PyArray},  # d_inputs
+                    PyDict{String, PyArray},  # d_outputs
+                    PyDict{String, PyArray},  # d_residuals
+                    String)                   # mode
+            return pyfunction(apply_linear!, args...)
+        catch err
+            @warn "No apply_linear! method found for $(T)" 
             return nothing
         end
     else

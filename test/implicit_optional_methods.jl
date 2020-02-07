@@ -1,5 +1,5 @@
 using OpenMDAO: AbstractImplicitComp, VarData, PartialsData, om, make_component
-import OpenMDAO: detect_apply_nonlinear, detect_linearize, detect_guess_nonlinear, detect_solve_nonlinear
+import OpenMDAO: detect_apply_nonlinear, detect_linearize, detect_guess_nonlinear, detect_solve_nonlinear, detect_apply_linear
 
 struct SimpleImplicit{TF} <: AbstractImplicitComp
     a::TF  # these would be like "options" in openmdao
@@ -39,6 +39,7 @@ detect_apply_nonlinear(::Type{<:SimpleImplicit}) = false
 detect_linearize(::Type{<:SimpleImplicit}) = false
 detect_guess_nonlinear(::Type{<:SimpleImplicit}) = false
 detect_solve_nonlinear(::Type{<:SimpleImplicit}) = false
+detect_apply_linear(::Type{<:SimpleImplicit}) = false
 
 # Check that the warning is issued when the method doesn't exist.
 detect_apply_nonlinear(::Type{<:SimpleImplicit}) = true
@@ -155,4 +156,32 @@ detect_solve_nonlinear(::Type{<:SimpleImplicit}) = false
 # Check that the warning isn't issued when the method exists and OpenMDAO.jl is
 # looking for it.
 detect_solve_nonlinear(::Type{<:SimpleImplicit}) = true
+@test_logs prob.setup()
+
+# Check that the warning is issued when the method doesn't exist.
+detect_apply_linear(::Type{<:SimpleImplicit}) = true
+msg = "No apply_linear! method found for $(typeof(ic))" 
+@test_logs (:warn, msg) prob.setup()
+
+# Check that the warning isn't issued when we tell OpenMDAO.jl not to look for it.
+detect_apply_linear(::Type{<:SimpleImplicit}) = false
+@test_logs prob.setup()
+
+function OpenMDAO.apply_linear!(square::SimpleImplicit, inputs, outputs, d_inputs, d_ouputs, d_residuals, mode)
+    a = square.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    @. outputs["z1"] = (a*x*x + y*y)
+    @. outputs["z2"] = (a*x + y)
+end
+
+# Check that the warning isn't issued when the method exists and OpenMDAO.jl
+# isn't looking for it.
+detect_apply_linear(::Type{<:SimpleImplicit}) = false
+@test_logs prob.setup()
+
+# Check that the warning isn't issued when the method exists and OpenMDAO.jl is
+# looking for it.
+detect_apply_linear(::Type{<:SimpleImplicit}) = true
 @test_logs prob.setup()
