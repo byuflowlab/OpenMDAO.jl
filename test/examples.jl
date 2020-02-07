@@ -1,5 +1,9 @@
+module ExamplesTests
+
+using Test
+using OpenMDAO
+
 @testset "simple explicit check" begin
-    using OpenMDAO: om, make_component
     
     include("../examples/components/simple_explicit.jl")
 
@@ -27,7 +31,6 @@
 end
 
 @testset "simple implicit check" begin
-    using OpenMDAO: om, make_component
 
     include("../examples/components/simple_implicit.jl")
 
@@ -59,7 +62,6 @@ end
 end
 
 @testset "actuator disc example check" begin
-    using OpenMDAO: om, make_component
 
     include("../examples/components/actuator_disc.jl")
 
@@ -91,3 +93,5 @@ end
     @test all(prob.get_val("a_disc.Cp") .≈ [0.59259259])
     @test all(prob.get_val("a") .≈ [0.33335528])
 end
+
+end # module

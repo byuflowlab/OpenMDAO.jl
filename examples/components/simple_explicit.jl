@@ -1,4 +1,3 @@
-# using PyCall  # Apparently needed, despite not being used directly in this script.
 using OpenMDAO: AbstractExplicitComp, VarData, PartialsData
 
 struct SimpleExplicit{TF} <: AbstractExplicitComp

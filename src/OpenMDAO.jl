@@ -41,8 +41,9 @@ function make_component(self::T) where {T<:AbstractImplicitComp}
 end
 
 detect_compute_partials(::Type{<:AbstractExplicitComp}) = true
-detect_guess_nonlinear(::Type{<:AbstractImplicitComp}) = true
 detect_linearize(::Type{<:AbstractImplicitComp}) = true
+detect_apply_nonlinear(::Type{<:AbstractImplicitComp}) = true
+detect_guess_nonlinear(::Type{<:AbstractImplicitComp}) = true
 detect_solve_nonlinear(::Type{<:AbstractImplicitComp}) = true
 
 function setup(comp_id::Integer)
@@ -50,17 +51,9 @@ function setup(comp_id::Integer)
     return setup(comp)
 end
 
-function setup(self::AbstractComp)
-    error("called dummy base setup with self::$(typeof(self))")
-end
-
 function compute!(comp_id::Integer, inputs, outputs)
     comp = component_registry[comp_id]
     compute!(comp, inputs, outputs)
-end
-
-function compute!(self::AbstractComp, inputs, outputs)
-    error("called dummy base compute! with self::$(typeof(self))")
 end
 
 function compute_partials!(comp_id::Integer, inputs, partials)
@@ -68,17 +61,9 @@ function compute_partials!(comp_id::Integer, inputs, partials)
     compute_partials!(comp, inputs, partials)
 end
 
-function compute_partials!(self::AbstractComp, inputs, partials)
-    @warn "called dummy compute_partials! with self::$(typeof(self))"
-end
-
 function apply_nonlinear!(comp_id::Integer, inputs, outputs, residuals)
     comp = component_registry[comp_id]
     apply_nonlinear!(comp, inputs, outputs, residuals)
-end
-
-function apply_nonlinear!(self::AbstractComp, inputs, outputs, residuals)
-    error("called dummy base compute_partials! with self::$(typeof(self))")
 end
 
 function linearize!(comp_id::Integer, inputs, outputs, partials)
@@ -86,17 +71,9 @@ function linearize!(comp_id::Integer, inputs, outputs, partials)
     linearize!(comp, inputs, outputs, partials)
 end
 
-function linearize!(self::AbstractComp, inputs, outputs, partials)
-    error("called dummy base linearize! with self::$(typeof(self))")
-end
-
 function guess_nonlinear!(comp_id::Integer, inputs, outputs, residuals)
     comp = component_registry[comp_id]
     guess_nonlinear!(comp, inputs, outputs, residuals)
-end
-
-function guess_nonlinear!(self::AbstractComp, inputs, outputs, residuals)
-    error("called dummy base guess_nonlinear! with self::$(typeof(self))")
 end
 
 function solve_nonlinear!(comp_id::Integer, inputs, outputs)
@@ -104,9 +81,33 @@ function solve_nonlinear!(comp_id::Integer, inputs, outputs)
     solve_nonlinear!(comp, inputs, outputs)
 end
 
-function solve_nonlinear!(self::AbstractComp, inputs, outputs)
-    error("called dummy base guess_nonlinear! with self::$(typeof(self))")
+function setup(self::AbstractComp)
+    error("called dummy base setup with self::$(typeof(self))")
 end
+
+function compute!(self::AbstractExplicitComp, inputs, outputs)
+    error("called dummy base compute! with self::$(typeof(self))")
+end
+
+# function compute_partials!(self::AbstractExplicitComp, inputs, residuals)
+#     @warn "called dummy base compute_partials! with self::$(typeof(self))"
+# end
+
+# function linearize!(self::AbstractImplicitComp, inputs, outputs, residuals)
+#     @warn "called dummy base linearize! with self::$(typeof(self))"
+# end
+
+# function apply_nonlinear!(self::AbstractImplicitComp, inputs, outputs, residuals)
+#     @warn "called dummy base apply_nonlinear! with self::$(typeof(self))"
+# end
+
+# function guess_nonlinear!(self::AbstractImplicitComp, inputs, outputs, residuals)
+#     @warn "called dummy base guess_nonlinear! with self::$(typeof(self))"
+# end
+
+# function solve_nonlinear!(self::AbstractImplicitComp, inputs, outputs, residuals)
+#     @warn "called dummy base solve_nonlinear! with self::$(typeof(self))"
+# end
 
 struct VarData
     name
@@ -148,17 +149,16 @@ function get_py2jl_compute_partials(comp_id::Integer)
     T = typeof(comp)
     if detect_compute_partials(T)
         try
-            # Look for the Python wrapper of the compute_partials! function.
+            # Look for the method for type T.
             method = which(compute_partials!, (T,  # self
                                                PyDict{String, PyArray},  # inputs
                                                PyDict{Tuple{String, String}, PyArray}))  # partials)
 
-            # Create a wrapper for the compute_partials! function.
+            # Create a Python wrapper for the method.
             args = (Integer,  # component ID
                     PyDict{String, PyArray},  # inputs
                     PyDict{Tuple{String, String}, PyArray})  # partials
-            pycompute_partials = pyfunction(compute_partials!, args...)
-            return pycompute_partials
+            return pyfunction(compute_partials!, args...)
         catch err
             @warn "No compute_partials! method found for $(T)" 
             return nothing
@@ -169,11 +169,29 @@ function get_py2jl_compute_partials(comp_id::Integer)
 end
 
 function get_py2jl_apply_nonlinear(comp_id::Integer)
-    args = (Integer,  # self
-            PyDict{String, PyArray},  # inputs
-            PyDict{String, PyArray},  # outputs
-            PyDict{String, PyArray})  # residuals
-    return pyfunction(apply_nonlinear!, args...)
+    comp = component_registry[comp_id]
+    T = typeof(comp)
+    if detect_apply_nonlinear(T)
+        try
+            # Look for the method for type T.
+            method = which(apply_nonlinear!, (T,
+                                              PyDict{String, PyArray},
+                                              PyDict{String, PyArray},
+                                              PyDict{String, PyArray}))
+
+            # Create a Python wrapper for the method.
+            args = (Integer,  # self
+                    PyDict{String, PyArray},  # inputs
+                    PyDict{String, PyArray},  # outputs
+                    PyDict{String, PyArray})  # residuals
+            return pyfunction(apply_nonlinear!, args...)
+        catch err
+            @warn "No apply_nonlinear! method found for $(T)" 
+            return nothing
+        end
+    else
+        return nothing
+    end
 end
 
 function get_py2jl_linearize(comp_id::Integer)
@@ -181,17 +199,18 @@ function get_py2jl_linearize(comp_id::Integer)
     T = typeof(comp)
     if detect_linearize(T)
         try
+            # Look for the method for type T.
             method = which(linearize!, (T, 
                                         PyDict{String, PyArray}, # inputs
                                         PyDict{String, PyArray}, # outputs
                                         PyDict{Tuple{String, String}, PyArray})) # partials
+
+            # Create a Python wrapper for the method.
             args = (Integer, 
                     PyDict{String, PyArray}, # inputs
                     PyDict{String, PyArray}, # outputs
                     PyDict{Tuple{String, String}, PyArray})
-            # Create the Python wrapper of the linearize! function.
-            pylinearize = pyfunction(linearize!, args...)
-            return pylinearize
+            return pyfunction(linearize!, args...)
         catch err
             @warn "No linearize! method found for $(T)" 
             return nothing
@@ -206,17 +225,18 @@ function get_py2jl_guess_nonlinear(comp_id::Integer)
     T = typeof(comp)
     if detect_guess_nonlinear(T)
         try
-            # check if the real function exists
+            # Look for the method for type T.
             method = which(guess_nonlinear!, (T, 
                                               PyDict{String, PyArray}, 
+                                              PyDict{String, PyArray},
                                               PyDict{String, PyArray}))
 
-            # if it does, then return the integer id version
+            # Create a Python wrapper for the method.
             args = (Integer,  # self
                     PyDict{String, PyArray},  # inputs
-                    PyDict{String, PyArray})  # outputs
-            pyguess_nonlinear = pyfunction(guess_nonlinear!, args...)
-            return pyguess_nonlinear
+                    PyDict{String, PyArray},  # outputs
+                    PyDict{String, PyArray})  # residuals
+            return pyfunction(guess_nonlinear!, args...)
         catch err
             @warn "No guess_nonlinear! method found for $(T)" 
             return nothing
@@ -231,15 +251,16 @@ function get_py2jl_solve_nonlinear(comp_id::Integer)
     T = typeof(comp)
     if detect_solve_nonlinear(T)
         try
+            # Look for the method for type T.
             method = which(solve_nonlinear!, (T, 
                                               PyDict{String, PyArray}, 
                                               PyDict{String, PyArray}))
+
+            # Create a Python wrapper for the method.
             args = (Integer,  # self
                     PyDict{String, PyArray},  # inputs
                     PyDict{String, PyArray})  # outputs
-            pysolve_nonlinear = pyfunction(solve_nonlinear!, args...)
-            return pysolve_nonlinear
-
+            return pyfunction(solve_nonlinear!, args...)
         catch err
             @warn "No solve_nonlinear! method found for $(T)" 
             return nothing
@@ -248,9 +269,5 @@ function get_py2jl_solve_nonlinear(comp_id::Integer)
         return nothing
     end
 end
-
-# include("example_components/simple_explicit.jl")
-# include("example_components/simple_implicit.jl")
-# include("example_components/actuator_disc.jl")
 
 end # module
