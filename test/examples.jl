@@ -94,4 +94,32 @@ end
     @test all(prob.get_val("a") .≈ [0.33335528])
 end
 
+@testset "implicit comp with apply_linear!" begin
+
+    include("../examples/components/implicit_with_apply_linear.jl")
+
+    prob = om.Problem()
+
+    ivc = om.IndepVarComp()
+    ivc.add_output("a", 1.0)
+    ivc.add_output("b", -4.0)
+    ivc.add_output("c", 3.0)
+    prob.model.add_subsystem("ivc", ivc, promotes=["*"])
+
+    comp = make_component(ImplicitWithApplyLinear())
+    comp.linear_solver = om.DirectSolver(assemble_jac=false)
+    comp.nonlinear_solver = om.NewtonSolver(
+        solve_subsystems=true, iprint=2, err_on_non_converge=true)
+    prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
+
+    prob.setup()
+    prob.final_setup()
+    prob.run_model()
+    @test all((prob.get_val("x") .≈ [3.0]))
+    derivs = prob.compute_totals(of=["x"], wrt=["a", "b", "c"])
+    @test all(derivs["x", "a"] .≈ [-4.5])
+    @test all(derivs["x", "b"] .≈ [-1.5])
+    @test all(derivs["x", "c"] .≈ [-0.5])
+end
+
 end # module
