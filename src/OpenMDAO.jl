@@ -21,7 +21,7 @@ abstract type AbstractImplicitComp <: AbstractComp end
 
 # The component_registry is a dict that stores each OpenMDAO.jl component struct
 # that is created with the make_component methods. The idea is to avoid having
-# to pass the <:AbstractComp structs from Python to Julia, because that involves
+# to pass the <:AbstractComp structs from Python to Julia, because that requires
 # copying the data, which is slow when the struct is large.
 const CompIdType = BigInt
 component_registry = Dict{CompIdType, AbstractComp}()
@@ -38,6 +38,12 @@ function make_component(self::T) where {T<:AbstractImplicitComp}
     component_registry[comp_id] = self
     comp = julia_comps.JuliaImplicitComp(jl_id=comp_id)
     return comp
+end
+
+function remove_component(comp_id::Integer)
+    delete!(component_registry, BigInt(comp_id))
+    # Not returning "nothing" breaks things. Why?
+    return nothing
 end
 
 detect_compute_partials(::Type{<:AbstractExplicitComp}) = true

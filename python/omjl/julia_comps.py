@@ -11,7 +11,8 @@ from julia.OpenMDAO import (get_py2jl_setup,
                             get_py2jl_linearize,
                             get_py2jl_guess_nonlinear,
                             get_py2jl_solve_nonlinear,
-                            get_py2jl_apply_linear)
+                            get_py2jl_apply_linear,
+                            remove_component)
 
 
 def _initialize_common(self):
@@ -62,6 +63,9 @@ class JuliaExplicitComp(om.ExplicitComponent):
                 partials_dict[of_wrt] = partials[of_wrt]
 
             self._julia_compute_partials(self._jl_id, inputs_dict, partials_dict)
+
+    def __del__(self):
+        remove_component(self.options['jl_id'])
 
 
 class JuliaImplicitComp(om.ImplicitComponent):
@@ -132,3 +136,6 @@ class JuliaImplicitComp(om.ImplicitComponent):
             outputs_dict = dict(outputs)
 
             self._julia_solve_nonlinear(self._jl_id, inputs_dict, outputs_dict)
+
+    def __del__(self):
+        remove_component(self.options['jl_id'])
