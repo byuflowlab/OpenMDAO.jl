@@ -94,11 +94,11 @@ function apply_linear!(comp_id::Integer, inputs, outputs, d_inputs, d_outputs, d
 end
 
 function setup(self::AbstractComp)
-    error("called dummy base setup with self::$(typeof(self))")
+    return nothing
 end
 
 function compute!(self::AbstractExplicitComp, inputs, outputs)
-    error("called dummy base compute! with self::$(typeof(self))")
+    return nothing
 end
 
 struct VarData
@@ -121,14 +121,51 @@ end
 PartialsData(of, wrt; rows=nothing, cols=nothing, val=nothing) = PartialsData(of, wrt, rows, cols, val)
 
 function get_py2jl_setup(comp_id::Integer)
+    comp = component_registry[comp_id]
+    T = typeof(comp)
+
+    try
+        # Look for the method for type T.
+        method = which(setup, (T,))  # self
+    catch err
+        throw(MethodError(setup, (T,)))
+    end
+
+    method = which(setup, (T,))
+    dummy_method = which(setup, (AbstractComp,))
+
+    # If we found the dummy method, then throw an error.
+    if method === dummy_method
+        throw(MethodError(setup, (comp,)))
+    end
+
+    # Now get the wrapped version, which will always be the same for every
+    # component... 
     args = (Integer,)  # self
-    ret = Tuple{Vector{VarData},  # input metadata
-                Vector{VarData},  # output metadata
+    ret = Tuple{Vector{VarData},       # input metadata
+                Vector{VarData},       # output metadata
                 Vector{PartialsData}}  # partials metadata
+
     return pyfunctionret(setup, ret, args...)
 end
 
 function get_py2jl_compute(comp_id::Integer)
+    comp = component_registry[comp_id]
+    T = typeof(comp)
+
+    # Look for the compute! method for type T.
+    args = (T, PyDict{String, PyArray}, PyDict{String, PyArray})
+    method = which(compute!, args)
+
+    # Get a reference to the dummy method.
+    dummy_args = (AbstractExplicitComp, PyDict{String, PyArray}, PyDict{String, PyArray})
+    dummy_method = which(compute!, dummy_args)
+
+    # If we found the dummy method, then throw an error
+    if method === dummy_method
+        throw(MethodError(compute!, (comp,)))
+    end
+
     args = (Integer,  # self
             PyDict{String, PyArray},  # inputs
             PyDict{String, PyArray})  # outputs
