@@ -46,6 +46,11 @@ function remove_component(comp_id::Integer)
     return nothing
 end
 
+# This is just needed for testing the component registry garbage collection from
+# Python. For some reason I'm not able to import the component_registry Dict and
+# check its size, keys, etc. from Python.
+component_registry_length() = length(component_registry)
+
 detect_compute_partials(::Type{<:AbstractExplicitComp}) = true
 detect_linearize(::Type{<:AbstractImplicitComp}) = true
 detect_apply_nonlinear(::Type{<:AbstractImplicitComp}) = true
