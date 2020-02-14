@@ -109,7 +109,7 @@ end
     comp = make_component(ImplicitWithApplyLinear())
     comp.linear_solver = om.DirectSolver(assemble_jac=false)
     comp.nonlinear_solver = om.NewtonSolver(
-        solve_subsystems=true, iprint=2, err_on_non_converge=true)
+        solve_subsystems=true, iprint=0, err_on_non_converge=true)
     prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
     prob.setup()
