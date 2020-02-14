@@ -1,3 +1,8 @@
+module UtilsTests
+
+using Test
+using OpenMDAO
+
 @testset "get_rows_cols check" begin
     ss_sizes = Dict(:i=>2, :j=>3, :k=>4)
 
@@ -45,3 +50,5 @@
     @test all(rows .== [0, 0, 0, 0, 1, 1, 1, 1, 2, 2,  2,  2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5,  5,  5])
     @test all(cols .== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
 end
+
+end # module

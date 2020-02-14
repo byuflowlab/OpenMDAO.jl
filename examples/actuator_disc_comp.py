@@ -1,7 +1,9 @@
 import openmdao.api as om
-from omjl.julia_comps import JuliaExplicitComp
-from julia.OpenMDAO import ActuatorDisc
+from omjl import make_component
+import julia.Main as julia
 
+
+julia.include("components/actuator_disc.jl")
 
 prob = om.Problem()
 
@@ -12,7 +14,7 @@ indeps.add_output("rho", 1.125)
 indeps.add_output("Vu", 10.0)
 prob.model.add_subsystem("indeps", indeps, promotes=["*"])
 
-comp = JuliaExplicitComp(julia_comp_data=ActuatorDisc())
+comp = make_component(julia.ActuatorDisc())
 prob.model.add_subsystem("a_disc", comp, promotes_inputs=["a", "Area", "rho", "Vu"])
 
 # setup the optimization

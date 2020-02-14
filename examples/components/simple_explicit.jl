@@ -1,11 +1,12 @@
-using OpenMDAO
+using OpenMDAO: AbstractExplicitComp, VarData, PartialsData
+import OpenMDAO: setup, compute!, compute_partials!
 
 struct SimpleExplicit{TF} <: AbstractExplicitComp
     a::TF  # these would be like "options" in openmdao
 end
 
 
-function OpenMDAO.setup(::SimpleExplicit)
+function setup(::SimpleExplicit)
     # Trying out different combinations of tuple vs scalar for shape, and array
     # vs scalar for val.
     inputs = [
@@ -28,7 +29,7 @@ function OpenMDAO.setup(::SimpleExplicit)
     return inputs, outputs, partials
 end
 
-function OpenMDAO.compute!(square::SimpleExplicit, inputs, outputs)
+function compute!(square::SimpleExplicit, inputs, outputs)
     a = square.a
     x = inputs["x"]
     y = inputs["y"]
@@ -37,7 +38,7 @@ function OpenMDAO.compute!(square::SimpleExplicit, inputs, outputs)
     @. outputs["z2"] = a*x + y
 end
 
-function OpenMDAO.compute_partials!(square::SimpleExplicit, inputs, partials)
+function compute_partials!(square::SimpleExplicit, inputs, partials)
     a = square.a
     x = inputs["x"]
     y = inputs["y"]
