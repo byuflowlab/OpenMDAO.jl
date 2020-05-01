@@ -4,9 +4,12 @@ from openmdao.utils.assert_utils import assert_rel_error
 import julia.Main as julia
 from omjl import make_component
 
-julia.include("../../../examples/components/simple_explicit.jl")
-julia.include("../../../examples/components/simple_implicit.jl")
-julia.include("../../../examples/components/actuator_disc.jl")
+import os
+d = os.path.dirname(os.path.realpath(__file__))
+
+julia.include(f"{d}/../../../examples/components/simple_explicit.jl")
+julia.include(f"{d}/../../../examples/components/simple_implicit.jl")
+julia.include(f"{d}/../../../examples/components/actuator_disc.jl")
 
 
 class TestExplicitComp(unittest.TestCase):

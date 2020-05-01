@@ -6,8 +6,11 @@ import julia.Main as julia
 from julia.Base.GC import gc as gcjl
 from julia.OpenMDAO import component_registry_length
 
-julia.include("../../../examples/components/simple_explicit.jl")
-julia.include("../../../examples/components/simple_implicit.jl")
+import os
+d = os.path.dirname(os.path.realpath(__file__))
+
+julia.include(f"{d}/../../../examples/components/simple_explicit.jl")
+julia.include(f"{d}/../../../examples/components/simple_implicit.jl")
 
 
 def main(a):
