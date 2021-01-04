@@ -6,13 +6,29 @@ include("utils.jl")
 export VarData, PartialsData, make_component, AbstractExplicitComp, AbstractImplicitComp
 export om  # direct access to Python module: openmdao.api
 
+# Path to this module.
+const module_path = splitdir(@__FILE__)[1]
+
 # load python api
 const om = PyNULL()
+path_to_julia_comps = module_path
 const julia_comps = PyNULL()
 
 function __init__()
-    copy!(om, pyimport("openmdao.api"))
-    copy!(julia_comps, pyimport("omjl.julia_comps"))
+    copy!(om, pyimport_conda("openmdao.api", "openmdao"))
+    # copy!(julia_comps, pyimport("omjl.julia_comps"))
+
+    # https://stackoverflow.com/questions/35288021/what-is-the-equivalent-of-imp-find-module-in-importlib
+    importlib = PyCall.pyimport("importlib")
+	loader_details = (
+		importlib.machinery.SourceFileLoader,
+		importlib.machinery.SOURCE_SUFFIXES)
+    finder = importlib.machinery.FileFinder(path_to_julia_comps, loader_details)
+	specs = finder.find_spec("julia_comps")
+	julia_comps_mod = importlib.util.module_from_spec(specs)
+	specs.loader.exec_module(julia_comps_mod)
+	copy!(julia_comps, julia_comps_mod)
+
 end
 
 abstract type AbstractComp end

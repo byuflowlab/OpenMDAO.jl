@@ -17,7 +17,7 @@ ic = SimpleImplicit(4.0)
 comp = make_component(ic)  # Need to convert Julia obj to Python obj
 prob.model.add_subsystem("square_it_comp", comp)
 
-@test_throws PyError prob.setup()
+@test_throws PyJlError prob.setup()
 
 function OpenMDAO.setup(::SimpleImplicit)
  
