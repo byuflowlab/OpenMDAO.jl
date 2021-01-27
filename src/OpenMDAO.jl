@@ -40,7 +40,7 @@ abstract type AbstractImplicitComp <: AbstractComp end
 # to pass the <:AbstractComp structs from Python to Julia, because that requires
 # copying the data, which is slow when the struct is large.
 const CompIdType = BigInt
-component_registry = Dict{CompIdType, AbstractComp}()
+const component_registry = Dict{CompIdType, AbstractComp}()
 
 function make_component(self::T) where {T<:AbstractExplicitComp}
     comp_id = BigInt(objectid(self))
@@ -114,6 +114,10 @@ function apply_linear!(comp_id::Integer, inputs, outputs, d_inputs, d_outputs, d
     apply_linear!(comp, inputs, outputs, d_inputs, d_outputs, d_residuals, mode)
 end
 
+# TODO: parameterize the `VarData` struct. `name` and `units` should be
+# `AbstractString` or something similar. `val` could be a scalar float
+# (`AbstractFloat`?) or an array. Shape could be a scalar integer or array or
+# tuple.
 struct VarData
     name
     val
@@ -123,6 +127,7 @@ end
 
 VarData(name; val=1.0, shape=1, units=nothing) = VarData(name, val, shape, units)
 
+# TODO: parameterize the `PartialsData` struct?
 struct PartialsData
     of
     wrt
