@@ -95,8 +95,8 @@ installs it in the `dev` directory inside the current active Julia Project
  _/ |\__'_|_|_|\__'_|  |
 |__/                   |
 
-(openmdao.jl_install_test) pkg> dev --local https://github.com/dingraha/OpenMDAO.jl
-    Cloning git-repo `https://github.com/dingraha/OpenMDAO.jl`
+(openmdao.jl_install_test) pkg> dev --local https://github.com/byuflowlab/OpenMDAO.jl
+    Cloning git-repo `https://github.com/byuflowlab/OpenMDAO.jl`
   Resolving package versions...
 Updating `~/projects/openmdao.jl_install_test/Project.toml`
   [2d3f9b48] + OpenMDAO v0.1.0 `dev/OpenMDAO`
