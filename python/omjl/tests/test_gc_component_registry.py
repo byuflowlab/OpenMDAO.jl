@@ -1,7 +1,7 @@
 import gc
 import unittest
 import openmdao.api as om
-from omjl import make_component
+from julia.OpenMDAO import make_component
 import julia.Main as julia
 from julia.Base.GC import gc as gcjl
 from julia.OpenMDAO import component_registry_length

@@ -2,7 +2,7 @@ import unittest
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_rel_error
 import julia.Main as julia
-from omjl import make_component
+from julia.OpenMDAO import make_component
 
 import os
 d = os.path.dirname(os.path.realpath(__file__))

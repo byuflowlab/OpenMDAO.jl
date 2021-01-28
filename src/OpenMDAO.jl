@@ -6,13 +6,29 @@ include("utils.jl")
 export VarData, PartialsData, make_component, AbstractExplicitComp, AbstractImplicitComp
 export om  # direct access to Python module: openmdao.api
 
+# Path to this module.
+const module_path = splitdir(@__FILE__)[1]
+
 # load python api
 const om = PyNULL()
+path_to_julia_comps = module_path
 const julia_comps = PyNULL()
 
 function __init__()
-    copy!(om, pyimport("openmdao.api"))
-    copy!(julia_comps, pyimport("omjl.julia_comps"))
+    copy!(om, pyimport_conda("openmdao.api", "openmdao"))
+    # copy!(julia_comps, pyimport("omjl.julia_comps"))
+
+    # https://stackoverflow.com/questions/35288021/what-is-the-equivalent-of-imp-find-module-in-importlib
+    importlib = PyCall.pyimport("importlib")
+	loader_details = (
+		importlib.machinery.SourceFileLoader,
+		importlib.machinery.SOURCE_SUFFIXES)
+    finder = importlib.machinery.FileFinder(path_to_julia_comps, loader_details)
+	specs = finder.find_spec("julia_comps")
+	julia_comps_mod = importlib.util.module_from_spec(specs)
+	specs.loader.exec_module(julia_comps_mod)
+	copy!(julia_comps, julia_comps_mod)
+
 end
 
 abstract type AbstractComp end
@@ -24,7 +40,7 @@ abstract type AbstractImplicitComp <: AbstractComp end
 # to pass the <:AbstractComp structs from Python to Julia, because that requires
 # copying the data, which is slow when the struct is large.
 const CompIdType = BigInt
-component_registry = Dict{CompIdType, AbstractComp}()
+const component_registry = Dict{CompIdType, AbstractComp}()
 
 function make_component(self::T) where {T<:AbstractExplicitComp}
     comp_id = BigInt(objectid(self))
@@ -98,6 +114,10 @@ function apply_linear!(comp_id::Integer, inputs, outputs, d_inputs, d_outputs, d
     apply_linear!(comp, inputs, outputs, d_inputs, d_outputs, d_residuals, mode)
 end
 
+# TODO: parameterize the `VarData` struct. `name` and `units` should be
+# `AbstractString` or something similar. `val` could be a scalar float
+# (`AbstractFloat`?) or an array. Shape could be a scalar integer or array or
+# tuple.
 struct VarData
     name
     val
@@ -107,6 +127,7 @@ end
 
 VarData(name; val=1.0, shape=1, units=nothing) = VarData(name, val, shape, units)
 
+# TODO: parameterize the `PartialsData` struct?
 struct PartialsData
     of
     wrt

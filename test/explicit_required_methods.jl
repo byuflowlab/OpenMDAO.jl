@@ -1,6 +1,6 @@
 using OpenMDAO: AbstractExplicitComp, VarData, PartialsData, om, make_component, detect_compute_partials
 import OpenMDAO: detect_compute_partials
-using PyCall: PyError
+using PyCall: PyError, PyJlError
 
 struct SimpleExplicit{TF} <: AbstractExplicitComp
     a::TF  # these would be like "options" in openmdao
@@ -14,7 +14,7 @@ ec = SimpleExplicit(4.0)
 comp = make_component(ec)  # Need to convert Julia obj to Python obj
 prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
-@test_throws PyError prob.setup()
+@test_throws PyJlError prob.setup()
 
 function OpenMDAO.setup(::SimpleExplicit)
     # Trying out different combinations of tuple vs scalar for shape, and array
@@ -45,7 +45,7 @@ ec = SimpleExplicit(5.0)
 comp = make_component(ec)  # Need to convert Julia obj to Python obj
 prob.model.add_subsystem("square_it_comp", comp, promotes=["*"])
 
-@test_throws PyError prob.setup()
+@test_throws PyJlError prob.setup()
 
 function OpenMDAO.compute!(square::SimpleExplicit, inputs, outputs)
     a = square.a
