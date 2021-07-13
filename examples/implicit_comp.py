@@ -1,6 +1,6 @@
 import openmdao.api as om
-from omjl import make_component
 import julia.Main as julia
+from julia.OpenMDAO import make_component
 
 
 julia.include("components/simple_implicit.jl")
