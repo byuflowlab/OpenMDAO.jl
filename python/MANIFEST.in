@@ -1,0 +1,3 @@
+include omjlcomps/juliapkg.json
+include omjlcomps/test/test_ecomp.jl
+include omjlcomps/test/test_icomp.jl

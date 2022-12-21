@@ -1,12 +1,19 @@
-from distutils.core import setup
 
-setup(name='omjl',
-      version='0.0.1',
-      description='OpenMDAO for Julia',
-      author='Andrew Ning',
-      packages=['omjl'],
-      install_requires=[
-          'openmdao>=2.4.0',
-          'numpy>=1.14.1',
-      ],
-      zip_safe=False)
+from setuptools import setup
+
+setup_args = {'description': 'Create OpenMDAO Components using the Julia programming language',
+   'entry_points': {
+       'openmdao_component': [
+           'juliaexplicitcomp=omjlcomps:JuliaExplicitComp',
+           'juliaimplicitcomp=omjlcomps:JuliaImplicitComp'
+       ]
+    },
+   'install_requires': ['openmdao', 'juliapkg', 'juliacall'],
+   'keywords': ['openmdao_component'],
+   'license': 'MIT',
+   'name': 'omjlcomps',
+   'packages': ['omjlcomps', 'omjlcomps.test'],
+   'version': '0.1.7',
+   'include_package_data': True}
+
+setup(**setup_args)

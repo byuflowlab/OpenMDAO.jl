@@ -1,5 +1,3 @@
-export get_rows_cols
-
 function get_rows_cols(ss_sizes, of_ss, wrt_ss)
     # Get the output subscript, which will start with the of_ss, then the
     # wrt_ss with the subscripts common to both removed.

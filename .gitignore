@@ -2,3 +2,7 @@ Manifest.toml
 .DS_Store
 build
 dev
+reports
+__pycache__
+*.egg-info
+*.sql
