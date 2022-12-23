@@ -6,3 +6,4 @@ reports
 __pycache__
 *.egg-info
 *.sql
+dist
