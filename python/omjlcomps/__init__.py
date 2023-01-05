@@ -40,6 +40,15 @@ def _setup_common(self):
 
 
 class JuliaExplicitComp(om.ExplicitComponent):
+    """
+    Class for implementing an OpenMDAO.ExplicitComponent using OpenMDAO.jl and the Julia programming language.
+
+    Parameters
+    ----------
+    jlcomp : subtype of `OpenMDAOCore.AbstractExplicitComp`
+        A Julia struct that subtypes `OpenMDAOCore.AbstractExplicitComp`.
+        Used by `JuliaExplicitComp` to call Julia functions that mimic methods required by an OpenMDAO `ExplicitComponent` (e.g., `OpenMDAOCore.setup`, `OpenMDAOCore.compute!`, `OpenMDAOCore.compute_partials!`, etc.).
+    """
 
     def initialize(self):
         _initialize_common(self)
@@ -99,6 +108,15 @@ class JuliaExplicitComp(om.ExplicitComponent):
 
 
 class JuliaImplicitComp(om.ImplicitComponent):
+    """
+    Class for implementing an OpenMDAO.ImplicitComponent using OpenMDAO.jl and the Julia programming language.
+
+    Parameters
+    ----------
+    jlcomp : subtype of `OpenMDAOCore.AbstractImplicitComp`
+        A Julia struct that subtypes `OpenMDAOCore.AbstractImplicitComp`.
+        Used by `JuliaImplicitComp` to call Julia functions that mimic methods required by an OpenMDAO `ImplicitComponent` (e.g., `OpenMDAOCore.setup`, `OpenMDAOCore.apply_nonlinear!`, `OpenMDAOCore.linearize!`, etc.).
+    """
 
     def initialize(self):
         _initialize_common(self)

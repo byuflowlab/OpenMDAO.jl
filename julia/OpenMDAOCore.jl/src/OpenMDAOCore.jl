@@ -165,6 +165,38 @@ _vd_checkbounds(var::Float64, shape) = true
 _vd_checkbounds(var::Nothing, shape) = true
 _vd_checkbounds(var::AbstractArray, shape) = size(var) == shape
 
+
+"""
+    VarData(name::String; <keyword arguments>)
+
+Create a VarData object for an OpenMDAO variable named `name`.
+
+`VarData` objects are used to construct arguments to OpenMDAO's `Component.add_input` and `Component.add_output` methods.
+Specifically, if a `VarData` object `var` refers to an input variable, the `Component.add_input` call will look like this:
+
+```python
+Component.add_input(var.name, shape=var.shape, val=var.val, units=var.units, tags=var.tags)
+```
+
+and if the `VarData` object `var` is an output variable, the `Component.add_output` call will look like this:
+
+```python
+Component.add_output(var.name, shape=var.shape, val=var.val, units=var.units, lower=var.lower, upper=var.upper, tags=var.tags)
+```
+
+The `name` positional argument is required and sets the `name` field.
+The value of the other `VarData` fields (e.g., `var.shape`, `var.val`, etc.) are set via constructor keyword arguments, here:
+
+# Keyword Arguments
+- `val::Union{Float64,<:AbstractArray{Float64},Nothing} = 1.0`: variable's default value, set to `1.0` if `nothing`.
+- `shape::Union{Int64,NTuple{N,Int64},Nothing} = (1,)`: variable shape, set to `(1,)` if `nothing`.
+- `units::Union{String,Nothing} = nothing`: variable units.
+- `lower::Union{Float64,<:AbstractArray{Float64,N},Nothing} = nothing`: variable's lower limit.
+- `upper::Union{Float64,<:AbstractArray{Float64,N},Nothing} = nothing`: variable's upper limit.
+- `tags::Union{<:AbstractVector{String},Nothing} = nothing`: variable tags.
+"""
+VarData
+
 struct VarData{N,TVal<:Union{Float64,<:AbstractArray{Float64,N}},TUnits<:Union{String,Nothing},TBounds<:Union{Float64,<:AbstractArray{Float64,N}, Nothing}, TTags<:Union{<:AbstractVector{String},Nothing}}
     name::String
     val::TVal
@@ -209,7 +241,34 @@ _pd_val_checkbounds(val::AbstractVector, rows::AbstractVector) = size(val) == si
 _pd_val_checkbounds(val::AbstractArray, rows::AbstractVector) = false
 _pd_val_checkbounds(val::Float64, rows) = true
 
-struct PartialsData{TRC<:Union{<:AbstractVector{Int64},Nothing},TVal<:Union{Float64,<:AbstractArray{Float64},Nothing}}
+"""
+    PartialsData(of::String, wrt::String; <keyword arguments>)
+
+Create a PartialsData object for the derivative of variable `of` with respect to variable `wrt`.
+
+`PartialsData` objects are used to construct arguments to OpenMDAO's `Component.declare_partials` method.
+Specifically, a `PartialsData` object `pd` will eventually be used to call `Component.declare_partials` like this:
+
+```python
+Component.declare_partials(pd.of, pd.wrt, rows=pd.rows, cols=pd.cols, val=pd.val, method=pd.method)
+```
+
+The `of` and `wrt` positional arguments are required and set the `of` and `wrt` fields.
+The value of the other `PartialsData` fields (e.g., `pd.rows`, `pd.val`, etc.) are set via constructor keyword arguments, here:
+
+# Keyword Arguments
+- `rows::Union{<:AbstractVector{Int64},Nothing} = nothing`: row indices for each non-zero Jacobian entry, if not `nothing`.
+- `cols::Union{<:AbstractVector{Int64},Nothing} = nothing`: column indices for each non-zero Jacobian entry, if not `nothing`.
+- `val::Union{Float64,<:AbstractArray{Float64},Nothing} = nothing`: value of Jacobian, if not `nothing`.
+- `method::String = "exact"`: method use to calcluate the partial derivative(s). Should be one of
+
+    * `"exact"`: user-defined partial derivatives via `compute_partials!`, `linearize!`, etc.
+    * `"fd"`: finite difference approximation
+    * `"cs"`: complex step approximation
+"""
+PartialsData
+
+struct PartialsData{N,TRC<:Union{<:AbstractVector{Int64},Nothing},TVal<:Union{Float64,<:AbstractArray{Float64,N},Nothing}}
     of::String
     wrt::String
     rows::TRC
@@ -217,10 +276,16 @@ struct PartialsData{TRC<:Union{<:AbstractVector{Int64},Nothing},TVal<:Union{Floa
     val::TVal
     method::String
 
-    function PartialsData(of, wrt, rows, cols, val, method)
+    function PartialsData(of, wrt, rows, cols, val::Union{Float64,Nothing,AbstractVector{Float64}}, method)
         _pd_rc_checkbounds(rows, cols) || throw(ArgumentError("size of rows argument $(rows) should match size of cols argument $(cols)"))
         _pd_val_checkbounds(val, rows) || throw(ArgumentError("size of val argument $(val) should match size of rows/cols argument $(rows)"))
-        return new{typeof(rows),typeof(val)}(of, wrt, rows, cols, val, method)
+        return new{1,typeof(rows),typeof(val)}(of, wrt, rows, cols, val, method)
+    end
+
+    function PartialsData(of, wrt, rows, cols, val::AbstractArray{Float64, N}, method) where {N}
+        _pd_rc_checkbounds(rows, cols) || throw(ArgumentError("size of rows argument $(rows) should match size of cols argument $(cols)"))
+        _pd_val_checkbounds(val, rows) || throw(ArgumentError("size of val argument $(val) should match size of rows/cols argument $(rows)"))
+        return new{N,typeof(rows),typeof(val)}(of, wrt, rows, cols, val, method)
     end
 end
 
