@@ -194,6 +194,40 @@ class TestJuliaExplicitCompWithOptionAndTags(unittest.TestCase):
                                                desired=cpd[comp][var, wrt]['J_fd'],
                                                decimal=12)
 
+class TestJuliaExplicitCompWithGlobs(unittest.TestCase):
+
+    def setUp(self):
+        p = self.p = om.Problem()
+        a = self.a = 0.5
+        ecomp = jl.ECompTest.ECompWithGlobs(a, xtag=juliacall.convert(jl.Vector, ["xtag1", "xtag2"]), ytag=juliacall.convert(jl.Vector, ["ytag"]))
+        comp = JuliaExplicitComp(jlcomp=ecomp)
+        p.model.add_subsystem("ecomp", comp, promotes_inputs=["x"], promotes_outputs=["y"])
+        p.setup(force_alloc_complex=True)
+        p.set_val("x", 3.0)
+        p.run_model()
+
+    def test_results1(self):
+        p = self.p
+        expected = 2*self.a*p.get_val("x")[0]**2 + 1
+        actual = p.get_val("y")[0]
+        np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials1(self):
+        p = self.p
+        np.set_printoptions(linewidth=1024)
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that the partials the user provided are correct.
+        ecomp_partials = cpd["ecomp"]
+        np.testing.assert_almost_equal(actual=ecomp_partials["y", "x"]['J_fwd'], desired=[[4*self.a*p.get_val("x")[0]]], decimal=12)
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
+                                               desired=cpd[comp][var, wrt]['J_fd'],
+                                               decimal=12)
+
 class TestJuliaExplicitCompWithLargeOption(unittest.TestCase):
 
     def setUp(self):

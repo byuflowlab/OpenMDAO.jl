@@ -61,8 +61,10 @@ class JuliaExplicitComp(om.ExplicitComponent):
                 inputs_dict = juliacall.convert(jl.Dict, dict(inputs))
 
                 partials_dict = {}
-                for of_wrt in self._declared_partials:
-                    partials_dict[of_wrt] = partials[of_wrt]
+                for (of_abs, wrt_abs), subjac in partials.items():
+                    of_rel = of_abs.split(".")[-1]
+                    wrt_rel = wrt_abs.split(".")[-1]
+                    partials_dict[of_rel, wrt_rel] = subjac
                 partials_dict = juliacall.convert(jl.Dict, partials_dict)
 
                 try:
@@ -161,8 +163,10 @@ class JuliaImplicitComp(om.ImplicitComponent):
                 outputs_dict = juliacall.convert(jl.Dict, dict(outputs))
 
                 partials_dict = {}
-                for of_wrt in self._declared_partials:
-                    partials_dict[of_wrt] = partials[of_wrt]
+                for (of_abs, wrt_abs), subjac in partials.items():
+                    of_rel = of_abs.split(".")[-1]
+                    wrt_rel = wrt_abs.split(".")[-1]
+                    partials_dict[of_rel, wrt_rel] = subjac
                 partials_dict = juliacall.convert(jl.Dict, partials_dict)
 
                 try:

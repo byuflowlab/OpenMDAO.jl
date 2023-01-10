@@ -1,3 +1,6 @@
+```@meta
+CurrentModule = OpenMDAODocs
+```
 # OpenMDAO.jl Documentation
 
 ## What?
@@ -16,7 +19,25 @@ OpenMDAO.jl consists of three pieces of software:
   * OpenMDAO.jl: A Julia package that has the openmdao and omjlcomps Python packages as dependencies.
     Users can install `OpenMDAO.jl` and have the full power of the OpenMDAO framework at their disposal in Julia.
 
-## How?
-There are two approaches to getting OpenMDAO working with Julia: the [Python-centric approach](@ref python_centric) and the Julia-centric approach.
-If you like Python and just want to have a bit of Julia buried in your OpenMDAO `model`, then you'll probably prefer the [Python-centric approach].
+## How (Installation Instructions)?
+There are two approaches to getting OpenMDAO working with Julia: the [Python-Centric Approach](@ref python_centric) and the [Julia-Centric Approach](@ref julia_centric).
+If you like Python and just want to have a little (or a lot) of Julia buried in your OpenMDAO `System`, then you'll probably prefer the Python-centric approach.
 If you're a huge fan of Julia and would like to pretend that OpenMDAO is a Julia library, you'll want the Julia-centric approach.
+Either way, pick one or the other: you don't need to follow both installation instructions.
+
+### [Python-Centric Installation](@id python_centric)
+The first (and only!) step is to install `omjlcomps`, which is in the Python Package Index, so a simple
+
+```bash
+pip install omjlcomps
+```
+
+should be all you need.
+
+### [Julia-Centric Installation](@id julia_centric)
+The OpenMDAOCore.jl and OpenMDAO.jl Julia package are the official™ `DanielIngrahamRegistry`, so if you have access to that, installation should be as simple as
+```
+] add OpenMDAOCore OpenMDAO
+```
+in the Julia REPL.
+

@@ -85,6 +85,32 @@ function OpenMDAOCore.compute_partials!(self::ECompWithOptionAndTags, inputs, pa
     return nothing
 end
 
+struct ECompWithGlobs <: OpenMDAOCore.AbstractExplicitComp
+    a::Float64
+    xtag::Vector{String}
+    ytag::Vector{String}
+end
+
+ECompWithGlobs(a; xtag, ytag) = ECompWithGlobs(a, xtag, ytag)
+
+function OpenMDAOCore.setup(self::ECompWithGlobs)
+    input_data = [VarData("x"; tags=self.xtag)]
+    output_data = [VarData("y"; tags=self.ytag)]
+    partials_data = [PartialsData("*", "*")]
+
+    return input_data, output_data, partials_data
+end
+
+function OpenMDAOCore.compute!(self::ECompWithGlobs, inputs, outputs)
+    outputs["y"][1] = 2*self.a*inputs["x"][1]^2 + 1
+    return nothing
+end
+
+function OpenMDAOCore.compute_partials!(self::ECompWithGlobs, inputs, partials)
+    partials["y", "x"][1] = 4*self.a*inputs["x"][1]
+    return nothing
+end
+
 struct ECompWithLargeOption <: OpenMDAOCore.AbstractExplicitComp
     a::Vector{Float64}
 end

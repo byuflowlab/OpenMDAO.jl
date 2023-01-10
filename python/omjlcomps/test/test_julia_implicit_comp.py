@@ -91,6 +91,79 @@ class TestSimpleJuliaImplicitComp(unittest.TestCase):
                                                decimal=12)
 
 
+class TestSimpleJuliaImplicitWithGlobComp(unittest.TestCase):
+
+    def setUp(self):
+        p = self.p = om.Problem()
+        n = self.n = 10
+        a = self.a = 3.0
+        icomp = jl.ICompTest.SimpleImplicitWithGlob(n, a)
+        comp = JuliaImplicitComp(jlcomp=icomp)
+        comp.linear_solver = om.DirectSolver(assemble_jac=True)
+        comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=True, iprint=2, err_on_non_converge=True)
+        p.model.add_subsystem("icomp", comp, promotes_inputs=["x", "y"], promotes_outputs=["z1", "z2"])
+        p.setup(force_alloc_complex=True)
+        p.set_val("x", 3.0)
+        p.set_val("y", 4.0)
+        p.run_model()
+
+    def test_results(self):
+        p = self.p
+        a = self.a
+        expected = a*p.get_val("x")**2 + p.get_val("y")**2
+        actual = p.get_val("z1")
+        np.testing.assert_almost_equal(actual, expected)
+        expected = a*p.get_val("x") + p.get_val("y")
+        actual = p.get_val("z2")
+        np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials(self):
+        p = self.p
+        np.set_printoptions(linewidth=1024)
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that the partials the user provided are correct.
+        icomp_partials = cpd["icomp"]
+
+        actual = icomp_partials["z1", "x"]['J_fwd']
+        expected = np.zeros((self.n, self.n))
+        expected[range(self.n), range(self.n)] = 2*self.a*p.get_val("x")
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z1", "y"]['J_fwd']
+        expected = np.zeros((self.n, self.n))
+        expected[range(self.n), range(self.n)] = 2*p.get_val("y")
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z1", "z1"]['J_fwd']
+        expected = np.zeros((self.n, self.n))
+        expected[range(self.n), range(self.n)] = -1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "x"]['J_fwd']
+        expected = np.zeros((self.n, self.n))
+        expected[range(self.n), range(self.n)] = self.a
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "y"]['J_fwd']
+        expected = np.zeros((self.n, self.n))
+        expected[range(self.n), range(self.n)] = 1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "z2"]['J_fwd']
+        expected = np.zeros((self.n, self.n))
+        expected[range(self.n), range(self.n)] = -1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
+                                               desired=cpd[comp][var, wrt]['J_fd'],
+                                               decimal=12)
+
+
+
 class TestSolveNonlinearJuliaImplicitComp(unittest.TestCase):
 
     def setUp(self):

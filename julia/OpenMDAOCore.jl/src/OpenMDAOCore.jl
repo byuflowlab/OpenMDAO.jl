@@ -195,8 +195,6 @@ The value of the other `VarData` fields (e.g., `var.shape`, `var.val`, etc.) are
 - `upper::Union{Float64,<:AbstractArray{Float64,N},Nothing} = nothing`: variable's upper limit.
 - `tags::Union{<:AbstractVector{String},Nothing} = nothing`: variable tags.
 """
-VarData
-
 struct VarData{N,TVal<:Union{Float64,<:AbstractArray{Float64,N}},TUnits<:Union{String,Nothing},TBounds<:Union{Float64,<:AbstractArray{Float64,N}, Nothing}, TTags<:Union{<:AbstractVector{String},Nothing}}
     name::String
     val::TVal
@@ -266,8 +264,6 @@ The value of the other `PartialsData` fields (e.g., `pd.rows`, `pd.val`, etc.) a
     * `"fd"`: finite difference approximation
     * `"cs"`: complex step approximation
 """
-PartialsData
-
 struct PartialsData{N,TRC<:Union{<:AbstractVector{Int64},Nothing},TVal<:Union{Float64,<:AbstractArray{Float64,N},Nothing}}
     of::String
     wrt::String

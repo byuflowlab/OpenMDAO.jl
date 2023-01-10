@@ -1,3 +1,4 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+OpenMDAO = "2d3f9b48-ba2d-11e9-1a3f-97e029ee3d3c"
 OpenMDAOCore = "24d19c10-6eee-420f-95df-4537264b2753"

@@ -1,13 +1,13 @@
 module OpenMDAODocs
 
-using Documenter, OpenMDAOCore
+using Documenter, OpenMDAOCore, OpenMDAO
 
 function main()
     makedocs(
              sitename="OpenMDAO.jl",
-             modules = [OpenMDAOCore],
+             modules = [OpenMDAOCore, OpenMDAO],
              format=Documenter.HTML(prettyurls=get(ENV, "CI", nothing) == "true"),
-             pages = ["Home" => "index.md", "The Python-Centric Approach" => "python_centric.md"])
+             pages = ["Home" => "index.md", "A Simple Example"=>"simple_paraboloid.md"])
 end
 
 end
