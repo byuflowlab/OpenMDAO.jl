@@ -13,7 +13,7 @@ setup_args = {'description': 'Create OpenMDAO Components using the Julia program
    'license': 'MIT',
    'name': 'omjlcomps',
    'packages': ['omjlcomps', 'omjlcomps.test'],
-   'version': '0.1.7',
+   'version': '0.1.8',
    'include_package_data': True}
 
 setup(**setup_args)
