@@ -1,7 +1,7 @@
 name = "OpenMDAO"
 uuid = "2d3f9b48-ba2d-11e9-1a3f-97e029ee3d3c"
 authors = ["Ingraham, Daniel James (GRC-LTV0) <daniel.j.ingraham@nasa.gov>"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
