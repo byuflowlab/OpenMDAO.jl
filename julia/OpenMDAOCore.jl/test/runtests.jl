@@ -136,6 +136,22 @@ end
     @test pd.val ≈ -8.0
     @test pd.method == "exact"
 
+    pd = PartialsData("y", "x"; rows=0:8-1, cols=fill(0, 8), val=-8.0)
+    @test pd.of == "y"
+    @test pd.wrt == "x"
+    @test all(pd.rows .== [0, 1, 2, 3, 4, 5, 6, 7])
+    @test all(pd.cols .== 0)
+    @test pd.val ≈ -8.0
+    @test pd.method == "exact"
+
+    pd = PartialsData("y", "x"; rows=fill(0, 8), cols=0:8-1, val=-8.0)
+    @test pd.of == "y"
+    @test pd.wrt == "x"
+    @test all(pd.rows .== 0)
+    @test all(pd.cols .== [0, 1, 2, 3, 4, 5, 6, 7])
+    @test pd.val ≈ -8.0
+    @test pd.method == "exact"
+
     @test_throws ArgumentError PartialsData("y", "x"; rows=[1, 2, 3], cols=[1, 2], val=[1.0, 2.0])
     @test_throws ArgumentError PartialsData("y", "x"; rows=[1, 2], cols=[1, 2, 3], val=[1.0, 2.0])
     @test_throws ArgumentError PartialsData("y", "x"; rows=[1, 2], cols=[1, 2], val=[1.0, 2.0, 3.0])

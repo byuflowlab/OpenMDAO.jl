@@ -119,11 +119,7 @@ The job of `OpenMDAOCore.setup` is to take a single argument (an `OpenMDAOCore.A
 These Julia `Vector`s must always be returned in that order: inputs, outputs, partials.
 OpenMDAO.jl uses the `VarData` entries in the `inputs` and `outputs` `Vectors` to construct arguments to the `Component.add_input` and `Component.add_output`, respectively.
 And OpenMDAO.jl uses the `PartialsData` entries in the `partials` `Vector` to construct arguments to `Component.declare_partials`.
-The `VarData` and `PartialsData` docstrings have all the details:
-```@docs
-OpenMDAOCore.VarData
-OpenMDAOCore.PartialsData
-```
+The [`OpenMDAOCore.VarData`](@ref) and [`OpenMDAOCore.PartialsData`](@ref) docstrings have all the details.
 
 ### Step 4: `OpenMDAOCore.compute!`
 ```julia
@@ -259,7 +255,6 @@ end
 function OpenMDAOCore.setup(self::ParaboloidUserPartials)
     inputs = [OpenMDAOCore.VarData("x", val=0.0), OpenMDAOCore.VarData("y", val=0.0)]
     outputs = [OpenMDAOCore.VarData("f_xy", val=0.0)]
-    # partials = [OpenMDAOCore.PartialsData("f_xy", "x"), OpenMDAOCore.PartialsData("f_xy", "y")]
     partials = [OpenMDAOCore.PartialsData("*", "*")]
     return inputs, outputs, partials
 end
@@ -295,7 +290,7 @@ The are only two differences:
 
 So, we implemented a `compute_partials!` method.
 But how do we know if they're right?
-The OpenMDAO `Problem` class has a method called `compute_partials` that compares the user-defined partial derivatives to the finite difference method.
+The OpenMDAO `Problem` class has a method called `check_partials` that compares the user-defined partial derivatives to the finite difference method.
 Can we use that with an `OpenMDAOCore.AbstractExplicitComp`?
 Let's try!
 
@@ -328,6 +323,9 @@ prob.run_model()
 println(prob.check_partials(method="fd"))
 ```
 
+It worked!
+And the error is quite small.
+
 What about the complex step method?
 
 ```@example paraboloid_up
@@ -335,9 +333,19 @@ println(prob.check_partials(method="cs"))
 ```
 
 It works!
-(The error is very small since the complex-step method is second-order accurate and we're differentiating a second-order polynomial.)
+(The error is zero since the complex-step method is second-order accurate and we're differentiating a second-order polynomial.)
 Complex numbers are no problem for Julia, but just like Python, we need to be careful to write our `compute_partials!` function in a complex-step-safe manner.
 
 !!! note "FLOWMath.jl"
     The Julia library [FLOWMath](https://github.com/byuflowlab/FLOWMath.jl) has a collection of complex-step-safe functions.
 
+Now, let's try an optimization:
+
+```@example paraboloid_up
+prob.run_driver()
+println("f_xy = $(prob.get_val("parab_comp.f_xy"))")  # Should print `[-27.33333333]`
+println("x = $(prob.get_val("parab_comp.x"))")  # Should print `[6.66666633]`
+println("y = $(prob.get_val("parab_comp.y"))")  # Should print `[-7.33333367]`
+```
+
+Still works, and we got the right answer.

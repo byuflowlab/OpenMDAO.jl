@@ -264,24 +264,24 @@ The value of the other `PartialsData` fields (e.g., `pd.rows`, `pd.val`, etc.) a
     * `"fd"`: finite difference approximation
     * `"cs"`: complex step approximation
 """
-struct PartialsData{N,TRC<:Union{<:AbstractVector{Int64},Nothing},TVal<:Union{Float64,<:AbstractArray{Float64,N},Nothing}}
+struct PartialsData{N,TRows<:Union{<:AbstractVector{Int64},Nothing},TCols<:Union{<:AbstractVector{Int64},Nothing},TVal<:Union{Float64,<:AbstractArray{Float64,N},Nothing}}
     of::String
     wrt::String
-    rows::TRC
-    cols::TRC
+    rows::TRows
+    cols::TCols
     val::TVal
     method::String
 
     function PartialsData(of, wrt, rows, cols, val::Union{Float64,Nothing,AbstractVector{Float64}}, method)
         _pd_rc_checkbounds(rows, cols) || throw(ArgumentError("size of rows argument $(rows) should match size of cols argument $(cols)"))
         _pd_val_checkbounds(val, rows) || throw(ArgumentError("size of val argument $(val) should match size of rows/cols argument $(rows)"))
-        return new{1,typeof(rows),typeof(val)}(of, wrt, rows, cols, val, method)
+        return new{1,typeof(rows),typeof(cols),typeof(val)}(of, wrt, rows, cols, val, method)
     end
 
     function PartialsData(of, wrt, rows, cols, val::AbstractArray{Float64, N}, method) where {N}
         _pd_rc_checkbounds(rows, cols) || throw(ArgumentError("size of rows argument $(rows) should match size of cols argument $(cols)"))
         _pd_val_checkbounds(val, rows) || throw(ArgumentError("size of val argument $(val) should match size of rows/cols argument $(rows)"))
-        return new{N,typeof(rows),typeof(val)}(of, wrt, rows, cols, val, method)
+        return new{N,typeof(rows),typeof(cols),typeof(val)}(of, wrt, rows, cols, val, method)
     end
 end
 

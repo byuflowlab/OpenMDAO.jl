@@ -1107,3 +1107,74 @@ end
         end
     end
 end
+
+@safetestset "DymosifiedCompWrapper" begin
+
+    @safetestset "normal operation" begin
+        using OpenMDAO: DymosifiedCompWrapper
+        using OpenMDAOCore: OpenMDAOCore
+        using PythonCall
+        using Test
+        
+        struct FooODE <: OpenMDAOCore.AbstractExplicitComp
+            num_nodes::Int
+            arg1::Bool
+            arg2::Float64
+        end
+
+        FooODE(; num_nodes, arg1, arg2) = FooODE(num_nodes, arg1, arg2)
+
+        arg1 = false
+        arg2 = 3.0
+        dcw = DymosifiedCompWrapper(FooODE; arg1, arg2)
+        @test length(dcw) == 1
+
+        nn = 8
+        comp = dcw(num_nodes=nn)
+        jlcomp = pyconvert(FooODE, comp.options["jlcomp"])
+        @test jlcomp.num_nodes == nn
+        @test jlcomp.arg1 == arg1
+        @test jlcomp.arg2 == arg2
+    end
+
+    @safetestset "require OpenMDAOCore.AbstractComp" begin
+        using OpenMDAO: DymosifiedCompWrapper
+        using OpenMDAOCore: OpenMDAOCore
+
+        struct FooNonODE
+            num_nodes::Int
+            arg1::Bool
+            arg2::Float64
+        end
+
+        FooNonODE(; num_nodes, arg1, arg2) = FooNonODE(num_nodes, arg1, arg2)
+
+        arg1 = false
+        arg2 = 3.0
+        # This shouldn't because FooNonODE is not an OpenMDAOCore.AbstractComp
+        @test_throws MethodError DymosifiedCompWrapper(FooNonODE; arg1, arg2)
+    end
+
+    @safetestset "require num_nodes" begin
+        using OpenMDAO: DymosifiedCompWrapper
+        using OpenMDAOCore: OpenMDAOCore
+        using PythonCall
+        using Test
+        
+        struct FooNoNumNodesODE <: OpenMDAOCore.AbstractExplicitComp
+            arg1::Bool
+            arg2::Float64
+        end
+
+        FooNoNumNodesODE(; arg1, arg2) = FooNoNumNodesODE(arg1, arg2)
+
+        arg1 = false
+        arg2 = 3.0
+        dcw = DymosifiedCompWrapper(FooNoNumNodesODE; arg1, arg2)
+        @test length(dcw) == 1
+
+        nn = 8
+        # this will fail because FooNoNumNodesODE doesn't have a num_nodes keyword argument
+        @test_throws MethodError dcw(num_nodes=nn)
+    end
+end

@@ -8,3 +8,5 @@ __pycache__
 *.sql
 dist
 .CondaPkg/
+*.db
+coloring_files
