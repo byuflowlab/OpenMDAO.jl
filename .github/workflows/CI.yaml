@@ -30,6 +30,7 @@ jobs:
           arch: ${{ matrix.arch }}
       - name: OpenMDAOCore.jl Tests
         shell: julia --color=yes --project=./julia/OpenMDAOCore.jl {0}
+        run: |
           using Pkg
           Pkg.develop(PackageSpec(path="./julia/OpenMDAOCore.jl"))
           Pkg.update()
