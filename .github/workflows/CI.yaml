@@ -29,10 +29,10 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - name: OpenMDAOCore.jl Tests
-        shell: julia --color=yes --project=$(mktemp -d) {0}
+        shell: julia --color=yes {0}
         run: |
           using Pkg
-          Pkg.develop(PackageSpec(path="./julia/OpenMDAOCore.jl"))
+          Pkg.activate("./julia/OpenMDAOCore.jl")
           Pkg.update()
           Pkg.test()
         env:
