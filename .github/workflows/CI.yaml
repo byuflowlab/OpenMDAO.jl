@@ -43,3 +43,12 @@ jobs:
           Pkg.test()
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
+      - name: OpenMDAO.jl Tests
+        shell: julia --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.activate("./julia/OpenMDAO.jl")
+          Pkg.update()
+          Pkg.test()
+        env:
+              JULIA_PKG_USE_CLI_GIT: 'true'
