@@ -81,13 +81,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: omjlcomps install
         run: |
+          pip install testflo
           pip install -e ./python
           python -c "import juliapkg; juliapkg.resolve()"
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
       - name: omjlcomps tests
         run: |
-          python ./python/omjlcomps/test/test_julia_explicit_comp.py
-          python ./python/omjlcomps/test/test_julia_implicit_comp.py
+          testflo python
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
