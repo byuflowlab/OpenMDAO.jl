@@ -42,13 +42,11 @@ jobs:
       - name: omjlcomps install
         run: |
           python -m pip install --upgrade pip
+          pip install testflo
           pip install -e ./python
-      - name: omjlcomps JuliaExplicitComp tests
+      - name: omjlcomps tests
         run: |
-          python python/omjlcomps/test/test_julia_explicit_comp.py
-      - name: omjlcomps JuliaImplicitComp tests
-        run: |
-          python python/omjlcomps/test/test_julia_implicit_comp.py
+          testflo ./python
       - name: OpenMDAOCore.jl Tests
         shell: julia --color=yes {0}
         run: |
