@@ -241,7 +241,11 @@ class TestJuliaExplicitCompWithLargeOption(unittest.TestCase):
         p_small.set_val("x", 3.0)
         p_small.run_model()
 
-        n_big = self.n_big = 1_000_000_000
+        if os.getenv("GITHUB_ACTIONS") == "true":
+            # n_big = 1_000_000_000 is too big for GitHub Actions---it appears to consume all the virtual machine's memory and kills the job, giving me a big sad.
+            n_big = self.n_big = 100_000_000
+        else:
+            n_big = self.n_big = 1_000_000_000
         p_big = self.p_big = om.Problem()
         ecomp_big = jl.ECompTest.ECompWithLargeOption(n_big)
         comp_big = JuliaExplicitComp(jlcomp=ecomp_big)
