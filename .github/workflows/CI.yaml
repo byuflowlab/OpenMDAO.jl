@@ -87,7 +87,6 @@ jobs:
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
       - name: Setup tmate session
-        if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 15
         with:
