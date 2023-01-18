@@ -10,9 +10,51 @@ on:
     tags: '*'
 
 jobs:
-  test:
+  julia:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        version:
+          - '1' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
+          - 'nightly'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/add-julia-registry@v1
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          registry: dingraha/DanielIngrahamRegistry
+        env:
+              JULIA_PKG_USE_CLI_GIT: 'true'
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - name: OpenMDAOCore.jl Tests
+        shell: julia --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.activate("./julia/OpenMDAOCore.jl")
+          Pkg.update()
+          Pkg.test()
+        env:
+              JULIA_PKG_USE_CLI_GIT: 'true'
+      - name: OpenMDAO.jl Tests
+        shell: julia --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.activate("./julia/OpenMDAO.jl")
+          Pkg.update()
+          Pkg.test()
+        env:
+              JULIA_PKG_USE_CLI_GIT: 'true'
+
+  python:
+    name: Python ${{ matrix.python-version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     strategy:
       matrix:
         version:
@@ -31,10 +73,6 @@ jobs:
           registry: dingraha/DanielIngrahamRegistry
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
-      - uses: julia-actions/setup-julia@v1
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -44,24 +82,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install testflo
           pip install -e ./python
+        env:
+              JULIA_PKG_USE_CLI_GIT: 'true'
       - name: omjlcomps tests
         run: |
           testflo ./python
-      - name: OpenMDAOCore.jl Tests
-        shell: julia --color=yes {0}
-        run: |
-          using Pkg
-          Pkg.activate("./julia/OpenMDAOCore.jl")
-          Pkg.update()
-          Pkg.test()
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
-      - name: OpenMDAO.jl Tests
-        shell: julia --color=yes {0}
-        run: |
-          using Pkg
-          Pkg.activate("./julia/OpenMDAO.jl")
-          Pkg.update()
-          Pkg.test()
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
