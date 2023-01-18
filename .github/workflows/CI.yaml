@@ -68,11 +68,6 @@ jobs:
         python-version: ["3.10"]
     steps:
       - uses: actions/checkout@v2
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
-        with:
-          limit-access-to-actor: true
       - uses: julia-actions/add-julia-registry@v1
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -96,3 +91,9 @@ jobs:
           testflo python
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
+        with:
+          limit-access-to-actor: true
