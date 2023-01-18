@@ -74,13 +74,13 @@ jobs:
           registry: dingraha/DanielIngrahamRegistry
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Setup miniconda
+        uses: conda-incubator/setup-miniconda@v2
         with:
+          auto-update-conda: true
           python-version: ${{ matrix.python-version }}
       - name: omjlcomps install
         run: |
-          python -m pip install --upgrade pip
           pip install -e ./python
           python -c "import juliapkg; juliapkg.resolve()"
         env:
