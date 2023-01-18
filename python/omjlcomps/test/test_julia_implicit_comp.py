@@ -1,7 +1,6 @@
 """
 Unit tests for JuliaImplicitComp
 """
-import juliacall # wtf
 import os
 import time
 import unittest
