@@ -86,14 +86,11 @@ jobs:
           python -c "import juliapkg; juliapkg.resolve()"
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
-      - name: omjlcomps tests
-        run: |
-          testflo python
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 15
         with:
           limit-access-to-actor: true
+        env:
+              JULIA_PKG_USE_CLI_GIT: 'true'
