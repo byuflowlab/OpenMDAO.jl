@@ -3,10 +3,10 @@ name: Tests
 on:
   pull_request:
     branches:
-      - pythoncall_juliacall
+      - master
   push:
     branches:
-      - pythoncall_juliacall
+      - master
     tags: '*'
 
 jobs:

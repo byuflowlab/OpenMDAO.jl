@@ -13,7 +13,7 @@ function main()
                       "A Simple Dymos Example"=>"brachistochrone.md",
                       "Reference"=>"reference.md"])
     if get(ENV, "CI", nothing) == "true"
-        deploydocs(repo="github.com/dingraha/OpenMDAO.jl.git", devbranch="pythoncall_juliacall")
+        deploydocs(repo="github.com/dingraha/OpenMDAO.jl.git", devbranch="master")
     end
 end
 
