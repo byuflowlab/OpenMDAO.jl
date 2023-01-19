@@ -1,6 +1,7 @@
 Manifest.toml
 .DS_Store
 build
+docs/build/
 dev
 reports
 __pycache__

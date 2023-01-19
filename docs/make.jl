@@ -12,6 +12,9 @@ function main()
                       "A More Complicated Example"=>"nonlinear_circuit.md",
                       "A Simple Dymos Example"=>"brachistochrone.md",
                       "Reference"=>"reference.md"])
+    if get(ENV, "CI", nothing) == "true"
+        deploydocs(repo="github.com/dingraha/OpenMDAO.jl.git")
+    end
 end
 
 end # module
