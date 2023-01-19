@@ -20,7 +20,7 @@ OpenMDAO.jl consists of three pieces of software:
     Users can install `OpenMDAO.jl` and have the full power of the OpenMDAO framework at their disposal in Julia.
 
 ## How (Installation Instructions)?
-There are two approaches to getting OpenMDAO working with Julia: the [Python-Centric Approach](#python-centric-approach) and the [Julia-Centric Approach](julia-centric-approach).
+There are two approaches to getting OpenMDAO working with Julia: the [Python-Centric Approach](#python-centric-approach) and the [Julia-Centric Approach](#julia-centric-approach).
 If you like Python and just want to have a little (or a lot) of Julia buried in your OpenMDAO `System`, then you'll probably prefer the Python-centric approach.
 If you're a huge fan of Julia and would like to pretend that OpenMDAO is a Julia library, you'll want the Julia-centric approach.
 Either way, pick one or the other: you don't need to follow both installation instructions.
