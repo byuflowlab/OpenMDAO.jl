@@ -1,6 +1,9 @@
 OpenMDAO.jl
 ===========
 
+[![Tests](https://github.com/dingraha/OpenMDAO.jl/actions/workflows/CI.yaml/badge.svg?branch=pythoncall_juliacall)](https://github.com/dingraha/OpenMDAO.jl/actions/workflows/CI.yaml)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://dingraha.github.io/OpenMDAO.jl/dev)
+
 What?
 -----
 Use Julia with [OpenMDAO](https://openmdao.org/)! OpenMDAO.jl is a Julia package that allows a user to:
