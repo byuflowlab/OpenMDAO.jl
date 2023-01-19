@@ -1,6 +1,6 @@
 # OpenMDAO.jl
 
-[![Tests](https://github.com/dingraha/OpenMDAO.jl/actions/workflows/CI.yaml/badge.svg?branch=pythoncall_juliacall)](https://github.com/dingraha/OpenMDAO.jl/actions/workflows/CI.yaml)
+[![Tests](https://github.com/dingraha/OpenMDAO.jl/actions/workflows/CI.yaml/badge.svg?branch=master)](https://github.com/dingraha/OpenMDAO.jl/actions/workflows/CI.yaml)
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://dingraha.github.io/OpenMDAO.jl/dev)
 
 ## What?
