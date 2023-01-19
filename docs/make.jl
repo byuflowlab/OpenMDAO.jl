@@ -17,4 +17,8 @@ function main()
     end
 end
 
+if !isinteractive()
+    main()
+end
+
 end # module
