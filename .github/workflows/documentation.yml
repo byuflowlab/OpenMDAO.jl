@@ -30,6 +30,7 @@ jobs:
         env:
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
         shell: julia --project=docs/ --color=yes {0}
+        run: |
           cd("docs")
           include("./make.jl")
           OpenMDAODocs.main()
