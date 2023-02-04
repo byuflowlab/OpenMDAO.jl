@@ -26,7 +26,6 @@ jobs:
       - uses: actions/checkout@v2
       - uses: julia-actions/add-julia-registry@v1
         with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
           registry: dingraha/DanielIngrahamRegistry
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
@@ -70,7 +69,6 @@ jobs:
       - uses: actions/checkout@v2
       - uses: julia-actions/add-julia-registry@v1
         with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
           registry: dingraha/DanielIngrahamRegistry
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
