@@ -15,14 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: julia-actions/add-julia-registry@v1
-        with:
-          registry: dingraha/DanielIngrahamRegistry
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1'
+      - name: Add DanielIngrahamRegistry
+        shell: julia --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.Registry.add(RegistrySpec(url="https://github.com/dingraha/DanielIngrahamRegistry"))
+        env:
+              JULIA_PKG_USE_CLI_GIT: 'true'
       - name: Install dependencies
         shell: julia --project=docs/ --color=yes {0}
         run: |
