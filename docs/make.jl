@@ -11,7 +11,8 @@ function main()
                       "A Simple Example"=>"simple_paraboloid.md",
                       "A More Complicated Example"=>"nonlinear_circuit.md",
                       "A Simple Dymos Example"=>"brachistochrone.md",
-                      "Reference"=>"reference.md"])
+                      "Reference"=>"reference.md",
+                      "Limitations"=>"limitations.md"])
     if get(ENV, "CI", nothing) == "true"
         deploydocs(repo="github.com/dingraha/OpenMDAO.jl.git", devbranch="master")
     end
