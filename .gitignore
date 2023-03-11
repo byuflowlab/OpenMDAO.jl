@@ -1,4 +1,13 @@
 Manifest.toml
 .DS_Store
 build
+docs/build/
 dev
+reports
+__pycache__
+*.egg-info
+*.sql
+dist
+.CondaPkg/
+*.db
+coloring_files

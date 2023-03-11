@@ -1,0 +1,6 @@
+[deps]
+openmdao = ""
+
+[pip.deps]
+juliapkg = ""
+omjlcomps = ""

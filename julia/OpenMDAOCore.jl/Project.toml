@@ -1,0 +1,4 @@
+name = "OpenMDAOCore"
+uuid = "24d19c10-6eee-420f-95df-4537264b2753"
+authors = ["Daniel Ingraham <d.j.ingraham@gmail.com>"]
+version = "0.2.9"

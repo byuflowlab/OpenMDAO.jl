@@ -1,7 +1,7 @@
-# OpenMDAO.jl
-
-[![Tests](https://github.com/byuflowlab/OpenMDAO.jl/actions/workflows/CI.yaml/badge.svg?branch=master)](https://github.com/byuflowlab/OpenMDAO.jl/actions/workflows/CI.yaml)
-[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://byuflowlab.github.io/OpenMDAO.jl/dev)
+```@meta
+CurrentModule = OpenMDAODocs
+```
+# OpenMDAO.jl Documentation
 
 ## What?
 Use Julia with [OpenMDAO](https://openmdao.org/)!
@@ -20,7 +20,7 @@ OpenMDAO.jl consists of three pieces of software:
     Users can install `OpenMDAO.jl` and have the full power of the OpenMDAO framework at their disposal in Julia.
 
 ## How (Installation Instructions)?
-There are two approaches to getting OpenMDAO working with Julia: the [Python-Centric Approach](#python-centric-approach) and the [Julia-Centric Approach](#julia-centric-approach).
+There are two approaches to getting OpenMDAO working with Julia: the [Python-Centric Approach](@ref python_centric) and the [Julia-Centric Approach](@ref julia_centric).
 If you like Python and just want to have a little (or a lot) of Julia buried in your OpenMDAO `System`, then you'll probably prefer the Python-centric approach.
 If you're a huge fan of Julia and would like to pretend that OpenMDAO is a Julia library, you'll want the Julia-centric approach.
 Either way, pick one or the other: you don't need to follow both installation instructions.
@@ -36,8 +36,7 @@ Either way, pick one or the other: you don't need to follow both installation in
 > pkg> registry add git@github.com:dingraha/DanielIngrahamRegistry.git
 > ```
 
-
-### Python-Centric Installation
+### [Python-Centric Installation](@id python_centric)
 The first (and only!) step is to install `omjlcomps`, which is in the Python Package Index, so a simple
 
 ```bash
@@ -47,17 +46,14 @@ pip install omjlcomps
 should be all you need.
 `omjlcomps` uses [`JuliaPkg`](https://github.com/cjdoris/PyJuliaPkg) to manage Julia dependencies, so all the Julia packages needed by `omjlcomps` (and even Julia itself, if necessary) will be installed automatically.
 
-### Julia-Centric Installation
-The OpenMDAOCore.jl and OpenMDAO.jl Julia packages are the official™ `DanielIngrahamRegistry`, so if you have access to that, installation should be as simple as
+### [Julia-Centric Installation](@id julia_centric)
+The OpenMDAOCore.jl and OpenMDAO.jl Julia package are the official™ `DanielIngrahamRegistry`, so if you have access to that, installation should be as simple as
 ```
 ] add OpenMDAOCore OpenMDAO
 ```
 in the Julia REPL.
 OpenMDAOCore.jl is a fairly small package without any Python dependencies, but OpenMDAO.jl depends on `omjlcomps` and `openmdao` itself.
 OpenMDAO.jl's Python dependencies are managed by [`CondaPkg`](https://github.com/cjdoris/CondaPkg.jl), and should be automatically installed into a separate Conda environment specific to your current Julia environment.
-
-## Next Steps
-Check out the [documentation](https://dingraha.github.io/OpenMDAO.jl/dev) for usage, examples, etc..
 
 ## Acknowledgements
 * An early version of OpenMDAO.jl was written by Daniel Ingraham, Justin Gray, and Andrew Ning while visiting Prof. Ning at Brigham Young University.
