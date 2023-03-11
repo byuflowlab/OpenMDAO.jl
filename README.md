@@ -1,7 +1,7 @@
 # OpenMDAO.jl
 
-[![Tests](https://github.com/dingraha/OpenMDAO.jl/actions/workflows/CI.yaml/badge.svg?branch=master)](https://github.com/dingraha/OpenMDAO.jl/actions/workflows/CI.yaml)
-[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://dingraha.github.io/OpenMDAO.jl/dev)
+[![Tests](https://github.com/byuflowlab/OpenMDAO.jl/actions/workflows/CI.yaml/badge.svg?branch=master)](https://github.com/byuflowlab/OpenMDAO.jl/actions/workflows/CI.yaml)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://byuflowlab.github.io/OpenMDAO.jl/dev)
 
 ## What?
 Use Julia with [OpenMDAO](https://openmdao.org/)!
