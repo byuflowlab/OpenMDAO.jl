@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>A Simple Example · OpenMDAO.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">OpenMDAO.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>A Simple Example</a><ul class="internal"><li><a class="tocitem" href="#The-Python-Implementation"><span>The Python Implementation</span></a></li><li><a class="tocitem" href="#The-Julia-Implementation"><span>The Julia Implementation</span></a></li><li><a class="tocitem" href="#Adding-Derivatives"><span>Adding Derivatives</span></a></li></ul></li><li><a class="tocitem" href="../nonlinear_circuit/">A More Complicated Example</a></li><li><a class="tocitem" href="../brachistochrone/">A Simple Dymos Example</a></li><li><a class="tocitem" href="../reference/">API Reference</a></li><li><a class="tocitem" href="../limitations/">Limitations</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>A Simple Example</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>A Simple Example</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/byuflowlab/OpenMDAO.jl/blob/master/docs/src/simple_paraboloid.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="A-Simple-Example:-Optimizing-a-Paraboloid"><a class="docs-heading-anchor" href="#A-Simple-Example:-Optimizing-a-Paraboloid">A Simple Example: Optimizing a Paraboloid</a><a id="A-Simple-Example:-Optimizing-a-Paraboloid-1"></a><a class="docs-heading-anchor-permalink" href="#A-Simple-Example:-Optimizing-a-Paraboloid" title="Permalink"></a></h1><p>We&#39;re going to duplicate the <a href="https://openmdao.org/newdocs/versions/latest/basic_user_guide/single_disciplinary_optimization/first_analysis.html">Paraboloid example from the OpenMDAO documentation</a>, but implement the single <code>ExplicitComponent</code> in Julia instead of Python. The goal of this tutorial is to minimize the paraboloid</p><p class="math-container">\[f(x,y) = (x - 3.0)^2 + xy + (y + 4.0)^2 - 3.0\]</p><p>with respect to <span>$x$</span> and <span>$y$</span>. The OpenMDAO docs say the answer is <span>$x = \frac{20}{3} \approx 6.667$</span> and <span>$y = -\frac{22}{3} \approx -7.333$</span>. Let&#39;s find out!</p><h2 id="The-Python-Implementation"><a class="docs-heading-anchor" href="#The-Python-Implementation">The Python Implementation</a><a id="The-Python-Implementation-1"></a><a class="docs-heading-anchor-permalink" href="#The-Python-Implementation" title="Permalink"></a></h2><p>One possible Python implementation of the above paraboloid is this:</p><pre><code class="language-python hljs">import openmdao.api as om
+
+
+class Paraboloid(om.ExplicitComponent):
+    &quot;&quot;&quot;
+    Evaluates the equation f(x,y) = (x-3)^2 + xy + (y+4)^2 - 3.
+    &quot;&quot;&quot;
+
+    def setup(self):
+        self.add_input(&#39;x&#39;, val=0.0)
+        self.add_input(&#39;y&#39;, val=0.0)
+
+        self.add_output(&#39;f_xy&#39;, val=0.0)
+
+        # Finite difference all partials.
+        self.declare_partials(&#39;*&#39;, &#39;*&#39;, method=&#39;fd&#39;)
+
+    def compute(self, inputs, outputs):
+        &quot;&quot;&quot;
+        f(x,y) = (x-3)^2 + xy + (y+4)^2 - 3
+
+        Minimum at: x = 6.6667; y = -7.3333
+        &quot;&quot;&quot;
+        x = inputs[&#39;x&#39;]
+        y = inputs[&#39;y&#39;]
+
+        outputs[&#39;f_xy&#39;] = (x - 3.0)**2 + x * y + (y + 4.0)**2 - 3.0</code></pre><p>Not too bad. How do we do it in Julia?</p><h2 id="The-Julia-Implementation"><a class="docs-heading-anchor" href="#The-Julia-Implementation">The Julia Implementation</a><a id="The-Julia-Implementation-1"></a><a class="docs-heading-anchor-permalink" href="#The-Julia-Implementation" title="Permalink"></a></h2><p>Like this, using <code>OpenMDAOCore.jl</code>:</p><pre><code class="language-julia hljs">using OpenMDAOCore: OpenMDAOCore
+
+struct Paraboloid &lt;: OpenMDAOCore.AbstractExplicitComp
+end
+
+function OpenMDAOCore.setup(self::Paraboloid)
+    inputs = [OpenMDAOCore.VarData(&quot;x&quot;, val=0.0), OpenMDAOCore.VarData(&quot;y&quot;, val=0.0)]
+    outputs = [OpenMDAOCore.VarData(&quot;f_xy&quot;, val=0.0)]
+    partials = [OpenMDAOCore.PartialsData(&quot;*&quot;, &quot;*&quot;, method=&quot;fd&quot;)]
+    return inputs, outputs, partials
+end
+
+function OpenMDAOCore.compute!(self::Paraboloid, inputs, outputs)
+    x = inputs[&quot;x&quot;][1]
+    y = inputs[&quot;y&quot;][1]
+
+    outputs[&quot;f_xy&quot;][1] = (x - 3.0)^2 + x * y + (y + 4.0)^2 - 3.0
+
+    return nothing
+end</code></pre><p>What does all that mean? We&#39;ll go through it step by step.</p><h3 id="Step-1:-Preamble"><a class="docs-heading-anchor" href="#Step-1:-Preamble">Step 1: Preamble</a><a id="Step-1:-Preamble-1"></a><a class="docs-heading-anchor-permalink" href="#Step-1:-Preamble" title="Permalink"></a></h3><pre><code class="language-julia hljs">using OpenMDAOCore: OpenMDAOCore</code></pre><p>This line loads the OpenMDAOCore.jl Julia package. Julia uses two different keywords for loading code from Julia modules: <code>using</code> and <code>import</code>. The <a href="https://docs.julialang.org/en/v1/manual/modules/">official Julia docs on Modules</a> do a good job of explaining the difference. I like doing <code>using Foo: Foo</code> because it brings the module name <code>Foo</code> into the current scope, but not any of the names inside of <code>Foo</code>, so it doesn&#39;t clutter the namespace. (The statement <code>using Foo: Foo</code> is kind of like Julia&#39;s version of <code>import foo</code> in Python, while just plain <code>using Foo</code> is like Python&#39;s <code>from foo import *</code>.)</p><h3 id="Step-2:-The-Paraboloid-struct"><a class="docs-heading-anchor" href="#Step-2:-The-Paraboloid-struct">Step 2: The <code>Paraboloid</code> <code>struct</code></a><a id="Step-2:-The-Paraboloid-struct-1"></a><a class="docs-heading-anchor-permalink" href="#Step-2:-The-Paraboloid-struct" title="Permalink"></a></h3><pre><code class="language-julia hljs">struct Paraboloid &lt;: OpenMDAOCore.AbstractExplicitComp
+end</code></pre><p>This bit of code defines a new type in Julia named <code>Paraboloid</code>. The <code>&lt;:</code> is the subtype operator in Julia, so we are telling Julia that our new <code>Paraboloid</code> type is a subtype of the <code>AbstractExplicitComp</code> type defined in <code>OpenMDAOCore</code>. This is the Julian equivalent of</p><pre><code class="language-python hljs">class Paraboloid(om.ExplicitComponent):</code></pre><p>in Python.</p><h3 id="Step-3:-OpenMDAOCore.setup"><a class="docs-heading-anchor" href="#Step-3:-OpenMDAOCore.setup">Step 3: <code>OpenMDAOCore.setup</code></a><a id="Step-3:-OpenMDAOCore.setup-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-OpenMDAOCore.setup" title="Permalink"></a></h3><pre><code class="language-julia hljs">function OpenMDAOCore.setup(self::Paraboloid)
+    inputs = [OpenMDAOCore.VarData(&quot;x&quot;, val=0.0), OpenMDAOCore.VarData(&quot;y&quot;, val=0.0)]
+    outputs = [OpenMDAOCore.VarData(&quot;f_xy&quot;, val=0.0)]
+    partials = [OpenMDAOCore.PartialsData(&quot;*&quot;, &quot;*&quot;, method=&quot;fd&quot;)]
+    return inputs, outputs, partials
+end</code></pre><p>This <code>OpenMDAOCore.setup</code> method is the Julian equivalent of the <code>ExplicitComponent.setup</code> method from the Python version of the paraboloid. The job of <code>OpenMDAOCore.setup</code> is to take a single argument (an <code>OpenMDAOCore.AbstractExplicitComp</code> or <code>OpenMDAOCore.AbstractImplicitComp</code>) and return three things:</p><ul><li>A <code>Vector</code> of <code>VarData</code> <code>structs</code> containing metadata for the inputs to the component</li><li>A <code>Vector</code> of <code>VarData</code> <code>structs</code> containing metadata for the outputs of the component</li><li>A <code>Vector</code> of <code>PartialsData</code> <code>structs</code> containing metadata for the partial derivatives of the component</li></ul><p>These Julia <code>Vector</code>s must always be returned in that order: inputs, outputs, partials. OpenMDAO.jl uses the <code>VarData</code> entries in the <code>inputs</code> and <code>outputs</code> <code>Vectors</code> to construct arguments to the <code>Component.add_input</code> and <code>Component.add_output</code>, respectively. And OpenMDAO.jl uses the <code>PartialsData</code> entries in the <code>partials</code> <code>Vector</code> to construct arguments to <code>Component.declare_partials</code>. The <a href="../reference/#OpenMDAOCore.VarData"><code>OpenMDAOCore.VarData</code></a> and <a href="../reference/#OpenMDAOCore.PartialsData"><code>OpenMDAOCore.PartialsData</code></a> docstrings have all the details.</p><h3 id="Step-4:-OpenMDAOCore.compute!"><a class="docs-heading-anchor" href="#Step-4:-OpenMDAOCore.compute!">Step 4: <code>OpenMDAOCore.compute!</code></a><a id="Step-4:-OpenMDAOCore.compute!-1"></a><a class="docs-heading-anchor-permalink" href="#Step-4:-OpenMDAOCore.compute!" title="Permalink"></a></h3><pre><code class="language-julia hljs">function OpenMDAOCore.compute!(self::Paraboloid, inputs, outputs)
+    x = inputs[&quot;x&quot;][1]
+    y = inputs[&quot;y&quot;][1]
+
+    outputs[&quot;f_xy&quot;][1] = (x - 3.0)^2 + x * y + (y + 4.0)^2 - 3.0
+
+    return nothing
+end</code></pre><p>This <code>OpenMDAOCore.compute!</code> method is the equivalent of the <code>Paraboloid.compute</code> method from the Python version of the Paraboloid. Its job is to take a <code>Paraboloid</code> <code>struct</code> and a <code>Dict</code> of inputs, calculate the outputs, and then store these outputs in the <code>outputs</code> <code>Dict</code>. The <code>inputs</code> and <code>outputs</code> <code>Dict</code> entries are Julia arrays, similar to the NumPy arrays that OpenMDAO uses. (They are actually <a href="https://cjdoris.github.io/PythonCall.jl/stable/pythoncall-reference/#PythonCall.PyArray"><code>PyArray</code>s</a> from the <code>PythonCall</code> package, which are wrappers around the NumPy arrays that OpenMDAO creates for us.)</p><p>Now we need to figure out how to get that Julia code into OpenMDAO. How we do that depends on whether we&#39;re following the Python-Centric Approach or Julia-Centric Approach.</p><h3 id="The-Python-Centric-Run-Script"><a class="docs-heading-anchor" href="#The-Python-Centric-Run-Script">The Python-Centric Run Script</a><a id="The-Python-Centric-Run-Script-1"></a><a class="docs-heading-anchor-permalink" href="#The-Python-Centric-Run-Script" title="Permalink"></a></h3><p>We&#39;ll use JuliaCall, provided by the <a href="https://github.com/cjdoris/PythonCall.jl">PythonCall</a> package, to import the Julia code from the previous section into Python. Then we can use the <code>omjlcomps</code> Python package to create an OpenMDAO <code>ExplicitComponent</code> from the <code>Paraboloid</code> Julia <code>struct</code>, and write a run script as usual.</p><pre><code class="language-python hljs">import openmdao.api as om
+
+# Create a new Julia module that will hold all the Julia code imported into this Python module.
+import juliacall; jl = juliacall.newmodule(&quot;ParaboloidExample&quot;)
+
+# This assumes the file with the Julia Paraboloid implementation is in the current directory and is named `paraboloid.jl`.
+jl.include(&quot;paraboloid.jl&quot;)
+# Now we have access to everything in `paraboloid.jl`.
+
+# omjlcomps knows how to create an OpenMDAO ExplicitComponent from an OpenMDAOCore.AbstractExplicitComp
+from omjlcomps import JuliaExplicitComp
+comp = JuliaExplicitComp(jlcomp=jl.Paraboloid())
+
+# Now everything else is the same as https://openmdao.org/newdocs/versions/latest/basic_user_guide/single_disciplinary_optimization/first_analysis.html
+model = om.Group()
+model.add_subsystem(&#39;parab_comp&#39;, comp)
+
+prob = om.Problem(model)
+
+prob.driver = om.ScipyOptimizeDriver()
+prob.driver.options[&#39;optimizer&#39;] = &#39;SLSQP&#39;
+
+prob.model.add_design_var(&#39;parab_comp.x&#39;)
+prob.model.add_design_var(&#39;parab_comp.y&#39;)
+prob.model.add_objective(&#39;parab_comp.f_xy&#39;)
+
+prob.setup()
+
+prob.set_val(&#39;parab_comp.x&#39;, 3.0)
+prob.set_val(&#39;parab_comp.y&#39;, -4.0)
+
+prob.run_model()
+print(prob[&#39;parab_comp.f_xy&#39;])  # Should print `[-15.]`
+
+prob.set_val(&#39;parab_comp.x&#39;, 5.0)
+prob.set_val(&#39;parab_comp.y&#39;, -2.0)
+
+prob.run_model()
+print(prob.get_val(&#39;parab_comp.f_xy&#39;))  # Should print `[-5.]`
+
+prob.run_driver()
+print(f&quot;f_xy = {prob.get_val(&#39;parab_comp.f_xy&#39;)}&quot;)  # Should print `[-27.33333333]`
+print(f&quot;x = {prob.get_val(&#39;parab_comp.x&#39;)}&quot;)  # Should print `[6.66666633]`
+print(f&quot;y = {prob.get_val(&#39;parab_comp.y&#39;)}&quot;)  # Should print `[-7.33333367]`</code></pre><p>The above Python run script should look pretty familiar if you have experience using OpenMDAO. The only difference from a pure-Python version is the little bit at the top that we use to create the <code>JuliaExplicitComp</code>.</p><h3 id="The-Julia-Centric-Run-Script"><a class="docs-heading-anchor" href="#The-Julia-Centric-Run-Script">The Julia-Centric Run Script</a><a id="The-Julia-Centric-Run-Script-1"></a><a class="docs-heading-anchor-permalink" href="#The-Julia-Centric-Run-Script" title="Permalink"></a></h3><p>Now let&#39;s see if we can write a Julia run script:</p><pre><code class="language-julia hljs">using OpenMDAO: om, make_component
+
+prob = om.Problem()
+
+# omjlcomps knows how to create an OpenMDAO ExplicitComponent from an OpenMDAOCore.AbstractExplicitComp
+comp = make_component(Paraboloid())
+
+model = om.Group()
+model.add_subsystem(&quot;parab_comp&quot;, comp)
+
+prob = om.Problem(model)
+
+prob.driver = om.ScipyOptimizeDriver()
+prob.driver.options[&quot;optimizer&quot;] = &quot;SLSQP&quot;
+
+prob.model.add_design_var(&quot;parab_comp.x&quot;)
+prob.model.add_design_var(&quot;parab_comp.y&quot;)
+prob.model.add_objective(&quot;parab_comp.f_xy&quot;)
+
+prob.setup()
+
+prob.set_val(&quot;parab_comp.x&quot;, 3.0)
+prob.set_val(&quot;parab_comp.y&quot;, -4.0)
+
+prob.run_model()
+println(prob[&quot;parab_comp.f_xy&quot;])  # Should print `[-15.]`
+
+prob.set_val(&quot;parab_comp.x&quot;, 5.0)
+prob.set_val(&quot;parab_comp.y&quot;, -2.0)
+
+prob.run_model()
+println(prob.get_val(&quot;parab_comp.f_xy&quot;))  # Should print `[-5.]`
+
+prob.run_driver()
+println(&quot;f_xy = $(prob.get_val(&quot;parab_comp.f_xy&quot;))&quot;)  # Should print `[-27.33333333]`
+println(&quot;x = $(prob.get_val(&quot;parab_comp.x&quot;))&quot;)  # Should print `[6.66666633]`
+println(&quot;y = $(prob.get_val(&quot;parab_comp.y&quot;))&quot;)  # Should print `[-7.33333367]`</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[-15.]
+[-5.]
+Optimization terminated successfully    (Exit mode 0)
+            Current function value: 18.016167304638337
+            Iterations: 24
+            Function evaluations: 24
+            Gradient evaluations: 24
+Optimization Complete
+-----------------------------------
+
+=======
+circuit
+=======
+NL: Newton 0 ; 0.00141407214 1
+|  LS: AG 1 ; 6.9707252e+152 1
+|  LS: AG 2 ; 8.51199079e+68 0.5
+|  LS: AG 3 ; 9.40605982e+26 0.25
+|  LS: AG 4 ; 988771.709 0.125
+|  LS: AG 5 ; 0.00130322117 0.0625
+NL: Newton 1 ; 0.00130322117 0.921608691
+|  LS: AG 1 ; 5580826.07 1
+|  LS: AG 2 ; 13.3748871 0.5
+|  LS: AG 3 ; 0.0198015756 0.25
+|  LS: AG 4 ; 0.000828003297 0.125
+NL: Newton 2 ; 0.000828003297 0.585545301
+NL: Newton 3 ; 7.02986117e-06 0.00497135964
+NL: Newton 4 ; 2.64550002e-08 1.87083809e-05
+NL: Newton 5 ; 3.78431444e-13 2.67618202e-10
+NL: Newton Converged
+f_xy = [-27.33333333]
+x = [6.66666633]
+y = [-7.33333367]</code></pre><p>(This example assumes that the definition of the <code>Paraboloid</code> <code>struct</code> is included in the same file. So concatenate those two code blocks if you&#39;d like to run this yourself.) Good news—we got the expected answer!</p><h2 id="Adding-Derivatives"><a class="docs-heading-anchor" href="#Adding-Derivatives">Adding Derivatives</a><a id="Adding-Derivatives-1"></a><a class="docs-heading-anchor-permalink" href="#Adding-Derivatives" title="Permalink"></a></h2><p>In the previous example we used OpenMDAO&#39;s finite difference method to approximate the paraboloid&#39;s partial derivatives. We can calculate them ourselves, though, just like in a Python OpenMDAO Component. Here&#39;s the implementation:</p><pre><code class="language-julia hljs">using OpenMDAOCore: OpenMDAOCore
+
+struct ParaboloidUserPartials &lt;: OpenMDAOCore.AbstractExplicitComp
+end
+
+function OpenMDAOCore.setup(self::ParaboloidUserPartials)
+    inputs = [OpenMDAOCore.VarData(&quot;x&quot;, val=0.0), OpenMDAOCore.VarData(&quot;y&quot;, val=0.0)]
+    outputs = [OpenMDAOCore.VarData(&quot;f_xy&quot;, val=0.0)]
+    partials = [OpenMDAOCore.PartialsData(&quot;*&quot;, &quot;*&quot;)]
+    return inputs, outputs, partials
+end
+
+function OpenMDAOCore.compute!(self::ParaboloidUserPartials, inputs, outputs)
+    x = inputs[&quot;x&quot;][1]
+    y = inputs[&quot;y&quot;][1]
+
+    outputs[&quot;f_xy&quot;][1] = (x - 3.0)^2 + x * y + (y + 4.0)^2 - 3.0
+
+    return nothing
+end
+
+function OpenMDAOCore.compute_partials!(self::ParaboloidUserPartials, inputs, partials)
+    x = inputs[&quot;x&quot;][1]
+    y = inputs[&quot;y&quot;][1]
+
+    partials[&quot;f_xy&quot;, &quot;x&quot;][1] = 2*(x - 3.0) + y
+    partials[&quot;f_xy&quot;, &quot;y&quot;][1] = x + 2*(y + 4.0)
+
+    return nothing
+end</code></pre><p>The implementation of <code>ParaboloidUserPartials</code> is almost the same as <code>Paraboloid</code>. The are only two differences:</p><ul><li>We&#39;ve removed the <code>method=&quot;fd&quot;</code> argument from the call to the <code>PartialsData</code> constructor. This means the <code>method</code> argument will default to <code>&quot;exact&quot;</code> (as shown in the docstring above), and OpenMDAO will expect we&#39;ll calculate the derivatives of this component ourselves.</li><li>We&#39;ve implemented a <code>compute_partials!</code> method for our new <code>ParaboloidUserPartials</code> <code>struct</code>. This is just like an <code>ExplicitComponent.compute_partials</code> method in a Python OpenMDAO component. Its job is to calculate the the derivatives of the outputs with respect to the inputs, of course.</li></ul><p>So, we implemented a <code>compute_partials!</code> method. But how do we know if they&#39;re right? The OpenMDAO <code>Problem</code> class has a method called <code>check_partials</code> that compares the user-defined partial derivatives to the finite difference method. Can we use that with an <code>OpenMDAOCore.AbstractExplicitComp</code>? Let&#39;s try!</p><pre><code class="language-julia hljs">using OpenMDAO: om, make_component
+
+prob = om.Problem()
+
+# omjlcomps knows how to create an OpenMDAO ExplicitComponent from an OpenMDAOCore.AbstractExplicitComp
+comp = make_component(ParaboloidUserPartials())
+
+model = om.Group()
+model.add_subsystem(&quot;parab_comp&quot;, comp)
+
+prob = om.Problem(model)
+
+prob.driver = om.ScipyOptimizeDriver()
+prob.driver.options[&quot;optimizer&quot;] = &quot;SLSQP&quot;
+
+prob.model.add_design_var(&quot;parab_comp.x&quot;)
+prob.model.add_design_var(&quot;parab_comp.y&quot;)
+prob.model.add_objective(&quot;parab_comp.f_xy&quot;)
+
+prob.setup(force_alloc_complex=true)
+
+prob.set_val(&quot;parab_comp.x&quot;, 3.0)
+prob.set_val(&quot;parab_comp.y&quot;, -4.0)
+
+prob.run_model()
+println(prob.check_partials(method=&quot;fd&quot;))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">{&#39;parab_comp&#39;: {(&#39;f_xy&#39;, &#39;x&#39;): {&#39;J_fwd&#39;: array([[-4.]]), &#39;J_fd&#39;: array([[-3.999999]]), &#39;abs error&#39;: ErrorTuple(forward=9.99529788714426e-07, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=4.0, reverse=None, fd=3.9999990004702113), &#39;rel error&#39;: ErrorTuple(forward=2.498825096198595e-07, reverse=None, forward_reverse=None)}, (&#39;f_xy&#39;, &#39;y&#39;): {&#39;J_fwd&#39;: array([[3.]]), &#39;J_fd&#39;: array([[3.000001]]), &#39;abs error&#39;: ErrorTuple(forward=9.99620056063577e-07, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=3.0, reverse=None, fd=3.000000999620056), &#39;rel error&#39;: ErrorTuple(forward=3.332065743278675e-07, reverse=None, forward_reverse=None)}}}</code></pre><p>It worked! And the error is quite small.</p><p>What about the complex step method?</p><pre><code class="language-julia hljs">println(prob.check_partials(method=&quot;cs&quot;))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">{&#39;parab_comp&#39;: {(&#39;f_xy&#39;, &#39;x&#39;): {&#39;J_fwd&#39;: array([[-4.]]), &#39;J_fd&#39;: array([[-4.]]), &#39;abs error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=4.0, reverse=None, fd=4.0), &#39;rel error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None)}, (&#39;f_xy&#39;, &#39;y&#39;): {&#39;J_fwd&#39;: array([[3.]]), &#39;J_fd&#39;: array([[3.]]), &#39;abs error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=3.0, reverse=None, fd=3.0), &#39;rel error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None)}}}</code></pre><p>It works! (The error is zero since the complex-step method is second-order accurate and we&#39;re differentiating a second-order polynomial.) Complex numbers are no problem for Julia, but just like Python, we need to be careful to write our <code>compute_partials!</code> function in a complex-step-safe manner.</p><div class="admonition is-info"><header class="admonition-header">FLOWMath.jl</header><div class="admonition-body"><p>The Julia library <a href="https://github.com/byuflowlab/FLOWMath.jl">FLOWMath</a> has a collection of complex-step-safe functions.</p></div></div><p>Now, let&#39;s try an optimization:</p><pre><code class="language-julia hljs">prob.run_driver()
+println(&quot;f_xy = $(prob.get_val(&quot;parab_comp.f_xy&quot;))&quot;)  # Should print `[-27.33333333]`
+println(&quot;x = $(prob.get_val(&quot;parab_comp.x&quot;))&quot;)  # Should print `[6.66666633]`
+println(&quot;y = $(prob.get_val(&quot;parab_comp.y&quot;))&quot;)  # Should print `[-7.33333367]`</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Optimization terminated successfully    (Exit mode 0)
+            Current function value: -27.333333333333
+            Iterations: 4
+            Function evaluations: 5
+            Gradient evaluations: 4
+Optimization Complete
+-----------------------------------
+-----------------------------------------
+Component: JuliaExplicitComp &#39;parab_comp&#39;
+-----------------------------------------
+
+  parab_comp: &#39;f_xy&#39; wrt &#39;x&#39;
+    Analytic Magnitude: 4.000000e+00
+          Fd Magnitude: 3.999999e+00 (fd:forward)
+    Absolute Error (Jan - Jfd) : 9.995298e-07
+
+    Relative Error (Jan - Jfd) / Jfd : 2.498825e-07
+
+    Raw Analytic Derivative (Jfor)
+[[-4.]]
+
+    Raw FD Derivative (Jfd)
+[[-3.999999]]
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  parab_comp: &#39;f_xy&#39; wrt &#39;y&#39;
+    Analytic Magnitude: 3.000000e+00
+          Fd Magnitude: 3.000001e+00 (fd:forward)
+    Absolute Error (Jan - Jfd) : 9.996201e-07
+
+    Relative Error (Jan - Jfd) / Jfd : 3.332066e-07
+
+    Raw Analytic Derivative (Jfor)
+[[3.]]
+
+    Raw FD Derivative (Jfd)
+[[3.000001]]
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+-----------------------------------------
+Component: JuliaExplicitComp &#39;parab_comp&#39;
+-----------------------------------------
+
+  parab_comp: &#39;f_xy&#39; wrt &#39;x&#39;
+    Analytic Magnitude: 4.000000e+00
+          Fd Magnitude: 4.000000e+00 (cs:None)
+    Absolute Error (Jan - Jfd) : 0.000000e+00
+
+    Relative Error (Jan - Jfd) / Jfd : 0.000000e+00
+
+    Raw Analytic Derivative (Jfor)
+[[-4.]]
+
+    Raw FD Derivative (Jfd)
+[[-4.]]
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  parab_comp: &#39;f_xy&#39; wrt &#39;y&#39;
+    Analytic Magnitude: 3.000000e+00
+          Fd Magnitude: 3.000000e+00 (cs:None)
+    Absolute Error (Jan - Jfd) : 0.000000e+00
+
+    Relative Error (Jan - Jfd) / Jfd : 0.000000e+00
+
+    Raw Analytic Derivative (Jfor)
+[[3.]]
+
+    Raw FD Derivative (Jfd)
+[[3.]]
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+f_xy = [-27.33333333]
+x = [6.66666667]
+y = [-7.33333333]</code></pre><p>Still works, and we got the right answer.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../nonlinear_circuit/">A More Complicated Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 11 March 2023 12:55">Saturday 11 March 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

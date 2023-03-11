@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>A More Complicated Example · OpenMDAO.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">OpenMDAO.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../simple_paraboloid/">A Simple Example</a></li><li class="is-active"><a class="tocitem" href>A More Complicated Example</a><ul class="internal"><li><a class="tocitem" href="#Preamble"><span>Preamble</span></a></li><li><a class="tocitem" href="#An-Explicit-Component-with-an-Option:-The-Resistor"><span>An Explicit Component with an Option: The <code>Resistor</code></span></a></li><li><a class="tocitem" href="#An-Explicit-Component-with-Two-Options:-The-Diode"><span>An Explicit Component with Two Options: The <code>Diode</code></span></a></li><li><a class="tocitem" href="#Our-First-Implicit-Component:-The-Node"><span>Our First Implicit Component: The <code>Node</code></span></a></li><li><a class="tocitem" href="#The-Run-Script"><span>The Run Script</span></a></li></ul></li><li><a class="tocitem" href="../brachistochrone/">A Simple Dymos Example</a></li><li><a class="tocitem" href="../reference/">API Reference</a></li><li><a class="tocitem" href="../limitations/">Limitations</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>A More Complicated Example</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>A More Complicated Example</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/byuflowlab/OpenMDAO.jl/blob/master/docs/src/nonlinear_circuit.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="A-More-Complicated-Example:-Nonlinear-Circuit"><a class="docs-heading-anchor" href="#A-More-Complicated-Example:-Nonlinear-Circuit">A More Complicated Example: Nonlinear Circuit</a><a id="A-More-Complicated-Example:-Nonlinear-Circuit-1"></a><a class="docs-heading-anchor-permalink" href="#A-More-Complicated-Example:-Nonlinear-Circuit" title="Permalink"></a></h1><p>This tutorial will implement <a href="https://openmdao.org/newdocs/versions/latest/examples/circuit_analysis_examples.html">the nonlinear circuit example from the OpenMDAO docs</a> in Julia. Along the way, we&#39;ll learn</p><ul><li>how to create implicit components with OpenMDAO.jl</li><li>how to create OpenMDAO.jl components with metadata (the equivalent of <a href="https://openmdao.org/newdocs/versions/latest/features/core_features/working_with_components/options.html"><code>options</code></a> in a normal Python component)</li><li>how to specify default values for component metadata</li></ul><h2 id="Preamble"><a class="docs-heading-anchor" href="#Preamble">Preamble</a><a id="Preamble-1"></a><a class="docs-heading-anchor-permalink" href="#Preamble" title="Permalink"></a></h2><p>We&#39;ll need the OpenMDAOCore package, of course:</p><pre><code class="language-julia hljs">using OpenMDAOCore: OpenMDAOCore</code></pre><h2 id="An-Explicit-Component-with-an-Option:-The-Resistor"><a class="docs-heading-anchor" href="#An-Explicit-Component-with-an-Option:-The-Resistor">An Explicit Component with an Option: The <code>Resistor</code></a><a id="An-Explicit-Component-with-an-Option:-The-Resistor-1"></a><a class="docs-heading-anchor-permalink" href="#An-Explicit-Component-with-an-Option:-The-Resistor" title="Permalink"></a></h2><p>Next we&#39;ll create an explicit component that models a resistor. The resistor has one option: the resistance, <code>R</code>. We&#39;ll make <code>R</code> a field in the Julia struct that we&#39;ll use for the <code>Resistor</code> component:</p><pre><code class="language-julia hljs">struct Resistor &lt;: OpenMDAOCore.AbstractExplicitComp
+    R::Float64
+end</code></pre><p>Now we&#39;d like to use a default value of <code>1.0</code> for the resistance. We can do that by creating an <a href="https://docs.julialang.org/en/v1/manual/constructors/">outer constructor</a> for the <code>Resistor</code> <code>struct</code> with a default keyword value.</p><pre><code class="language-julia hljs"># Default value for R.
+Resistor(; R=1.0) = Resistor(R)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.Resistor</code></pre><p>Next, we&#39;ll create a <code>setup</code> function as usual:</p><pre><code class="language-julia hljs">function OpenMDAOCore.setup(self::Resistor)
+    input_data = [OpenMDAOCore.VarData(&quot;V_in&quot;; units=&quot;V&quot;), OpenMDAOCore.VarData(&quot;V_out&quot;; units=&quot;V&quot;)]
+    output_data = [OpenMDAOCore.VarData(&quot;I&quot;; units=&quot;A&quot;)]
+
+    R = self.R
+    partials_data = [OpenMDAOCore.PartialsData(&quot;I&quot;, &quot;V_in&quot;, val=1/R),
+                     OpenMDAOCore.PartialsData(&quot;I&quot;, &quot;V_out&quot;, val=-1/R),]
+
+    return input_data, output_data, partials_data
+end</code></pre><p>Since this is a linear resistor, the derivatives are constant, and we can set them via the <code>val</code> argument in the <code>PartialsData</code> <code>struct</code>, just like in OpenMDAO&#39;s <a href="https://openmdao.org/newdocs/versions/latest/features/core_features/working_with_derivatives/specifying_partials.html"><code>declare_partials</code></a> method. Also notice that we can specify units for each of the inputs and outputs, just like in a Python OpenMDAO component.</p><p>Finally, we&#39;ll implement the <code>compute!</code> method:</p><pre><code class="language-julia hljs">function OpenMDAOCore.compute!(self::Resistor, inputs, outputs)
+    deltaV = inputs[&quot;V_in&quot;][1] - inputs[&quot;V_out&quot;][1]
+    outputs[&quot;I&quot;][1] = deltaV/self.R
+
+    return nothing
+end</code></pre><p>Notice that we have access to the <code>R</code> field in the <code>Resistor</code> <code>struct</code>, named <code>self</code> here. (We could call it anything, just like in a Python method.)</p><h2 id="An-Explicit-Component-with-Two-Options:-The-Diode"><a class="docs-heading-anchor" href="#An-Explicit-Component-with-Two-Options:-The-Diode">An Explicit Component with Two Options: The <code>Diode</code></a><a id="An-Explicit-Component-with-Two-Options:-The-Diode-1"></a><a class="docs-heading-anchor-permalink" href="#An-Explicit-Component-with-Two-Options:-The-Diode" title="Permalink"></a></h2><p>We need two parameters to characterize the Diode: the saturation current <code>Is</code> and the thermal voltage <code>Vt</code>:</p><pre><code class="language-julia hljs">struct Diode &lt;: OpenMDAOCore.AbstractExplicitComp
+    Is::Float64
+    Vt::Float64
+end</code></pre><p>Next, we&#39;ll create an constructor that sets both options using keyword arguments, and provides default values for both.</p><pre><code class="language-julia hljs"># Use Julia&#39;s keyword arguments to set default values.
+Diode(; Is=1e-15, Vt=0.025875) = Diode(Is, Vt)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.Diode</code></pre><p>Next, we&#39;ll implement the <code>setup</code> method for the Diode.</p><pre><code class="language-julia hljs">function OpenMDAOCore.setup(self::Diode)
+    input_data = [OpenMDAOCore.VarData(&quot;V_in&quot;; units=&quot;V&quot;), OpenMDAOCore.VarData(&quot;V_out&quot;; units=&quot;V&quot;)]
+    output_data = [OpenMDAOCore.VarData(&quot;I&quot;; units=&quot;A&quot;)]
+
+    partials_data = [OpenMDAOCore.PartialsData(&quot;I&quot;, &quot;V_in&quot;), OpenMDAOCore.PartialsData(&quot;I&quot;, &quot;V_out&quot;)]
+
+    return input_data, output_data, partials_data
+end</code></pre><p>Nothing unusual here.</p><p>Finally, the <code>compute!</code> and <code>compute_partials!</code> methods:</p><pre><code class="language-julia hljs">function OpenMDAOCore.compute!(self::Diode, inputs, outputs)
+    deltaV = inputs[&quot;V_in&quot;][1] - inputs[&quot;V_out&quot;][1]
+	Is = self.Is
+	Vt = self.Vt
+    outputs[&quot;I&quot;][1] = Is * (exp(deltaV / Vt) - 1)
+    return nothing
+end
+
+function OpenMDAOCore.compute_partials!(self::Diode, inputs, J)
+	deltaV = inputs[&quot;V_in&quot;][1] - inputs[&quot;V_out&quot;][1]
+	Is = self.Is
+	Vt = self.Vt
+	I = Is * exp(deltaV / Vt)
+
+	J[&quot;I&quot;, &quot;V_in&quot;][1, 1] = I/Vt
+	J[&quot;I&quot;, &quot;V_out&quot;][1, 1] = -I/Vt
+
+	return nothing
+end</code></pre><p>Like the <code>Resistor</code>, we have access to the <code>Is</code> and <code>Vt</code> options in the <code>Diode</code> <code>struct</code> in both methods.</p><h2 id="Our-First-Implicit-Component:-The-Node"><a class="docs-heading-anchor" href="#Our-First-Implicit-Component:-The-Node">Our First Implicit Component: The <code>Node</code></a><a id="Our-First-Implicit-Component:-The-Node-1"></a><a class="docs-heading-anchor-permalink" href="#Our-First-Implicit-Component:-The-Node" title="Permalink"></a></h2><p>Our final component we need for the circuit is an implicit one: the <code>Node</code>. Each node can have an arbitrary number of incoming and outgoing currents, so we&#39;ll need two integer options to keep track of that:</p><pre><code class="language-julia hljs">struct Node &lt;: OpenMDAOCore.AbstractImplicitComp
+    n_in::Int
+	n_out::Int
+end</code></pre><p>We&#39;ll have <code>n_in</code> and <code>n_out</code> both default to one, though:</p><pre><code class="language-julia hljs">Node(; n_in=1, n_out=1) = Node(n_in, n_out)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.Node</code></pre><p>Next up is the <code>setup</code> method. We&#39;ll need to use a loop to create all the inputs and outputs needed for the component:</p><pre><code class="language-julia hljs">function OpenMDAOCore.setup(self::Node)
+    output_data = [OpenMDAOCore.VarData(&quot;V&quot;, val=5.0, units=&quot;V&quot;)]
+
+    input_data = Vector{OpenMDAOCore.VarData}()
+    partials_data = Vector{OpenMDAOCore.PartialsData}()
+
+	for i in 0:self.n_in-1
+        i_name = &quot;I_in:$i&quot;
+        push!(input_data, OpenMDAOCore.VarData(i_name; units=&quot;A&quot;))
+        push!(partials_data, OpenMDAOCore.PartialsData(&quot;V&quot;, i_name; val=1.0))
+	end
+
+	for i in 0:self.n_out-1
+        i_name = &quot;I_out:$i&quot;
+        push!(input_data, OpenMDAOCore.VarData(i_name; units=&quot;A&quot;))
+        push!(partials_data, OpenMDAOCore.PartialsData(&quot;V&quot;, i_name; val=-1.0))
+	end
+
+	return input_data, output_data, partials_data
+end</code></pre><p>We could have done something fancier like an array comprehension to create the <code>VarData</code> and <code>PartialsData</code> <code>structs</code>:</p><pre><code class="language-julia hljs">input_data = [OpenMDAOCore.VarData(&quot;I_in:$i&quot;; units=&quot;A&quot;) for i in 0:self.n_in-1]</code></pre><p>Also, the derivatives are constant for the node, so we set them in the <code>PartialsData</code> <code>struct</code>.</p><p>Finally, we just need to write the <code>apply_nonlinear!</code> method:</p><pre><code class="language-julia hljs">function OpenMDAOCore.apply_nonlinear!(self::Node, inputs, outputs, residuals)
+    residuals[&quot;V&quot;][1] = 0.0
+    for i_conn in 0:self.n_in-1
+        residuals[&quot;V&quot;][1] += inputs[&quot;I_in:$i_conn&quot;][1]
+    end
+    for i_conn in 0:self.n_out-1
+        residuals[&quot;V&quot;][1] -= inputs[&quot;I_out:$i_conn&quot;][1]
+    end
+
+    return nothing
+end</code></pre><p>We see that the <code>apply_nonlinear!</code> OpenMDAO.jl method is very similar to the <code>apply_nonlinear</code> method on a normal Python <a href="https://openmdao.org/newdocs/versions/latest/features/core_features/working_with_components/implicit_component.html#implicitcomponent-methods"><code>ImplicitComponent</code></a>— its job is to calculate the residual of the implicit equation(s) it is modeling from the <code>inputs</code> and <code>outputs</code>.</p><h2 id="The-Run-Script"><a class="docs-heading-anchor" href="#The-Run-Script">The Run Script</a><a id="The-Run-Script-1"></a><a class="docs-heading-anchor-permalink" href="#The-Run-Script" title="Permalink"></a></h2><p>We&#39;re finally ready for the run script! Here it is:</p><pre><code class="language-julia hljs">using OpenMDAO: om, make_component
+
+p = om.Problem()
+
+circuit = om.Group()
+
+circuit.add_subsystem(&quot;n1&quot;, make_component(Node(n_in=1, n_out=2)), promotes_inputs=[(&quot;I_in:0&quot;, &quot;I_in&quot;)])
+circuit.add_subsystem(&quot;n2&quot;, make_component(Node()))
+
+circuit.add_subsystem(&quot;R1&quot;, make_component(Resistor(R=100.0)), promotes_inputs=[(&quot;V_out&quot;, &quot;Vg&quot;)])
+circuit.add_subsystem(&quot;R2&quot;, make_component(Resistor(R=10000.0)))
+circuit.add_subsystem(&quot;D1&quot;, make_component(Diode()), promotes_inputs=[(&quot;V_out&quot;, &quot;Vg&quot;)])
+
+circuit.connect(&quot;n1.V&quot;, [&quot;R1.V_in&quot;, &quot;R2.V_in&quot;])
+circuit.connect(&quot;R1.I&quot;, &quot;n1.I_out:0&quot;)
+circuit.connect(&quot;R2.I&quot;, &quot;n1.I_out:1&quot;)
+
+circuit.connect(&quot;n2.V&quot;, [&quot;R2.V_out&quot;, &quot;D1.V_in&quot;])
+circuit.connect(&quot;R2.I&quot;, &quot;n2.I_in:0&quot;)
+circuit.connect(&quot;D1.I&quot;, &quot;n2.I_out:0&quot;)
+
+circuit.nonlinear_solver = om.NewtonSolver()
+circuit.linear_solver = om.DirectSolver()
+
+circuit.nonlinear_solver.options[&quot;iprint&quot;] = 2
+circuit.nonlinear_solver.options[&quot;maxiter&quot;] = 10
+circuit.nonlinear_solver.options[&quot;solve_subsystems&quot;] = true
+circuit.nonlinear_solver.linesearch = om.ArmijoGoldsteinLS()
+circuit.nonlinear_solver.linesearch.options[&quot;maxiter&quot;] = 10
+circuit.nonlinear_solver.linesearch.options[&quot;iprint&quot;] = 2
+
+p.model.add_subsystem(&quot;circuit&quot;, circuit)
+
+p.setup()
+
+p.set_val(&quot;circuit.I_in&quot;, 0.1)
+p.set_val(&quot;circuit.Vg&quot;, 0.)
+
+# set some initial guesses
+p.set_val(&quot;circuit.n1.V&quot;, 10.)
+p.set_val(&quot;circuit.n2.V&quot;, 1e-3)
+
+p.run_model()
+
+println(&quot;circuit.n1.V = $(p[&quot;circuit.n1.V&quot;]) (should be 9.90804735)&quot;)
+println(&quot;circuit.n2.V = $(p[&quot;circuit.n2.V&quot;]) (should be 0.71278185)&quot;)
+println(&quot;circuit.R1.I = $(p[&quot;circuit.R1.I&quot;]) (should be 0.09908047)&quot;)
+println(&quot;circuit.R2.I = $(p[&quot;circuit.R2.I&quot;]) (should be 0.00091953)&quot;)
+println(&quot;circuit.D1.I = $(p[&quot;circuit.D1.I&quot;]) (should be 0.00091953)&quot;)
+
+# sanity check: should sum to .1 Amps
+println(&quot;circuit.R1.I + circuit.D1.I = $(p[&quot;circuit.R1.I&quot;] + p[&quot;circuit.D1.I&quot;]) (should be 0.1)&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">circuit.n1.V = [9.90804735] (should be 9.90804735)
+circuit.n2.V = [0.71278185] (should be 0.71278185)
+circuit.R1.I = [0.09908047] (should be 0.09908047)
+circuit.R2.I = [0.00091953] (should be 0.00091953)
+circuit.D1.I = [0.00091953] (should be 0.00091953)
+circuit.R1.I + circuit.D1.I = [0.1] (should be 0.1)</code></pre><p>Notice that:</p><ul><li>We can use <code>Groups</code> and <code>connect</code> methods just like a Python OpenMDAO program</li><li>Linear and nonlinear solvers, and linesearch objects also work fine</li><li>We get the same answers as the Python example in the OpenMDAO docs! :-)</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../simple_paraboloid/">« A Simple Example</a><a class="docs-footer-nextpage" href="../brachistochrone/">A Simple Dymos Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 11 March 2023 12:55">Saturday 11 March 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
