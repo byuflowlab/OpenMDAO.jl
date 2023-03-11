@@ -14,7 +14,7 @@ function main()
                       "API Reference"=>"reference.md",
                       "Limitations"=>"limitations.md"])
     if get(ENV, "CI", nothing) == "true"
-        deploydocs(repo="github.com/dingraha/OpenMDAO.jl.git", devbranch="master")
+        deploydocs(repo="github.com/byuflowlab/OpenMDAO.jl.git", devbranch="master")
     end
 end
 
