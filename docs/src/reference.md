@@ -1,7 +1,7 @@
 ```@meta
 CurrentModule = OpenMDAODocs
 ```
-# Reference
+# API Reference
 
 ```@autodocs
 Modules = [OpenMDAOCore, OpenMDAO]

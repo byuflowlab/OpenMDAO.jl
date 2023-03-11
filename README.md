@@ -25,6 +25,18 @@ If you like Python and just want to have a little (or a lot) of Julia buried in 
 If you're a huge fan of Julia and would like to pretend that OpenMDAO is a Julia library, you'll want the Julia-centric approach.
 Either way, pick one or the other: you don't need to follow both installation instructions.
 
+> **Note**
+> At the moment OpenMDAO.jl is not registered in the Julia General registry, so installing it from the Pkg prompt with 
+> ```
+> ] add OpenMDAO
+> ```
+> will fail on a vanilla Julia installation.
+> It is registered in the official™ DanielIngrahamRegistry, however, so if you'd like an automatic installation process, just do this from the Julia Pkg prompt:
+> ```
+> pkg> registry add git@github.com:dingraha/DanielIngrahamRegistry.git
+> ```
+
+
 ### Python-Centric Installation
 The first (and only!) step is to install `omjlcomps`, which is in the Python Package Index, so a simple
 
