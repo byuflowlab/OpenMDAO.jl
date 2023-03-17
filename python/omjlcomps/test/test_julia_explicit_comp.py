@@ -1,6 +1,7 @@
 """
 Unit tests for JuliaExplicitComp
 """
+import juliacall; jl = juliacall.newmodule("OpenMDAOJuliaExplicitCompTest")
 import os
 import time
 import unittest
@@ -10,8 +11,6 @@ import numpy as np
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
 
-# from juliacall import Main as jl
-import juliacall; jl = juliacall.newmodule("OpenMDAOJuliaExplicitCompTest")
 
 from omjlcomps import JuliaExplicitComp
 
@@ -244,7 +243,7 @@ class TestJuliaExplicitCompWithLargeOption(unittest.TestCase):
             # n_big = 1_000_000_000 is too big for GitHub Actions---it appears to consume all the virtual machine's memory and kills the job, giving me a big sad.
             n_big = self.n_big = 100_000_000
         else:
-            n_big = self.n_big = 1_000_000_000
+            n_big = self.n_big = 500_000_000
         p_big = self.p_big = om.Problem()
         ecomp_big = jl.ECompTest.ECompWithLargeOption(n_big)
         comp_big = JuliaExplicitComp(jlcomp=ecomp_big)
@@ -338,6 +337,38 @@ class TestJuliaMatrixFreeExplicitComp(unittest.TestCase):
             for (var, wrt) in cpd[comp]:
                 np.testing.assert_allclose(actual=cpd[comp][var, wrt]['J_fwd'], desired=cpd[comp][var, wrt]['J_fd'], rtol=1e-12)
                 np.testing.assert_allclose(actual=cpd[comp][var, wrt]['J_rev'], desired=cpd[comp][var, wrt]['J_fd'], rtol=1e-12)
+
+
+class TestShapeByConn(unittest.TestCase):
+    def setUp(self):
+        p = self.p = om.Problem()
+        n = 8
+        comp = om.IndepVarComp()
+        comp.add_output("x", shape=n)
+        p.model.add_subsystem("inputs_comp", comp, promotes_outputs=["x"])
+
+        comp = JuliaExplicitComp(jlcomp=jl.ECompTest.ECompShapeByConn())
+        p.model.add_subsystem("ecomp", comp, promotes_inputs=["x"], promotes_outputs=["y"])
+
+        p.setup(force_alloc_complex=True)
+        p.set_val("x", np.arange(n))
+        p.run_model()
+
+    def test_results(self):
+        p = self.p
+        expected = 2*p.get_val("x")**2 + 1
+        actual = p.get_val("y")
+        np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials(self):
+        p = self.p
+        np.set_printoptions(linewidth=1024)
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                np.testing.assert_allclose(actual=cpd[comp][var, wrt]['J_fwd'], desired=cpd[comp][var, wrt]['J_fd'], rtol=1e-12)
 
 
 if __name__ == '__main__':

@@ -219,5 +219,36 @@ function OpenMDAOCore.compute_jacvec_product!(self::ECompMatrixFree, inputs, d_i
     return nothing
 end
 
+struct ECompShapeByConn <: OpenMDAOCore.AbstractExplicitComp end
+
+function OpenMDAOCore.setup(self::ECompShapeByConn)
+    input_data = [VarData("x"; shape_by_conn=true)]
+    output_data = [VarData("y"; shape_by_conn=true, copy_shape="x")]
+    partials_data = []
+
+    return input_data, output_data, partials_data
+end
+
+function OpenMDAOCore.setup_partials(self::ECompShapeByConn, input_sizes, output_sizes)
+    @assert input_sizes["x"] == output_sizes["y"]
+    n = only(input_sizes["x"])
+    partials_data = [PartialsData("y", "x"; rows=0:n-1, cols=0:n-1)]
+
+    return partials_data
+end
+
+function OpenMDAOCore.compute!(self::ECompShapeByConn, inputs, outputs)
+    x = inputs["x"]
+    y = outputs["y"]
+    y .= 2 .* x.^2 .+ 1
+    return nothing
+end
+
+function OpenMDAOCore.compute_partials!(self::ECompShapeByConn, inputs, partials)
+    x = inputs["x"]
+    dydx = partials["y", "x"]
+    dydx .= 4 .* x
+    return nothing
+end
 
 end # module

@@ -22,22 +22,49 @@ def _setup_common(self):
             tags = list(var.tags)
         else:
             tags = None
-        self.add_input(var.name, shape=var.shape, val=var.val,
-                       units=var.units, tags=tags)
+        if var.shape_by_conn or var.copy_shape:
+            shape = None
+        else:
+            shape = var.shape
+        self.add_input(var.name, shape=shape, val=var.val,
+                       units=var.units, tags=tags, shape_by_conn=var.shape_by_conn,
+                       copy_shape=var.copy_shape)
 
     for var in output_data:
         if var.tags is not None:
             tags = list(var.tags)
         else:
             tags = None
-        self.add_output(var.name, shape=var.shape, val=var.val,
-                        units=var.units, lower=var.lower, upper=var.upper, tags=tags)
+        if var.shape_by_conn or var.copy_shape:
+            shape = None
+        else:
+            shape = var.shape
+        self.add_output(var.name, shape=shape, val=var.val,
+                        units=var.units, lower=var.lower, upper=var.upper, tags=tags,
+                        shape_by_conn=var.shape_by_conn,
+                        copy_shape=var.copy_shape)
 
     for data in partials_data:
         self.declare_partials(data.of, data.wrt,
                               rows=data.rows, cols=data.cols,
                               val=data.val, method=data.method)
 
+
+def _setup_partials_common(self):
+    if jl.OpenMDAOCore.has_setup_partials(self._jlcomp):
+        # Ignore the partials data from `setup`, since we've already passed that to `declare_partials` in `_setup_common`.
+        input_data, output_data, _ = jl.OpenMDAOCore.setup(self._jlcomp)
+
+        # Build up a dict mapping the input names to their size.
+        input_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "size") for vd in input_data})
+        # Build up a dict mapping the output names to their size.
+        output_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "size") for vd in output_data})
+
+        partials_data = jl.OpenMDAOCore.setup_partials(self._jlcomp, input_sizes, output_sizes)
+        for data in partials_data:
+            self.declare_partials(data.of, data.wrt,
+                                  rows=data.rows, cols=data.cols,
+                                  val=data.val, method=data.method)
 
 class JuliaExplicitComp(om.ExplicitComponent):
     """
@@ -95,6 +122,10 @@ class JuliaExplicitComp(om.ExplicitComponent):
                         raise e from None
 
             self.compute_jacvec_product = MethodType(compute_jacvec_product, self)
+
+    def setup_partials(self):
+        _setup_partials_common(self)
+
 
     def compute(self, inputs, outputs):
         inputs_dict = juliacall.convert(jl.Dict, dict(inputs))
@@ -211,9 +242,10 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     else:
                         raise e from None
 
-            # Hello Owen. Red Knights vs Greens.
             self.solve_linear = MethodType(solve_linear, self)
 
+    def setup_partials(self):
+        _setup_partials_common(self)
 
     def _configure(self):
         super()._configure()

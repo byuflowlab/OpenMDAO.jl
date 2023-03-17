@@ -236,9 +236,8 @@ using SafeTestsets: @safetestset
         actual = PyArray(p.get_val("y2"))
         @test expected ≈ actual
 
-        cpd = pyconvert(Dict, p.check_partials(compact_print=true, out_stream=nothing, method="cs"))
-
         # Check that partials approximated by the complex-step method match the user-provided partials.
+        cpd = pyconvert(Dict, p.check_partials(compact_print=true, out_stream=nothing, method="cs"))
         for comp in keys(cpd)
             for (pyvar, pywrt) in keys(cpd[comp])
                 var = pyconvert(Any, pyvar)
@@ -264,6 +263,76 @@ using SafeTestsets: @safetestset
                 cpd_comp_var_wrt = pyconvert(PyDict{String}, cpd_comp[var, wrt])
                 @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
                 @test PyArray(cpd_comp_var_wrt["J_rev"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+            end
+        end
+
+    end
+
+    @safetestset "shape_by_conn" begin
+        using OpenMDAO
+        using OpenMDAOCore: OpenMDAOCore
+        using PythonCall
+        using Test
+
+        struct ECompShapeByConn <: OpenMDAOCore.AbstractExplicitComp end
+
+        function OpenMDAOCore.setup(self::ECompShapeByConn)
+            input_data = [OpenMDAOCore.VarData("x"; shape_by_conn=true)]
+            output_data = [OpenMDAOCore.VarData("y"; shape_by_conn=true, copy_shape="x")]
+
+            partials_data = []
+            return input_data, output_data, partials_data
+        end
+
+        function OpenMDAOCore.setup_partials(self::ECompShapeByConn, input_sizes, output_sizes)
+            @assert input_sizes["x"] == output_sizes["y"]
+            n = input_sizes["x"]
+            partials_data = [OpenMDAOCore.PartialsData("y", "x"; rows=0:n-1, cols=0:n-1)]
+
+            return partials_data
+        end
+
+        function OpenMDAOCore.compute!(self::ECompShapeByConn, inputs, outputs)
+            x = inputs["x"]
+            y = outputs["y"]
+            y .= 2 .* x.^2 .+ 1
+            return nothing
+        end
+
+        function OpenMDAOCore.compute_partials!(self::ECompShapeByConn, inputs, partials)
+            x = inputs["x"]
+            dydx = partials["y", "x"]
+            dydx .= 4 .* x
+            return nothing
+        end
+
+        n = 10
+        p = om.Problem()
+        comp = om.IndepVarComp()
+        comp.add_output("x", shape=n)
+        p.model.add_subsystem("inputs_comp", comp, promotes_outputs=["x"])
+
+        ecomp = ECompShapeByConn()
+        comp = make_component(ecomp)
+        p.model.add_subsystem("ecomp", comp, promotes_inputs=["x"], promotes_outputs=["y"])
+        p.setup(force_alloc_complex=true)
+        p.set_val("x", 1:n)
+        p.run_model()
+
+        # Test that the output is what we expect.
+        expected = 2 .* PyArray(p.get_val("x")).^2 .+ 1
+        actual = PyArray(p.get_val("y"))
+        @test actual ≈ expected
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        cpd = pyconvert(Dict, p.check_partials(compact_print=true, out_stream=nothing, method="cs"))
+        for comp in keys(cpd)
+            for (pyvar, pywrt) in keys(cpd[comp])
+                var = pyconvert(Any, pyvar)
+                wrt = pyconvert(Any, pywrt)
+                cpd_comp = pyconvert(PyDict{Tuple{String, String}}, cpd[comp])
+                cpd_comp_var_wrt = pyconvert(PyDict{String}, cpd_comp[var, wrt])
+                @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
             end
         end
 
@@ -352,6 +421,10 @@ end
         # Check outputs.
         expected = a.*PyArray(p.get_val("x")).^2 .+ PyArray(p.get_val("y")).^2
         actual = PyArray(p.get_val("z1"))
+        @test actual ≈ expected
+
+        expected = a.*PyArray(p.get_val("x")) .+ PyArray(p.get_val("y"))
+        actual = PyArray(p.get_val("z2"))
         @test actual ≈ expected
 
         # Check partials.
@@ -1103,6 +1176,152 @@ end
                     cpd_comp_var_wrt = pyconvert(PyDict{String}, cpd_comp[var, wrt])
                     @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
                 end
+            end
+        end
+    end
+
+    @safetestset "shape_by_conn" begin
+        using OpenMDAO
+        using OpenMDAOCore: OpenMDAOCore
+        using PythonCall
+        using Test
+
+        struct ImplicitShapeByConn{TF} <: OpenMDAOCore.AbstractImplicitComp
+            a::TF
+        end
+
+        function OpenMDAOCore.setup(self::ImplicitShapeByConn)
+            inputs = [
+                OpenMDAOCore.VarData("x"; val=2.0, shape_by_conn=true),
+                OpenMDAOCore.VarData("y"; val=3.0, shape_by_conn=true, copy_shape="x")]
+
+            outputs = [
+                OpenMDAOCore.VarData("z1"; val=2.0, shape_by_conn=true, copy_shape="x"),
+                OpenMDAOCore.VarData("z2"; val=3.0, shape_by_conn=true, copy_shape="x")]
+
+            partials = []
+            return inputs, outputs, partials
+        end
+
+        function OpenMDAOCore.setup_partials(self::ImplicitShapeByConn, input_sizes, output_sizes)
+            n = input_sizes["x"]
+            @assert input_sizes["y"] == n
+            @assert output_sizes["z1"] == n
+            @assert output_sizes["z2"] == n
+            rows = 0:n-1
+            cols = 0:n-1
+            partials = [
+                OpenMDAOCore.PartialsData("z1", "x"; rows=rows, cols=cols),
+                OpenMDAOCore.PartialsData("z1", "y"; rows, cols),
+                OpenMDAOCore.PartialsData("z1", "z1"; rows, cols),
+                OpenMDAOCore.PartialsData("z2", "x"; rows, cols),
+                OpenMDAOCore.PartialsData("z2", "y"; rows, cols),          
+                OpenMDAOCore.PartialsData("z2", "z2"; rows, cols)
+            ]
+
+            return partials
+        end
+
+        function OpenMDAOCore.apply_nonlinear!(self::ImplicitShapeByConn, inputs, outputs, residuals)
+            a = self.a
+            x = inputs["x"]
+            y = inputs["y"]
+
+            @. residuals["z1"] = (a*x*x + y*y) - outputs["z1"]
+            @. residuals["z2"] = (a*x + y) - outputs["z2"]
+
+            return nothing
+        end
+
+        function OpenMDAOCore.linearize!(self::ImplicitShapeByConn, inputs, outputs, partials)
+            a = self.a
+            x = inputs["x"]
+            y = inputs["y"]
+
+            @. partials["z1", "z1"] = -1.0
+            @. partials["z1", "x"] = 2*a*x
+            @. partials["z1", "y"] = 2*y
+
+            @. partials["z2", "z2"] = -1.0
+            @. partials["z2", "x"] = a
+            @. partials["z2", "y"] = 1.0
+
+            return nothing
+        end
+
+        p = om.Problem()
+        n = 10
+        a = 3.0
+
+        comp = om.IndepVarComp()
+        comp.add_output("x", shape=n)
+        comp.add_output("y", shape=n)
+        p.model.add_subsystem("input_comp", comp, promotes_outputs=["x", "y"])
+
+        icomp = ImplicitShapeByConn(a)
+        comp = make_component(icomp)
+        comp.linear_solver = om.DirectSolver(assemble_jac=true)
+        comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=true, iprint=2, err_on_non_converge=true)
+        p.model.add_subsystem("icomp", comp, promotes_inputs=["x", "y"], promotes_outputs=["z1", "z2"])
+
+        p.setup(force_alloc_complex=true)
+        p.set_val("x", 1:n)
+        p.set_val("y", 2:n+1)
+        p.run_model()
+
+        # Check outputs.
+        expected = a.*PyArray(p.get_val("x")).^2 .+ PyArray(p.get_val("y")).^2
+        actual = PyArray(p.get_val("z1"))
+        @test actual ≈ expected
+
+        expected = a.*PyArray(p.get_val("x")) .+ PyArray(p.get_val("y"))
+        actual = PyArray(p.get_val("z2"))
+        @test actual ≈ expected
+
+        # Check partials.
+        cpd = pyconvert(Dict, p.check_partials(compact_print=true, out_stream=nothing, method="cs"))
+
+        # Check that the partials the user provided are correct.
+        icomp_partials = pyconvert(Dict, cpd["icomp"])
+
+        actual = PyArray(pyconvert(Dict, icomp_partials["z1", "x"])["J_fwd"])
+        expected = zeros(n, n)
+        expected[CartesianIndex.(axes(expected, 1), axes(expected, 2))] .= 2 .* a .* PyArray(p.get_val("x"))
+        @test actual ≈ expected
+
+        actual = PyArray(pyconvert(Dict, icomp_partials["z1", "y"])["J_fwd"])
+        expected = zeros(n, n)
+        expected[CartesianIndex.(axes(expected, 1), axes(expected, 2))] .= 2 .* PyArray(p.get_val("y"))
+        @test actual ≈ expected
+
+        actual = PyArray(pyconvert(Dict, icomp_partials["z1", "z1"])["J_fwd"])
+        expected = zeros(n, n)
+        expected[CartesianIndex.(axes(expected, 1), axes(expected, 2))] .= -1.0
+        @test actual ≈ expected
+
+        actual = PyArray(pyconvert(Dict, icomp_partials["z2", "x"])["J_fwd"])
+        expected = zeros(n, n)
+        expected[CartesianIndex.(axes(expected, 1), axes(expected, 2))] .= a
+        @test actual ≈ expected
+
+        actual = PyArray(pyconvert(Dict, icomp_partials["z2", "y"])["J_fwd"])
+        expected = zeros(n, n)
+        expected[CartesianIndex.(axes(expected, 1), axes(expected, 2))] .= 1.0
+        @test actual ≈ expected
+
+        actual = PyArray(pyconvert(Dict, icomp_partials["z2", "z2"])["J_fwd"])
+        expected = zeros(n, n)
+        expected[CartesianIndex.(axes(expected, 1), axes(expected, 2))] .= -1.0
+        @test actual ≈ expected
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in keys(cpd)
+            for (pyvar, pywrt) in keys(cpd[comp])
+                var = pyconvert(Any, pyvar)
+                wrt = pyconvert(Any, pywrt)
+                cpd_comp = pyconvert(PyDict{Tuple{String, String}}, cpd[comp])
+                cpd_comp_var_wrt = pyconvert(PyDict{String}, cpd_comp[var, wrt])
+                @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
             end
         end
     end
