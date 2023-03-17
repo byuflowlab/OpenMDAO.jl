@@ -10,12 +10,16 @@ using Test
     @test vd.lower == nothing
     @test vd.upper == nothing
     @test vd.tags == nothing
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
     vd = VarData("x", 1.0, 1, nothing, nothing, nothing, nothing)
     @test vd.name == "x"
     @test vd.val ≈ 1.0
     @test vd.shape == (1,)
     @test vd.units == nothing
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
     vd = VarData("x")
     @test vd.name == "x"
@@ -24,6 +28,8 @@ using Test
     @test vd.units == nothing
     @test vd.lower == nothing
     @test vd.upper == nothing
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
     vd = VarData("x"; shape=(2, 3))
     @test vd.name == "x"
@@ -32,6 +38,8 @@ using Test
     @test vd.units == nothing
     @test vd.lower == nothing
     @test vd.upper == nothing
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
     vd = VarData("x"; val=[3.0, 4.0], shape=(2,))
     @test vd.name == "x"
@@ -40,6 +48,8 @@ using Test
     @test vd.units == nothing
     @test vd.lower == nothing
     @test vd.upper == nothing
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
     vd = VarData("x"; val=[3.0, 4.0], shape=(2,), units="m", tags=["foo", "bar"])
     @test vd.name == "x"
@@ -49,14 +59,29 @@ using Test
     @test vd.lower == nothing
     @test vd.upper == nothing
     @test vd.tags == ["foo", "bar"]
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
-    vd = VarData("x", 1.0, (1,), nothing, -2.0, 2.0)
+    vd = VarData("x"; val=[3.0, 4.0], shape=(2,), units="m", tags=["foo", "bar"], shape_by_conn=true, copy_shape="y")
+    @test vd.name == "x"
+    @test vd.val ≈ [3.0, 4.0]
+    @test vd.shape == (2,)
+    @test vd.units == "m"
+    @test vd.lower == nothing
+    @test vd.upper == nothing
+    @test vd.tags == ["foo", "bar"]
+    @test vd.shape_by_conn == true
+    @test vd.copy_shape == "y"
+
+    vd = VarData("x", 1.0, (1,), nothing, -2.0, 2.0,)
     @test vd.name == "x"
     @test vd.val ≈ 1.0
     @test vd.shape == (1,)
     @test vd.units == nothing
     @test vd.lower == -2.0
     @test vd.upper == 2.0
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
     vd = VarData("x"; val=[3.0, 4.0], shape=(2,), units="m", lower=[-1.0, -2.0], upper=[2.0, 3.0])
     @test vd.name == "x"
@@ -65,6 +90,8 @@ using Test
     @test vd.units == "m"
     @test vd.lower ≈ [-1.0, -2.0]
     @test vd.upper ≈ [2.0, 3.0]
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
     vd = VarData("x"; val=[3.0, 4.0], units="m", lower=[-1.0, -2.0], upper=[2.0, 3.0])
     @test vd.name == "x"
@@ -73,6 +100,8 @@ using Test
     @test vd.units == "m"
     @test vd.lower ≈ [-1.0, -2.0]
     @test vd.upper ≈ [2.0, 3.0]
+    @test vd.shape_by_conn == false
+    @test vd.copy_shape == nothing
 
     @test_throws ArgumentError VarData("x"; val=[3.0, 4.0, 5.0], shape=(2,), units="m", lower=[-1.0, -2.0], upper=[2.0, 3.0])
     @test_throws ArgumentError VarData("x"; val=[3.0, 4.0], shape=(2,), units="m", lower=[-1.0, -2.0, 3.0], upper=[2.0, 3.0])
@@ -169,23 +198,34 @@ end
     comp = FooComp1()
     @test !has_compute_partials(comp)
     @test !has_compute_jacvec_product(comp)
+    @test !has_setup_partials(comp)
 
     struct FooComp2 <: AbstractExplicitComp end
     OpenMDAOCore.compute_partials!(self::FooComp2, inputs, partials) = nothing
     comp = FooComp2()
     @test has_compute_partials(comp)
     @test !has_compute_jacvec_product(comp)
+    @test !has_setup_partials(comp)
 
     struct FooComp3 <: AbstractExplicitComp end
     OpenMDAOCore.compute_jacvec_product!(self::FooComp3, inputs, d_inputs, d_outputs, mode) = nothing
     comp = FooComp3()
     @test !has_compute_partials(comp)
     @test has_compute_jacvec_product(comp)
+    @test !has_setup_partials(comp)
+
+    struct FooComp4 <: AbstractExplicitComp end
+    comp = FooComp4()
+    OpenMDAOCore.setup_partials(self::FooComp4, input_sizes, output_sizes) = nothing
+    @test !has_compute_partials(comp)
+    @test !has_compute_jacvec_product(comp)
+    @test has_setup_partials(comp)
 end
 
 @testset "Finding ImplicitComponent methods" begin
     struct BarComp1 <: AbstractImplicitComp end
     comp = BarComp1()
+    @test !has_setup_partials(comp)
     @test !has_apply_nonlinear(comp)
     @test !has_solve_nonlinear(comp)
     @test !has_linearize(comp)
@@ -196,6 +236,7 @@ end
     struct BarComp2 <: AbstractImplicitComp end
     OpenMDAOCore.apply_nonlinear!(self::BarComp2, inputs, outputs, residuals) = nothing
     comp = BarComp2()
+    @test !has_setup_partials(comp)
     @test has_apply_nonlinear(comp)
     @test !has_solve_nonlinear(comp)
     @test !has_linearize(comp)
@@ -206,6 +247,7 @@ end
     struct BarComp3 <: AbstractImplicitComp end
     OpenMDAOCore.solve_nonlinear!(self::BarComp3, inputs, outputs) = nothing
     comp = BarComp3()
+    @test !has_setup_partials(comp)
     @test !has_apply_nonlinear(comp)
     @test has_solve_nonlinear(comp)
     @test !has_linearize(comp)
@@ -216,6 +258,7 @@ end
     struct BarComp4 <: AbstractImplicitComp end
     OpenMDAOCore.linearize!(self::BarComp4, inputs, outputs, partials) = nothing
     comp = BarComp4()
+    @test !has_setup_partials(comp)
     @test !has_apply_nonlinear(comp)
     @test !has_solve_nonlinear(comp)
     @test has_linearize(comp)
@@ -226,6 +269,7 @@ end
     struct BarComp5 <: AbstractImplicitComp end
     OpenMDAOCore.apply_linear!(self::BarComp5, inputs, outputs, d_inputs, d_outputs, d_residuals, mode) = nothing
     comp = BarComp5()
+    @test !has_setup_partials(comp)
     @test !has_apply_nonlinear(comp)
     @test !has_solve_nonlinear(comp)
     @test !has_linearize(comp)
@@ -236,6 +280,7 @@ end
     struct BarComp6 <: AbstractImplicitComp end
     OpenMDAOCore.solve_linear!(self::BarComp6, d_outputs, d_residuals, mode) = nothing
     comp = BarComp6()
+    @test !has_setup_partials(comp)
     @test !has_apply_nonlinear(comp)
     @test !has_solve_nonlinear(comp)
     @test !has_linearize(comp)
@@ -246,12 +291,24 @@ end
     struct BarComp7 <: AbstractImplicitComp end
     OpenMDAOCore.guess_nonlinear!(self::BarComp7, inputs, outputs, residuals) = nothing
     comp = BarComp7()
+    @test !has_setup_partials(comp)
     @test !has_apply_nonlinear(comp)
     @test !has_solve_nonlinear(comp)
     @test !has_linearize(comp)
     @test !has_apply_linear(comp)
     @test !has_solve_linear(comp)
     @test has_guess_nonlinear(comp)
+
+    struct BarComp8 <: AbstractImplicitComp end
+    OpenMDAOCore.setup_partials(self::BarComp8, input_sizes, output_sizes) = nothing
+    comp = BarComp8()
+    @test has_setup_partials(comp)
+    @test !has_apply_nonlinear(comp)
+    @test !has_solve_nonlinear(comp)
+    @test !has_linearize(comp)
+    @test !has_apply_linear(comp)
+    @test !has_solve_linear(comp)
+    @test !has_guess_nonlinear(comp)
 end
 
 @testset "get_rows_cols" begin

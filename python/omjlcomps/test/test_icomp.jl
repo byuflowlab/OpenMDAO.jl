@@ -500,4 +500,66 @@ function OpenMDAOCore.guess_nonlinear!(self::GuessNonlinearImplicit, inputs, out
     return nothing
 end
 
+struct ImplicitShapeByConn{TF} <: OpenMDAOCore.AbstractImplicitComp
+    a::TF
+end
+
+function OpenMDAOCore.setup(self::ImplicitShapeByConn)
+    inputs = [
+        VarData("x"; val=2.0, shape_by_conn=true),
+        VarData("y"; val=3.0, shape_by_conn=true, copy_shape="x")]
+
+    outputs = [
+        VarData("z1"; val=2.0, shape_by_conn=true, copy_shape="x"),
+        VarData("z2"; val=3.0, shape_by_conn=true, copy_shape="x")]
+
+    return inputs, outputs
+end
+
+function OpenMDAOCore.setup_partials(self::ImplicitShapeByConn, input_sizes, output_sizes)
+    n = input_sizes["x"]
+    @assert input_sizes["y"] == n
+    @assert output_sizes["z1"] == n
+    @assert output_sizes["z2"] == n
+    rows = 0:n-1
+    cols = 0:n-1
+    partials = [
+        PartialsData("z1", "x"; rows=rows, cols=cols),
+        PartialsData("z1", "y"; rows, cols),
+        PartialsData("z1", "z1"; rows, cols),
+        PartialsData("z2", "x"; rows, cols),
+        PartialsData("z2", "y"; rows, cols),          
+        PartialsData("z2", "z2"; rows, cols)
+    ]
+
+    return partials
+end
+
+function OpenMDAOCore.apply_nonlinear!(self::ImplicitShapeByConn, inputs, outputs, residuals)
+    a = self.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    @. residuals["z1"] = (a*x*x + y*y) - outputs["z1"]
+    @. residuals["z2"] = (a*x + y) - outputs["z2"]
+
+    return nothing
+end
+
+function OpenMDAOCore.linearize!(self::ImplicitShapeByConn, inputs, outputs, partials)
+    a = self.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    @. partials["z1", "z1"] = -1.0
+    @. partials["z1", "x"] = 2*a*x
+    @. partials["z1", "y"] = 2*y
+
+    @. partials["z2", "z2"] = -1.0
+    @. partials["z2", "x"] = a
+    @. partials["z2", "y"] = 1.0
+
+    return nothing
+end
+
 end # module
