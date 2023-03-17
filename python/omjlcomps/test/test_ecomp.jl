@@ -224,13 +224,14 @@ struct ECompShapeByConn <: OpenMDAOCore.AbstractExplicitComp end
 function OpenMDAOCore.setup(self::ECompShapeByConn)
     input_data = [VarData("x"; shape_by_conn=true)]
     output_data = [VarData("y"; shape_by_conn=true, copy_shape="x")]
+    partials_data = []
 
-    return input_data, output_data
+    return input_data, output_data, partials_data
 end
 
-function OpenMDAOCore.setup_partials(self::ECompShapeByConn, input_shapes, output_shapes)
-    @assert input_shapes["x"] == output_shapes["y"]
-    n = only(input_shapes["x"])
+function OpenMDAOCore.setup_partials(self::ECompShapeByConn, input_sizes, output_sizes)
+    @assert input_sizes["x"] == output_sizes["y"]
+    n = only(input_sizes["x"])
     partials_data = [PartialsData("y", "x"; rows=0:n-1, cols=0:n-1)]
 
     return partials_data

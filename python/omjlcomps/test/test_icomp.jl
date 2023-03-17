@@ -513,7 +513,8 @@ function OpenMDAOCore.setup(self::ImplicitShapeByConn)
         VarData("z1"; val=2.0, shape_by_conn=true, copy_shape="x"),
         VarData("z2"; val=3.0, shape_by_conn=true, copy_shape="x")]
 
-    return inputs, outputs
+    partials = []
+    return inputs, outputs, partials
 end
 
 function OpenMDAOCore.setup_partials(self::ImplicitShapeByConn, input_sizes, output_sizes)

@@ -15,10 +15,7 @@ def _initialize_common(self):
 
 def _setup_common(self):
     self._jlcomp = self.options['jlcomp']
-    # input_data, output_data, partials_data = jl.OpenMDAOCore.setup(self._jlcomp)
-    id_od_maybe_pd = jl.OpenMDAOCore.setup(self._jlcomp)
-    input_data = id_od_maybe_pd[0]
-    output_data = id_od_maybe_pd[1]
+    input_data, output_data, partials_data = jl.OpenMDAOCore.setup(self._jlcomp)
 
     for var in input_data:
         if var.tags is not None:
@@ -47,17 +44,16 @@ def _setup_common(self):
                         shape_by_conn=var.shape_by_conn,
                         copy_shape=var.copy_shape)
 
-    if not jl.OpenMDAOCore.has_setup_partials(self._jlcomp):
-        partials_data = id_od_maybe_pd[2]
-        for data in partials_data:
-            self.declare_partials(data.of, data.wrt,
-                                  rows=data.rows, cols=data.cols,
-                                  val=data.val, method=data.method)
+    for data in partials_data:
+        self.declare_partials(data.of, data.wrt,
+                              rows=data.rows, cols=data.cols,
+                              val=data.val, method=data.method)
 
 
 def _setup_partials_common(self):
     if jl.OpenMDAOCore.has_setup_partials(self._jlcomp):
-        input_data, output_data = jl.OpenMDAOCore.setup(self._jlcomp)
+        # Ignore the partials data from `setup`, since we've already passed that to `declare_partials` in `_setup_common`.
+        input_data, output_data, _ = jl.OpenMDAOCore.setup(self._jlcomp)
 
         # Build up a dict mapping the input names to their size.
         input_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "size") for vd in input_data})
