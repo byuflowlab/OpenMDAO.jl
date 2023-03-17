@@ -518,10 +518,10 @@ function OpenMDAOCore.setup(self::ImplicitShapeByConn)
 end
 
 function OpenMDAOCore.setup_partials(self::ImplicitShapeByConn, input_sizes, output_sizes)
-    n = input_sizes["x"]
-    @assert input_sizes["y"] == n
-    @assert output_sizes["z1"] == n
-    @assert output_sizes["z2"] == n
+    @assert input_sizes["y"] == input_sizes["x"]
+    @assert output_sizes["z1"] == input_sizes["x"]
+    @assert output_sizes["z2"] == input_sizes["x"]
+    n = only(input_sizes["x"])
     rows = 0:n-1
     cols = 0:n-1
     partials = [

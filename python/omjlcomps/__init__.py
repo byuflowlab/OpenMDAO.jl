@@ -56,9 +56,9 @@ def _setup_partials_common(self):
         input_data, output_data, _ = jl.OpenMDAOCore.setup(self._jlcomp)
 
         # Build up a dict mapping the input names to their size.
-        input_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "size") for vd in input_data})
+        input_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "shape") for vd in input_data})
         # Build up a dict mapping the output names to their size.
-        output_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "size") for vd in output_data})
+        output_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "shape") for vd in output_data})
 
         partials_data = jl.OpenMDAOCore.setup_partials(self._jlcomp, input_sizes, output_sizes)
         for data in partials_data:

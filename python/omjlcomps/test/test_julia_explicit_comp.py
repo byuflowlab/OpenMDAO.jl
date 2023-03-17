@@ -344,7 +344,7 @@ class TestShapeByConn(unittest.TestCase):
         p = self.p = om.Problem()
         n = 8
         comp = om.IndepVarComp()
-        comp.add_output("x", shape=n)
+        comp.add_output("x", shape=(n, n))
         p.model.add_subsystem("inputs_comp", comp, promotes_outputs=["x"])
 
         comp = JuliaExplicitComp(jlcomp=jl.ECompTest.ECompShapeByConn())

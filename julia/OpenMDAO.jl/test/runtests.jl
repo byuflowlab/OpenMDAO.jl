@@ -286,8 +286,9 @@ using SafeTestsets: @safetestset
 
         function OpenMDAOCore.setup_partials(self::ECompShapeByConn, input_sizes, output_sizes)
             @assert input_sizes["x"] == output_sizes["y"]
-            n = input_sizes["x"]
-            partials_data = [OpenMDAOCore.PartialsData("y", "x"; rows=0:n-1, cols=0:n-1)]
+            m, n = input_sizes["x"]
+            rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=Dict(:i=>m, :j=>n), of_ss=[:i, :j], wrt_ss=[:i, :j])
+            partials_data = [OpenMDAOCore.PartialsData("y", "x"; rows=rows, cols=cols)]
 
             return partials_data
         end
@@ -301,22 +302,26 @@ using SafeTestsets: @safetestset
 
         function OpenMDAOCore.compute_partials!(self::ECompShapeByConn, inputs, partials)
             x = inputs["x"]
-            dydx = partials["y", "x"]
+            m, n = size(x)
+            # So, with the way I've declared the partials above, OpenMDAO will have
+            # created a Numpy array of shape (m, n) and then flattened it. So, to get
+            # that to work, I'll need to do this:
+            dydx = PermutedDimsArray(reshape(partials["y", "x"], n, m), (2, 1))
             dydx .= 4 .* x
             return nothing
         end
 
-        n = 10
+        m, n = 3, 4
         p = om.Problem()
         comp = om.IndepVarComp()
-        comp.add_output("x", shape=n)
+        comp.add_output("x", shape=(m, n))
         p.model.add_subsystem("inputs_comp", comp, promotes_outputs=["x"])
 
         ecomp = ECompShapeByConn()
         comp = make_component(ecomp)
         p.model.add_subsystem("ecomp", comp, promotes_inputs=["x"], promotes_outputs=["y"])
         p.setup(force_alloc_complex=true)
-        p.set_val("x", 1:n)
+        p.set_val("x", 1:m*n)
         p.run_model()
 
         # Test that the output is what we expect.
@@ -1204,10 +1209,10 @@ end
         end
 
         function OpenMDAOCore.setup_partials(self::ImplicitShapeByConn, input_sizes, output_sizes)
-            n = input_sizes["x"]
-            @assert input_sizes["y"] == n
-            @assert output_sizes["z1"] == n
-            @assert output_sizes["z2"] == n
+            @assert input_sizes["y"] == input_sizes["x"]
+            @assert output_sizes["z1"] == input_sizes["x"]
+            @assert output_sizes["z2"] == input_sizes["x"]
+            n = only(input_sizes["x"])
             rows = 0:n-1
             cols = 0:n-1
             partials = [

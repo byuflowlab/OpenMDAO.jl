@@ -3,4 +3,4 @@ openmdao = ""
 
 [pip.deps]
 juliapkg = ""
-omjlcomps = ""
+omjlcomps = "@./../../python/"
