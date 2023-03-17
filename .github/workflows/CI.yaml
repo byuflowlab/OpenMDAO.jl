@@ -50,8 +50,9 @@ jobs:
         run: |
           using Pkg
           Pkg.activate("./julia/OpenMDAO.jl")
-          using CondaPkg
           Pkg.develop("./julia/OpenMDAOCore.jl")
+          Pkg.instantiate()
+          using CondaPkg
           CondaPkg.add_pip("omjlcomps"; version="@./../../python")
           Pkg.update()
           Pkg.test()
