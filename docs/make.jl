@@ -10,6 +10,7 @@ function main()
              pages = ["Home"=>"index.md",
                       "A Simple Example"=>"simple_paraboloid.md",
                       "A More Complicated Example"=>"nonlinear_circuit.md",
+                      "Variable Shapes at Runtime"=>"shape_by_conn.md",
                       "A Simple Dymos Example"=>"brachistochrone.md",
                       "API Reference"=>"reference.md",
                       "Limitations"=>"limitations.md"])

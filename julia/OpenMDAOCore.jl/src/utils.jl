@@ -1,4 +1,4 @@
-function get_rows_cols(ss_sizes, of_ss, wrt_ss)
+function get_rows_cols(; ss_sizes, of_ss, wrt_ss)
     # Get the output subscript, which will start with the of_ss, then the
     # wrt_ss with the subscripts common to both removed.
     # deriv_ss = of_ss + "".join(set(wrt_ss) - set(of_ss))
@@ -42,5 +42,3 @@ function get_rows_cols(ss_sizes, of_ss, wrt_ss)
     # Return flattened versions of the rows and cols arrays.
     return rows[:], cols[:]
 end
-
-get_rows_cols(; ss_sizes, of_ss, wrt_ss) = get_rows_cols(ss_sizes, of_ss, wrt_ss)
