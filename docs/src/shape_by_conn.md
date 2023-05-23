@@ -118,13 +118,8 @@ where `rows` is the flat non-zero indices for `y`, and `cols` is the flat non-ze
 Now, how do we do this with `get_rows_cols`?
 First we have to assign labels to each dimension of `y` and `x`.
 The labels must be `Symbols`, and can be anything (but I usually use index-y things like `:i`, `:j`, `:k`, etc.).
-(Hmm... how to explain this?
-Let's see... multi-dimensional arrays have dimensions...
-Is that what they're called?
-Yes.
-So.)
 We express the sparsity pattern through the choice of labels.
-If we use a label for an output dimension that is also used for an input dimension, then we are saying that, for a given index `i` in that dimension, the value of the output at that index `i` depends on the input index `i` along the labeled dimension, and no others.
+If we use a label for an output dimension that is also used for an input dimension, then we are saying that, for a given index `i` in the "shared" dimension, the value of the output at that index `i` depends on the value of the input index `i` along the labeled dimension, and no others.
 For example, if we had a one-dimensional `y` that was calculated from a one-dimensional `x` in this way:
 
 ```
@@ -148,6 +143,8 @@ After deciding on the dimension labels, the only other thing we need to do is cr
 ```@example shape_by_conn1
 ss_sizes = Dict(:i=>2, :j=>3)
 ```
+
+since, in our example, the first dimension of `x` and `y` has size `2`, and the second, `3`.
 
 Then we pass those three things to `get_rows_cols`, which then returns the `rows` and `cols` we want.
 

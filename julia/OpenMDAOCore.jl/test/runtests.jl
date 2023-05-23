@@ -1,5 +1,8 @@
 using OpenMDAOCore
 using Test
+using Documenter
+
+doctest(OpenMDAOCore, manual=false)
 
 @testset "VarData" begin
     vd = VarData("x", 1.0, (1,), nothing, nothing, nothing, nothing)

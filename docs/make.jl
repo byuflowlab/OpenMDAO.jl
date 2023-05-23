@@ -7,6 +7,7 @@ function main()
              sitename="OpenMDAO.jl",
              modules = [OpenMDAOCore, OpenMDAO],
              format=Documenter.HTML(prettyurls=get(ENV, "CI", nothing) == "true"),
+             doctest=true,
              pages = ["Home"=>"index.md",
                       "A Simple Example"=>"simple_paraboloid.md",
                       "A More Complicated Example"=>"nonlinear_circuit.md",
