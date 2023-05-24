@@ -1,7 +1,7 @@
 ```@meta
 CurrentModule = OpenMDAODocs
 ```
-# Variable Shapes at Runtime: `shape_by_conn`, `copy_shape`, and 
+# Variable Shapes at Runtime: `shape_by_conn` and `copy_shape`
 
 ## A Simple Example
 OpenMDAO is able to [determine variable shapes at runtime](https://openmdao.org/newdocs/versions/latest/features/experimental/dyn_shapes.html).
