@@ -56,9 +56,9 @@ def _setup_partials_common(self):
         input_data, output_data, _ = jl.OpenMDAOCore.setup(self._jlcomp)
 
         # Build up a dict mapping the input names to their size.
-        input_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "size") for vd in input_data})
+        input_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "shape") for vd in input_data})
         # Build up a dict mapping the output names to their size.
-        output_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "size") for vd in output_data})
+        output_sizes = juliacall.convert(jl.Dict, {vd.name: self._get_var_meta(vd.name, "shape") for vd in output_data})
 
         partials_data = jl.OpenMDAOCore.setup_partials(self._jlcomp, input_sizes, output_sizes)
         for data in partials_data:
@@ -122,6 +122,8 @@ class JuliaExplicitComp(om.ExplicitComponent):
                         raise e from None
 
             self.compute_jacvec_product = MethodType(compute_jacvec_product, self)
+            # https://github.com/OpenMDAO/OpenMDAO/pull/2802
+            self.matrix_free = True
 
     def setup_partials(self):
         _setup_partials_common(self)
@@ -187,6 +189,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
                         raise e from None
 
             self.solve_nonlinear = MethodType(solve_nonlinear, self)
+            # https://github.com/OpenMDAO/OpenMDAO/pull/2802
+            self._has_solve_nl = True
 
         if jl.OpenMDAOCore.has_linearize(self._jlcomp):
             def linearize(self, inputs, outputs, partials):
@@ -228,6 +232,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
                         raise e from None
 
             self.apply_linear = MethodType(apply_linear, self)
+            # https://github.com/OpenMDAO/OpenMDAO/pull/2802
+            self.matrix_free = True
 
         if jl.OpenMDAOCore.has_solve_linear(self._jlcomp):
             def solve_linear(self, d_outputs, d_residuals, mode):

@@ -1,4 +1,53 @@
-function get_rows_cols(ss_sizes, of_ss, wrt_ss)
+"""
+    get_rows_cols(; ss_sizes::Dict{Symbol, Int}, of_ss::AbstractVector{Symbol}, wrt_ss::AbstractVector{Symbol})
+
+Get the non-zero row and column indices for a sparsity pattern defined by output subscripts `of_ss` and input subscripts `wrt_ss`.
+
+`ss_sizes` is a `Dict` mapping the subscript symbols in `of_ss` and `wrt_ss` to the size of each dimension the subscript symbols correspond to.
+The returned indices will be zero-based, which is what the OpenMDAO `declare_partials` method expects.
+
+# Examples
+Diagonal partials for 1D output and 1D input, both with length `5`:
+```jldoctest; setup = :(using OpenMDAOCore: get_rows_cols)
+julia> rows, cols = get_rows_cols(; ss_sizes=Dict(:i=>5), of_ss=[:i], wrt_ss=[:i])
+([0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
+```
+
+1D output with length 2 depending on all elements of 1D input with length 3 (so not actually sparse).
+```jldoctest; setup = :(using OpenMDAOCore: get_rows_cols)
+julia> rows, cols = get_rows_cols(; ss_sizes=Dict(:i=>2, :j=>3), of_ss=[:i], wrt_ss=[:j])
+([0, 0, 0, 1, 1, 1], [0, 1, 2, 0, 1, 2])
+```
+
+2D output with size `(2, 3)` and 1D input with size `2`, where each `i` output row only depends on the `i` input element.
+```jldoctest; setup = :(using OpenMDAOCore: get_rows_cols)
+julia> rows, cols = get_rows_cols(; ss_sizes=Dict(:i=>2, :j=>3), of_ss=[:i, :j], wrt_ss=[:i])
+([0, 1, 2, 3, 4, 5], [0, 0, 0, 1, 1, 1])
+```
+
+2D output with size `(2, 3)` and 1D input with size `3`, where each `j` output column only depends on the `j` input element.
+```jldoctest; setup = :(using OpenMDAOCore: get_rows_cols)
+julia> rows, cols = get_rows_cols(; ss_sizes=Dict(:i=>2, :j=>3), of_ss=[:i, :j], wrt_ss=[:j])
+([0, 1, 2, 3, 4, 5], [0, 1, 2, 0, 1, 2])
+```
+
+2D output with size `(2, 3)` depending on input with size `(3, 2)`, where the output element at index `i, j` only depends on input element `j, i` (like a transpose operation).
+```jldoctest; setup = :(using OpenMDAOCore: get_rows_cols)
+julia> rows, cols = get_rows_cols(; ss_sizes=Dict(:i=>2, :j=>3), of_ss=[:i, :j], wrt_ss=[:j, :i])
+([0, 1, 2, 3, 4, 5], [0, 2, 4, 1, 3, 5])
+```
+
+2D output with size `(2, 3)` depending on input with size `(3, 4)`, where output `y[:, j]` for each `j` depends on input `x[j, :]`.
+```jldoctest; setup = :(using OpenMDAOCore: get_rows_cols)
+julia> rows, cols = get_rows_cols(; ss_sizes=Dict(:i=>2, :j=>3, :k=>4), of_ss=[:i, :j], wrt_ss=[:j, :k]);
+
+julia> @show rows cols;  # to prevent abbreviating the array display
+rows = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5]
+cols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+```
+"""
+function get_rows_cols(; ss_sizes, of_ss, wrt_ss)
     # Get the output subscript, which will start with the of_ss, then the
     # wrt_ss with the subscripts common to both removed.
     # deriv_ss = of_ss + "".join(set(wrt_ss) - set(of_ss))
@@ -42,5 +91,3 @@ function get_rows_cols(ss_sizes, of_ss, wrt_ss)
     # Return flattened versions of the rows and cols arrays.
     return rows[:], cols[:]
 end
-
-get_rows_cols(; ss_sizes, of_ss, wrt_ss) = get_rows_cols(ss_sizes, of_ss, wrt_ss)

@@ -1,6 +1,8 @@
 [deps]
-openmdao = ""
+openmdao = ">=3.26.0,<4"
 
 [pip.deps]
 juliapkg = ""
 omjlcomps = ""
+# omjlcomps = "~=0.2.0"
+# omjlcomps = "@./../../python/"
