@@ -37,7 +37,7 @@ julia> rows, cols = get_rows_cols(; ss_sizes=Dict(:i=>2, :j=>3), of_ss=[:i, :j],
 ([0, 1, 2, 3, 4, 5], [0, 2, 4, 1, 3, 5])
 ```
 
-2D output with size `(2, 3) depending on input with size `(3, 4)`, where output `y[:, j]` for each `j` depends on input `x[j, :]`.
+2D output with size `(2, 3)` depending on input with size `(3, 4)`, where output `y[:, j]` for each `j` depends on input `x[j, :]`.
 ```jldoctest; setup = :(using OpenMDAOCore: get_rows_cols)
 julia> rows, cols = get_rows_cols(; ss_sizes=Dict(:i=>2, :j=>3, :k=>4), of_ss=[:i, :j], wrt_ss=[:j, :k]);
 
