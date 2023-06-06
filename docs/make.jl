@@ -14,7 +14,8 @@ function main()
                       "Variable Shapes at Runtime"=>"shape_by_conn.md",
                       "A Simple Dymos Example"=>"brachistochrone.md",
                       "API Reference"=>"reference.md",
-                      "Limitations"=>"limitations.md"])
+                      "Limitations"=>"limitations.md",
+                      "Developer Docs"=>"dev_docs.md"])
     if get(ENV, "CI", nothing) == "true"
         deploydocs(repo="github.com/byuflowlab/OpenMDAO.jl.git", devbranch="master")
     end
