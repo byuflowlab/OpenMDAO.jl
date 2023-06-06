@@ -9,4 +9,6 @@ OpenMDAOCore = "24d19c10-6eee-420f-95df-4537264b2753"
 PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 
 [compat]
+CondaPkg = "0.2.17"
 OpenMDAOCore = "0.3.0"
+PythonCall = "0.9.12"
