@@ -27,6 +27,9 @@ jobs:
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
       - name: Install dependencies
+        run: |
+          sed --in-place -e '/^omjlcomps/s/=.*$/= ""/' ./julia/OpenMDAO.jl/CondaPkg.toml
+          cat ./julia/OpenMDAO.jl/CondaPkg.toml
         shell: julia --project=docs/ --color=yes {0}
         run: |
           using Pkg
