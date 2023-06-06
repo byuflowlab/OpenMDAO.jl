@@ -4,6 +4,10 @@ CurrentModule = OpenMDAODocs
 # Developer Docs
 
 ## How to Release a New Version
+
+> **Note**
+> This process will hopefully be considerably simplified once OpenMDAO.jl and OpenMDAOCore.jl are added to the Julia General registry.
+
 It's a bit tricky to release a new version of OpenMDAO.jl, since this repository contains 3 separate software packages: the Julia packages OpenMDAOCore.jl and OpenMDAO.jl, and the Python package omjlcomps.
 Here's how to do it.
 
