@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Developer Docs · OpenMDAO.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">OpenMDAO.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../simple_paraboloid/">A Simple Example</a></li><li><a class="tocitem" href="../nonlinear_circuit/">A More Complicated Example</a></li><li><a class="tocitem" href="../shape_by_conn/">Variable Shapes at Runtime</a></li><li><a class="tocitem" href="../brachistochrone/">A Simple Dymos Example</a></li><li><a class="tocitem" href="../reference/">API Reference</a></li><li><a class="tocitem" href="../limitations/">Limitations</a></li><li class="is-active"><a class="tocitem" href>Developer Docs</a><ul class="internal"><li><a class="tocitem" href="#How-to-Release-a-New-Version"><span>How to Release a New Version</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Developer Docs</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Developer Docs</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/byuflowlab/OpenMDAO.jl/blob/master/docs/src/dev_docs.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Developer-Docs"><a class="docs-heading-anchor" href="#Developer-Docs">Developer Docs</a><a id="Developer-Docs-1"></a><a class="docs-heading-anchor-permalink" href="#Developer-Docs" title="Permalink"></a></h1><h2 id="How-to-Release-a-New-Version"><a class="docs-heading-anchor" href="#How-to-Release-a-New-Version">How to Release a New Version</a><a id="How-to-Release-a-New-Version-1"></a><a class="docs-heading-anchor-permalink" href="#How-to-Release-a-New-Version" title="Permalink"></a></h2><blockquote><p><strong>Note</strong> This process will hopefully be considerably simplified once OpenMDAO.jl and OpenMDAOCore.jl are added to the Julia General registry.</p></blockquote><p>It&#39;s a bit tricky to release a new version of OpenMDAO.jl, since this repository contains 3 separate software packages: the Julia packages OpenMDAOCore.jl and OpenMDAO.jl, and the Python package omjlcomps. Here&#39;s how to do it.</p><h3 id="Step-1:-Hack-on-OpenMDAO.jl"><a class="docs-heading-anchor" href="#Step-1:-Hack-on-OpenMDAO.jl">Step 1: Hack on OpenMDAO.jl</a><a id="Step-1:-Hack-on-OpenMDAO.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Step-1:-Hack-on-OpenMDAO.jl" title="Permalink"></a></h3><p>The first step of releasing a new version is obviously hacking on the code, which is no different than working on any other piece of software on GitHub. You&#39;ll need to fork the <code>byuflowlab/OpenMDAO.jl</code> GitHub repository, then clone it to your local machine with</p><pre><code class="nohighlight hljs">$ git clone git@github.com:&lt;your_user_name&gt;/OpenMDAO.jl.git</code></pre><p>Then you can start making changes, hopefully in a new local feature branch you create.</p><h3 id="Step-2:-Submit-a-PR-to-byuflowlab/OpenMDAO.jl.git-and-merge"><a class="docs-heading-anchor" href="#Step-2:-Submit-a-PR-to-byuflowlab/OpenMDAO.jl.git-and-merge">Step 2: Submit a PR to <code>byuflowlab/OpenMDAO.jl.git</code> and merge</a><a id="Step-2:-Submit-a-PR-to-byuflowlab/OpenMDAO.jl.git-and-merge-1"></a><a class="docs-heading-anchor-permalink" href="#Step-2:-Submit-a-PR-to-byuflowlab/OpenMDAO.jl.git-and-merge" title="Permalink"></a></h3><p>After you&#39;re happy with your changes (they have tests, right? And pass those tests?), push your local changes to your GitHub fork, and then submit a PR to <code>byuflowlab/OpenMDAO.jl.git</code>. Be sure to bump the version number in each sub-package appropriately (if necessary: no need to modify all three version numbers just because a change was made to only one or two of the packages). The OpenMDAOCore.jl and OpenMDAO.jl version numbers should follow semantic versioning (check out the <a href="https://pkgdocs.julialang.org/v1/compatibility/">Julia Pkg docs on compatibility</a>). I try to follow semantic versioning with the <code>omjlcomps</code> Python package, even though semantic versioning doesn&#39;t appear to be as pervasive in the Python ecosystem as it is in Julia land.</p><p>After everyone is satisfied with the PR, an Administrator of the <code>byuflowab/OpenMDAO.jl</code> repository will merge the package.</p><h3 id="Step-3:-Tag-the-new-version(s)"><a class="docs-heading-anchor" href="#Step-3:-Tag-the-new-version(s)">Step 3: Tag the new version(s)</a><a id="Step-3:-Tag-the-new-version(s)-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Tag-the-new-version(s)" title="Permalink"></a></h3><p>Every time the version of any of the three OpenMDAO.jl sub-packages is bumped, we should tag a new version. The way to do this is the following:</p><ul><li><p>First, check out the upstream <code>master</code> branch, i.e. if the remote branch pointing to <code>byuflowlab/OpenMDAO.jl.git</code> is <code>upstream</code>, then do <code>git checkout upstream/master</code>. That should put the local repository in a &quot;detached HEAD&quot; state, like this:</p><pre><code class="nohighlight hljs">$ git checkout upstream/master
+Note: switching to &#39;upstream/master&#39;.
+
+You are in &#39;detached HEAD&#39; state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c &lt;new-branch-name&gt;
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at a9e8f78 Merge pull request #16 from dingraha/licence
+$</code></pre></li><li><p>Make sure you&#39;re on the commit corresponding to the merged pull request you want to release/tag, using, for example, <code>git log -n1</code>:</p><pre><code class="nohighlight hljs">$ git log -n 1
+commit a9e8f7849844640f77a2eadd3683476be92ba8fb (HEAD, upstream/master, origin/master, origin/HEAD, master, how_to_release)
+Merge: 16f0355 054b78c
+Author: Daniel Ingraham &lt;d.j.ingraham@gmail.com&gt;
+Date:   Thu May 25 09:02:07 2023 -0400
+
+    Merge pull request #16 from dingraha/licence
+    
+    Add LICENSE
+$ </code></pre></li><li><p>Create the tag(s) using <code>git tag</code>. The tag or tags should follow the format <code>package_name-vX.Y.Z</code>. For example, here are the tags at the time of writing:</p><pre><code class="nohighlight hljs">$ git tag
+OpenMDAO.jl-v0.3.0
+OpenMDAO.jl-v0.3.1
+OpenMDAO.jl-v0.3.2
+OpenMDAO.jl-v0.4.0
+OpenMDAOCore.jl-v0.2.10
+OpenMDAOCore.jl-v0.2.8
+OpenMDAOCore.jl-v0.2.9
+OpenMDAOCore.jl-v0.3.0
+omjlcomps-v0.1.7
+omjlcomps-v0.1.8
+omjlcomps-v0.1.9
+omjlcomps-v0.2.0
+v0.2.0
+v0.2.1
+$ </code></pre><p>(The <code>v0.2.0</code> and <code>v0.2.1</code> tags are from very early versions of OpenMDAO.jl and don&#39;t follow the recomended tag format.)</p></li><li><p>With the tags created, all that&#39;s left is to push them to <code>upstream</code>:</p><pre><code class="nohighlight hljs">$ git push --tags upstream</code></pre></li></ul><h3 id="Step-4:-Release-the-new-version(s)-to-the-appropriate-registries"><a class="docs-heading-anchor" href="#Step-4:-Release-the-new-version(s)-to-the-appropriate-registries">Step 4: Release the new version(s) to the appropriate registries</a><a id="Step-4:-Release-the-new-version(s)-to-the-appropriate-registries-1"></a><a class="docs-heading-anchor-permalink" href="#Step-4:-Release-the-new-version(s)-to-the-appropriate-registries" title="Permalink"></a></h3><p>For either of the two Julia packages (OpenMDAO.jl and OpenMDAOCore.jl), we need to register a new version with <code>DanielIngrahamRegistry</code> at <code>dingraha/DanielIngrahamRegistry</code> on GitHub using <code>LocalRegistry</code>. Again, this is unfortunately something only I (Daniel) can do. All that needs to be done is, from the Julia REPL:</p><ul><li>Make sure you&#39;ve <code>dev</code>ed the package you want to release, and are on the appropriate commit.</li><li>Do <code>LocalRegistry.register(&quot;OpenMDAOCore&quot;)</code> and/or <code>LocalRegistry.register(&quot;OpenMDAO&quot;)</code>, as appropriate.</li></ul><p>If a new version of <code>omjlcomps</code> was tagged, then we need to put it on PyPI. The way I do this currently is using <code>twine</code>:</p><pre><code class="nohighlight hljs">$ # In the OpenMDAO.jl/python directory.
+$ python setup.py sdist
+running sdist
+running egg_info
+writing omjlcomps.egg-info/PKG-INFO
+writing dependency_links to omjlcomps.egg-info/dependency_links.txt
+writing entry points to omjlcomps.egg-info/entry_points.txt
+writing requirements to omjlcomps.egg-info/requires.txt
+writing top-level names to omjlcomps.egg-info/top_level.txt
+reading manifest file &#39;omjlcomps.egg-info/SOURCES.txt&#39;
+reading manifest template &#39;MANIFEST.in&#39;
+writing manifest file &#39;omjlcomps.egg-info/SOURCES.txt&#39;
+running check
+creating omjlcomps-0.1.9
+creating omjlcomps-0.1.9/omjlcomps
+creating omjlcomps-0.1.9/omjlcomps.egg-info
+creating omjlcomps-0.1.9/omjlcomps/test
+copying files to omjlcomps-0.1.9...
+copying MANIFEST.in -&gt; omjlcomps-0.1.9
+copying README.md -&gt; omjlcomps-0.1.9
+copying setup.py -&gt; omjlcomps-0.1.9
+copying omjlcomps/__init__.py -&gt; omjlcomps-0.1.9/omjlcomps
+copying omjlcomps/juliapkg.json -&gt; omjlcomps-0.1.9/omjlcomps
+copying omjlcomps.egg-info/PKG-INFO -&gt; omjlcomps-0.1.9/omjlcomps.egg-info
+copying omjlcomps.egg-info/SOURCES.txt -&gt; omjlcomps-0.1.9/omjlcomps.egg-info
+copying omjlcomps.egg-info/dependency_links.txt -&gt; omjlcomps-0.1.9/omjlcomps.egg-info
+copying omjlcomps.egg-info/entry_points.txt -&gt; omjlcomps-0.1.9/omjlcomps.egg-info
+copying omjlcomps.egg-info/requires.txt -&gt; omjlcomps-0.1.9/omjlcomps.egg-info
+copying omjlcomps.egg-info/top_level.txt -&gt; omjlcomps-0.1.9/omjlcomps.egg-info
+copying omjlcomps/test/__init__.py -&gt; omjlcomps-0.1.9/omjlcomps/test
+copying omjlcomps/test/test_ecomp.jl -&gt; omjlcomps-0.1.9/omjlcomps/test
+copying omjlcomps/test/test_icomp.jl -&gt; omjlcomps-0.1.9/omjlcomps/test
+copying omjlcomps/test/test_julia_explicit_comp.py -&gt; omjlcomps-0.1.9/omjlcomps/test
+copying omjlcomps/test/test_julia_implicit_comp.py -&gt; omjlcomps-0.1.9/omjlcomps/test
+Writing omjlcomps-0.1.9/setup.cfg
+Creating tar archive
+removing &#39;omjlcomps-0.1.9&#39; (and everything under it)
+(venv) dingraha@GRLRL2021060743 ~/p/p/d/O/python (master %)&gt; ls
+build/  dist/  MANIFEST.in  omjlcomps/  omjlcomps.egg-info/  README.md  setup.py
+(venv) dingraha@GRLRL2021060743 ~/p/p/d/O/python (master %)&gt; twine upload dist/omjlcomps-0.1.9.tar.gz 
+Uploading distributions to https://upload.pypi.org/legacy/
+Enter your username: dingraha
+Enter your password: 
+Uploading omjlcomps-0.1.9.tar.gz
+100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.1/12.1 kB • 00:00 • 8.5 MB/s
+
+View at:
+https://pypi.org/project/omjlcomps/0.1.9/
+$ </code></pre><p>That unfortunately is something only I can do, since it requires my username and password for PyPI. Also it uses plain password authentication, which I think isn&#39;t supported anymore, or won&#39;t be for long.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../limitations/">« Limitations</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 6 June 2023 19:21">Tuesday 6 June 2023</span>. Using Julia version 1.9.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
