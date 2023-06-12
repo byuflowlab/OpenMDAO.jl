@@ -4,9 +4,28 @@ CurrentModule = OpenMDAODocs
 # Developer Docs
 
 ## How to Release a New Version
+For either OpenMDAOCore.jl or OpenMDAO.jl, registering a new version should be as simple as commenting
 
+> @JuliaRegistrator register subdir=julia/OpenMDAOCore.jl
+
+or
+
+> @JuliaRegistrator register subdir=julia/OpenMDAO.jl
+
+on a new issue, like [here](https://github.com/byuflowlab/OpenMDAO.jl/issues/22).
+Be sure to adjust the `version` field in the appropriate `Project.toml` before you do that.
+
+For `omjlcomps`, registration is done by manually running the "Register to PyPI" workflow from the GitHub Actions tab (basically copied from [PythonCall.jl](https://github.com/cjdoris/PythonCall.jl)).
+Be sure to adjust the version in the `python/setup.py` file before registering a new version.
+After clicking on the Actions tab on https://github.com/byuflowlab/OpenMDAO.jl, you'll see "Register to PyPI" listed under "All workflows" on the left-hand side.
+Click on that, then click on the "Run workflow" dropdown button on the right-hand side of the screen.
+Run it from the master branch, then wait for the workflow to finish.
+After that, you should see the new version of `omjlcomps` on PyPI: https://pypi.org/project/omjlcomps/.
+
+## How to Release a New Version (Old, LocalRegistry Way)
 > **Note**
-> This process will hopefully be considerably simplified once OpenMDAO.jl and OpenMDAOCore.jl are added to the Julia General registry.
+> This section of the docs describes how I released new versions of `OpenMDAO{,Core}.jl` and `omjlcomps` before getting stuff registered in the Julia General registry.
+> They are outdated and unnecessary, but I'm keeping them for now in case someone wants to do something similar down the road.
 
 It's a bit tricky to release a new version of OpenMDAO.jl, since this repository contains 3 separate software packages: the Julia packages OpenMDAOCore.jl and OpenMDAO.jl, and the Python package omjlcomps.
 Here's how to do it.
