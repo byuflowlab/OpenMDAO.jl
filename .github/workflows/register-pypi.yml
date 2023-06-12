@@ -18,7 +18,7 @@ jobs:
         pip install
         build
         --user
-        python
+        ./python
     - name: Build distribution
       run: >-
         python -m
