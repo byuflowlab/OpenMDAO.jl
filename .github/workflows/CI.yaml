@@ -28,12 +28,11 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
           arch: ${{ matrix.arch }}
-      - name: Add General and DanielIngrahamRegistry
+      - name: Add General Registry
         shell: julia --color=yes {0}
         run: |
           using Pkg
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
-          Pkg.Registry.add(RegistrySpec(url="https://github.com/dingraha/DanielIngrahamRegistry"))
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
       - name: OpenMDAOCore.jl Tests
@@ -82,12 +81,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Add General and DanielIngrahamRegistry
+      - name: Add General Registry
         shell: julia --color=yes {0}
         run: |
           using Pkg
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
-          Pkg.Registry.add(RegistrySpec(url="https://github.com/dingraha/DanielIngrahamRegistry"))
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
       - name: omjlcomps install
