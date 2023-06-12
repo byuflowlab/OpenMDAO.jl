@@ -1,7 +1,14 @@
-
 from setuptools import setup
 
-setup_args = {'description': 'Create OpenMDAO Components using the Julia programming language',
+from pathlib import Path
+from io import open
+
+with open(Path(__file__).parent / "README.md", encoding="utf-8") as f:
+    long_description = f.read()
+
+setup_args = {
+   'description': 'Create OpenMDAO Components using the Julia programming language',
+   'long_description': long_description,
    'entry_points': {
        'openmdao_component': [
            'juliaexplicitcomp=omjlcomps:JuliaExplicitComp',
