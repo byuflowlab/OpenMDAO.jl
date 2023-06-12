@@ -1,9 +1,9 @@
+import juliacall; jl = juliacall.newmodule("OpenMDAOJuliaComps")
 from types import MethodType
 
 import openmdao.api as om
 from openmdao.core.analysis_error import AnalysisError
 
-import juliacall; jl = juliacall.newmodule("OpenMDAOJuliaComps")
 from juliacall import JuliaError
 # This imports the Julia package OpenMDAOCore:
 jl.seval("using OpenMDAOCore: OpenMDAOCore")

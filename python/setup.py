@@ -21,7 +21,7 @@ setup_args = {
    'license': 'MIT',
    'name': 'omjlcomps',
    'packages': ['omjlcomps', 'omjlcomps.test'],
-   'version': '0.2.2',
+   'version': '0.2.3',
    'include_package_data': True}
 
 setup(**setup_args)
