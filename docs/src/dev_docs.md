@@ -14,6 +14,24 @@ or
 
 on a new issue, like [here](https://github.com/byuflowlab/OpenMDAO.jl/issues/22).
 Be sure to adjust the `version` field in the appropriate `Project.toml` before you do that.
+And after the new version is registered, don't forget to tag it as suggested by the JuliaRegistrator bot.
+For example, OpenMDAOCore.jl version 0.3.1 was tagged like this:
+
+```
+$ git tag OpenMDAOCore.jl-v0.3.1 ea03a4e1be02a989021e5b466fc1fe51534e6fdb
+$ git push upstream OpenMDAOCore.jl-v0.3.1
+```
+
+where `upstream` is the remote corresponding to `byuflowlab/OpenMDAO.jl.git`:
+
+```
+$ git remote -v
+origin  git@github.com:dingraha/OpenMDAO.jl.git (fetch)
+origin  git@github.com:dingraha/OpenMDAO.jl.git (push)
+upstream        git@github.com:byuflowlab/OpenMDAO.jl.git (fetch)
+upstream        git@github.com:byuflowlab/OpenMDAO.jl.git (push)
+$
+```
 
 For `omjlcomps`, registration is done by manually running the "Register to PyPI" workflow from the GitHub Actions tab (basically copied from [PythonCall.jl](https://github.com/cjdoris/PythonCall.jl)).
 Be sure to adjust the version in the `python/setup.py` file before registering a new version.
@@ -21,6 +39,24 @@ After clicking on the Actions tab on https://github.com/byuflowlab/OpenMDAO.jl, 
 Click on that, then click on the "Run workflow" dropdown button on the right-hand side of the screen.
 Run it from the master branch, then wait for the workflow to finish.
 After that, you should see the new version of `omjlcomps` on PyPI: https://pypi.org/project/omjlcomps/.
+Once that's done, tag the commit that contains the new version of `omjlcomps` and push that to `byuflowlab/OpenMDAO.jl.git`.
+For example, `omjlcomps` version 0.2.3 was tagged with
+
+```
+$ git tag omjlcomps-v0.2.3 d7830552dc3d54fe18b89dc91b36219739d13a62
+$ git push upstream omjlcomps-v0.2.3
+```
+
+where `upstream` is the remote corresponding to `byuflowlab/OpenMDAO.jl.git`:
+
+```
+$ git remote -v
+origin  git@github.com:dingraha/OpenMDAO.jl.git (fetch)
+origin  git@github.com:dingraha/OpenMDAO.jl.git (push)
+upstream        git@github.com:byuflowlab/OpenMDAO.jl.git (fetch)
+upstream        git@github.com:byuflowlab/OpenMDAO.jl.git (push)
+$
+```
 
 ## How to Release a New Version (Old, LocalRegistry Way)
 > **Note**
