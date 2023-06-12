@@ -1,5 +1,6 @@
 module OpenMDAO
 
+using Pkg: Pkg
 using OpenMDAOCore: OpenMDAOCore
 using PythonCall: PythonCall
 
@@ -11,6 +12,7 @@ const omjlcomps = PythonCall.pynew()
 
 function __init__()
     PythonCall.pycopy!(om, PythonCall.pyimport("openmdao.api"))
+    Pkg.add("OpenMDAOCore")
     PythonCall.pycopy!(omjlcomps, PythonCall.pyimport("omjlcomps"))
 end
 
