@@ -6,10 +6,11 @@ version = "0.4.1"
 [deps]
 CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
 OpenMDAOCore = "24d19c10-6eee-420f-95df-4537264b2753"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 
 [compat]
-julia = "1.8.5"
 CondaPkg = "0.2.17"
 OpenMDAOCore = "0.3.0"
 PythonCall = "0.9.12"
+julia = "1.8.5"
