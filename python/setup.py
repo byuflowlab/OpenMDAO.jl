@@ -9,6 +9,7 @@ with open(Path(__file__).parent / "README.md", encoding="utf-8") as f:
 setup_args = {
    'description': 'Create OpenMDAO Components using the Julia programming language',
    'long_description': long_description,
+   'long_description_content_type': 'text/markdown',
    'entry_points': {
        'openmdao_component': [
            'juliaexplicitcomp=omjlcomps:JuliaExplicitComp',
@@ -20,7 +21,7 @@ setup_args = {
    'license': 'MIT',
    'name': 'omjlcomps',
    'packages': ['omjlcomps', 'omjlcomps.test'],
-   'version': '0.2.1',
+   'version': '0.2.2',
    'include_package_data': True}
 
 setup(**setup_args)
