@@ -16,7 +16,7 @@ setup_args = {
            'juliaimplicitcomp=omjlcomps:JuliaImplicitComp'
        ]
     },
-   'install_requires': ['openmdao~=3.26.0', 'juliapkg~=0.1.10', 'juliacall~=0.9.13'],
+   'install_requires': ['openmdao~=3.26', 'juliapkg~=0.1.10', 'juliacall~=0.9.13'],
    'keywords': ['openmdao_component'],
    'license': 'MIT',
    'name': 'omjlcomps',
