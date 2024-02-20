@@ -1045,6 +1045,7 @@ end
                 var = pyconvert(Any, pyvar)
                 wrt = pyconvert(Any, pywrt)
                 # In OpenMDAO 3.26.0, the correct key is always `"J_fwd"`, but in 3.30.0 it depends on the `mode` argument to `problem.setup()`.
+                J_actual = nothing
                 try
                     J_actual = pyconvert(Dict, ctd[var, wrt])["J_fwd"]
                 catch e1
