@@ -1,20 +1,71 @@
-
-<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <style>
-        h2 {text-align: center;}
-        .center {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            width: 80%;
-        }
-    </style>
+<title>total coloring report: problem2</title>
 </head>
 <body>
-<h2></h2>
-<img src="coloring.png" alt="" class="center"></img>
+Total Coloring Report<br>
+problem2
+<hr style="width:100%;text-align:left;margin-left:0">
+<pre>
+f................................................. 0  traj.phase0.t
+ff.................f.........fff.................. 1  traj.phase0.collocation_constraint.defects:x
+fff................ff..........fff................ 2  traj.phase0.collocation_constraint.defects:x
+f.ff.......ff.......ff...........fff.............. 3  traj.phase0.collocation_constraint.defects:x
+f..ff......ff.......fff..........f.fff............ 4  traj.phase0.collocation_constraint.defects:x
+f...ff................ff.........f...fff.......... 5  traj.phase0.collocation_constraint.defects:x
+f....ff................ff..............fff........ 6  traj.phase0.collocation_constraint.defects:x
+f.....ff................ff.......f.......fff...... 7  traj.phase0.collocation_constraint.defects:x
+f......ff................ff......f.........fff.... 8  traj.phase0.collocation_constraint.defects:x
+f.......ff................ff.....f...........fff.. 9  traj.phase0.collocation_constraint.defects:x
+f........f.................ff..................fff 10  traj.phase0.collocation_constraint.defects:x
+f.........f........f.........fff.................. 11  traj.phase0.collocation_constraint.defects:y
+f.........ff.......fff.........fff.f.............. 12  traj.phase0.collocation_constraint.defects:y
+f..........ff.......ff...........fff.............. 13  traj.phase0.collocation_constraint.defects:y
+f..........fff......fff..........f.fff............ 14  traj.phase0.collocation_constraint.defects:y
+f............ff.......ff.............fff.......... 15  traj.phase0.collocation_constraint.defects:y
+f.............ff.......ff........f.....fff........ 16  traj.phase0.collocation_constraint.defects:y
+f..............ff.......ff.......f.......fff...... 17  traj.phase0.collocation_constraint.defects:y
+f...............ff.......ff......f.........fff.... 18  traj.phase0.collocation_constraint.defects:y
+f................ff.......ff.................fff.. 19  traj.phase0.collocation_constraint.defects:y
+f.................f........ff....f.............fff 20  traj.phase0.collocation_constraint.defects:y
+f..................f.........fff.f................ 21  traj.phase0.collocation_constraint.defects:v
+f..................ff..........fff................ 22  traj.phase0.collocation_constraint.defects:v
+f..........ff.......ff...........fff.............. 23  traj.phase0.collocation_constraint.defects:v
+f....................ff..........f.fff............ 24  traj.phase0.collocation_constraint.defects:v
+f.....................ff.........f...fff.......... 25  traj.phase0.collocation_constraint.defects:v
+f......................ff........f.....fff........ 26  traj.phase0.collocation_constraint.defects:v
+f.......................ff...............fff...... 27  traj.phase0.collocation_constraint.defects:v
+f........................ff................fff.... 28  traj.phase0.collocation_constraint.defects:v
+f.........................ff.....f...........fff.. 29  traj.phase0.collocation_constraint.defects:v
+f..........................ff....f.............fff 30  traj.phase0.collocation_constraint.defects:v
+f............................fffff................ 31  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+f..............................fffff.............. 32  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+f................................fffff............ 33  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+f..................................fffff.......... 34  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+f....................................fffff........ 35  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+f......................................fffff...... 36  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+f........................................fffff.... 37  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+f..........................................fffff.. 38  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+f............................................fffff 39  traj.phase0.continuity_comp.defect_control_rates:theta_rate
+|traj.phase0.t_duration
+ |traj.phase0.states:x
+          |traj.phase0.states:y
+                   |traj.phase0.states:v
+                             |traj.phase0.controls:theta
+</pre>
+
+<pre>
+
+
+Jacobian shape: (40, 50)  (14.75% nonzero)
+FWD solves: 12   REV solves: 0
+Total colors vs. total size: 12 vs 50  (76.00% improvement)
+
+Sparsity computed using tolerance: 1e-25
+Time to compute sparsity:   0.0245 sec
+Time to compute coloring:   0.0245 sec
+Coloring created on: 2024-02-20 19:58:57
+</pre>
 
 </body>
 </html>

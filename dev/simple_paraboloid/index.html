@@ -170,39 +170,41 @@ Component: JuliaExplicitComp &#39;ecomp&#39;
 ------------------------------------
 
   ecomp: &#39;y&#39; wrt &#39;x&#39;
-    Analytic Magnitude: 1.019804e+02
+     Forward Magnitude: 1.019804e+02
           Fd Magnitude: 1.019804e+02 (cs:None)
-    Absolute Error (Jan - Jfd) : 7.105427e-15
 
-    Relative Error (Jan - Jfd) / Jfd : 6.967445e-17
+    Absolute Error (Jfor - Jfd) : 7.105427e-15
 
-    Raw Analytic Derivative (Jfor)
-[[ 4.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  8.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0. 12.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0. 16.  0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0. 20.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0. 24.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0. 28.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0. 32.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0. 36.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0.  0. 40.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0. 44.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0. 48.]]
+    Relative Error (Jfor - Jfd) / Jfd : 6.967445e-17
 
-    Raw CS Derivative (Jcs)
-[[ 4.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  8.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0. 12.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0. 16.  0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0. 20.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0. 24.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0. 28.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0. 32.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0. 36.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0.  0. 40.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0. 44.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0. 48.]]
+    Raw Forward Derivative (Jfor)
+    [[ 4.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  8.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0. 12.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0. 16.  0.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0. 20.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0. 24.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0. 28.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0. 32.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0.  0. 36.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0.  0.  0. 40.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0. 44.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0. 48.]]
+
+    Raw CS Derivative (Jfd)
+    [[ 4.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  8.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0. 12.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0. 16.  0.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0. 20.  0.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0. 24.  0.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0. 28.  0.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0. 32.  0.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0.  0. 36.  0.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0.  0.  0. 40.  0.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0. 44.  0.]
+     [ 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0. 48.]]
+
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 f_xy = [-27.33333333]
 x = [6.66666633]
@@ -260,7 +262,7 @@ prob.set_val(&quot;parab_comp.x&quot;, 3.0)
 prob.set_val(&quot;parab_comp.y&quot;, -4.0)
 
 prob.run_model()
-println(prob.check_partials(method=&quot;fd&quot;))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">{&#39;parab_comp&#39;: {(&#39;f_xy&#39;, &#39;x&#39;): {&#39;J_fwd&#39;: array([[-4.]]), &#39;J_fd&#39;: array([[-3.999999]]), &#39;abs error&#39;: ErrorTuple(forward=9.99529788714426e-07, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=4.0, reverse=None, fd=3.9999990004702113), &#39;rel error&#39;: ErrorTuple(forward=2.498825096198595e-07, reverse=None, forward_reverse=None)}, (&#39;f_xy&#39;, &#39;y&#39;): {&#39;J_fwd&#39;: array([[3.]]), &#39;J_fd&#39;: array([[3.000001]]), &#39;abs error&#39;: ErrorTuple(forward=9.99620056063577e-07, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=3.0, reverse=None, fd=3.000000999620056), &#39;rel error&#39;: ErrorTuple(forward=3.332065743278675e-07, reverse=None, forward_reverse=None)}}}</code></pre><p>It worked! And the error is quite small.</p><p>What about the complex step method?</p><pre><code class="language-julia hljs">println(prob.check_partials(method=&quot;cs&quot;))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">{&#39;parab_comp&#39;: {(&#39;f_xy&#39;, &#39;x&#39;): {&#39;J_fwd&#39;: array([[-4.]]), &#39;J_fd&#39;: array([[-4.]]), &#39;abs error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=4.0, reverse=None, fd=4.0), &#39;rel error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None)}, (&#39;f_xy&#39;, &#39;y&#39;): {&#39;J_fwd&#39;: array([[3.]]), &#39;J_fd&#39;: array([[3.]]), &#39;abs error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=3.0, reverse=None, fd=3.0), &#39;rel error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None)}}}</code></pre><p>It works! (The error is zero since the complex-step method is second-order accurate and we&#39;re differentiating a second-order polynomial.) Complex numbers are no problem for Julia, but just like Python, we need to be careful to write our <code>compute_partials!</code> function in a complex-step-safe manner.</p><div class="admonition is-info"><header class="admonition-header">FLOWMath.jl</header><div class="admonition-body"><p>The Julia library <a href="https://github.com/byuflowlab/FLOWMath.jl">FLOWMath</a> has a collection of complex-step-safe functions.</p></div></div><p>Now, let&#39;s try an optimization:</p><pre><code class="language-julia hljs">prob.run_driver()
+println(prob.check_partials(method=&quot;fd&quot;))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">{&#39;parab_comp&#39;: {(&#39;f_xy&#39;, &#39;x&#39;): {&#39;J_fwd&#39;: array([[-4.]]), &#39;J_fd&#39;: array([[-3.999999]]), &#39;abs error&#39;: ErrorTuple(forward=9.99529788714426e-07, reverse=None, forward_reverse=None), &#39;rel error&#39;: ErrorTuple(forward=2.498825096198595e-07, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=4.0, reverse=None, fd=3.9999990004702113)}, (&#39;f_xy&#39;, &#39;y&#39;): {&#39;J_fwd&#39;: array([[3.]]), &#39;J_fd&#39;: array([[3.000001]]), &#39;abs error&#39;: ErrorTuple(forward=9.99620056063577e-07, reverse=None, forward_reverse=None), &#39;rel error&#39;: ErrorTuple(forward=3.332065743278675e-07, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=3.0, reverse=None, fd=3.000000999620056)}}}</code></pre><p>It worked! And the error is quite small.</p><p>What about the complex step method?</p><pre><code class="language-julia hljs">println(prob.check_partials(method=&quot;cs&quot;))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">{&#39;parab_comp&#39;: {(&#39;f_xy&#39;, &#39;x&#39;): {&#39;J_fwd&#39;: array([[-4.]]), &#39;J_fd&#39;: array([[-4.]]), &#39;abs error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None), &#39;rel error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=4.0, reverse=None, fd=4.0)}, (&#39;f_xy&#39;, &#39;y&#39;): {&#39;J_fwd&#39;: array([[3.]]), &#39;J_fd&#39;: array([[3.]]), &#39;abs error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None), &#39;rel error&#39;: ErrorTuple(forward=0.0, reverse=None, forward_reverse=None), &#39;magnitude&#39;: MagnitudeTuple(forward=3.0, reverse=None, fd=3.0)}}}</code></pre><p>It works! (The error is zero since the complex-step method is second-order accurate and we&#39;re differentiating a second-order polynomial.) Complex numbers are no problem for Julia, but just like Python, we need to be careful to write our <code>compute_partials!</code> function in a complex-step-safe manner.</p><div class="admonition is-info"><header class="admonition-header">FLOWMath.jl</header><div class="admonition-body"><p>The Julia library <a href="https://github.com/byuflowlab/FLOWMath.jl">FLOWMath</a> has a collection of complex-step-safe functions.</p></div></div><p>Now, let&#39;s try an optimization:</p><pre><code class="language-julia hljs">prob.run_driver()
 println(&quot;f_xy = $(prob.get_val(&quot;parab_comp.f_xy&quot;))&quot;)  # Should print `[-27.33333333]`
 println(&quot;x = $(prob.get_val(&quot;parab_comp.x&quot;))&quot;)  # Should print `[6.66666633]`
 println(&quot;y = $(prob.get_val(&quot;parab_comp.y&quot;))&quot;)  # Should print `[-7.33333367]`</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Optimization terminated successfully    (Exit mode 0)
@@ -275,61 +277,69 @@ Component: JuliaExplicitComp &#39;parab_comp&#39;
 -----------------------------------------
 
   parab_comp: &#39;f_xy&#39; wrt &#39;x&#39;
-    Analytic Magnitude: 4.000000e+00
+     Forward Magnitude: 4.000000e+00
           Fd Magnitude: 3.999999e+00 (fd:forward)
-    Absolute Error (Jan - Jfd) : 9.995298e-07
 
-    Relative Error (Jan - Jfd) / Jfd : 2.498825e-07
+    Absolute Error (Jfor - Jfd) : 9.995298e-07
 
-    Raw Analytic Derivative (Jfor)
-[[-4.]]
+    Relative Error (Jfor - Jfd) / Jfd : 2.498825e-07
+
+    Raw Forward Derivative (Jfor)
+    [[-4.]]
 
     Raw FD Derivative (Jfd)
-[[-3.999999]]
+    [[-3.999999]]
+
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   parab_comp: &#39;f_xy&#39; wrt &#39;y&#39;
-    Analytic Magnitude: 3.000000e+00
+     Forward Magnitude: 3.000000e+00
           Fd Magnitude: 3.000001e+00 (fd:forward)
-    Absolute Error (Jan - Jfd) : 9.996201e-07
 
-    Relative Error (Jan - Jfd) / Jfd : 3.332066e-07
+    Absolute Error (Jfor - Jfd) : 9.996201e-07
 
-    Raw Analytic Derivative (Jfor)
-[[3.]]
+    Relative Error (Jfor - Jfd) / Jfd : 3.332066e-07
+
+    Raw Forward Derivative (Jfor)
+    [[3.]]
 
     Raw FD Derivative (Jfd)
-[[3.000001]]
+    [[3.000001]]
+
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 -----------------------------------------
 Component: JuliaExplicitComp &#39;parab_comp&#39;
 -----------------------------------------
 
   parab_comp: &#39;f_xy&#39; wrt &#39;x&#39;
-    Analytic Magnitude: 4.000000e+00
+     Forward Magnitude: 4.000000e+00
           Fd Magnitude: 4.000000e+00 (cs:None)
-    Absolute Error (Jan - Jfd) : 0.000000e+00
 
-    Relative Error (Jan - Jfd) / Jfd : 0.000000e+00
+    Absolute Error (Jfor - Jfd) : 0.000000e+00
 
-    Raw Analytic Derivative (Jfor)
-[[-4.]]
+    Relative Error (Jfor - Jfd) / Jfd : 0.000000e+00
 
-    Raw CS Derivative (Jcs)
-[[-4.]]
+    Raw Forward Derivative (Jfor)
+    [[-4.]]
+
+    Raw CS Derivative (Jfd)
+    [[-4.]]
+
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   parab_comp: &#39;f_xy&#39; wrt &#39;y&#39;
-    Analytic Magnitude: 3.000000e+00
+     Forward Magnitude: 3.000000e+00
           Fd Magnitude: 3.000000e+00 (cs:None)
-    Absolute Error (Jan - Jfd) : 0.000000e+00
 
-    Relative Error (Jan - Jfd) / Jfd : 0.000000e+00
+    Absolute Error (Jfor - Jfd) : 0.000000e+00
 
-    Raw Analytic Derivative (Jfor)
-[[3.]]
+    Relative Error (Jfor - Jfd) / Jfd : 0.000000e+00
 
-    Raw CS Derivative (Jcs)
-[[3.]]
+    Raw Forward Derivative (Jfor)
+    [[3.]]
+
+    Raw CS Derivative (Jfd)
+    [[3.]]
+
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 f_xy = [-27.33333333]
 x = [6.66666667]
-y = [-7.33333333]</code></pre><p>Still works, and we got the right answer.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../nonlinear_circuit/">A More Complicated Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Thursday 15 June 2023 15:36">Thursday 15 June 2023</span>. Using Julia version 1.9.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+y = [-7.33333333]</code></pre><p>Still works, and we got the right answer.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../nonlinear_circuit/">A More Complicated Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Tuesday 20 February 2024 19:59">Tuesday 20 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
