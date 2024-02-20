@@ -396,7 +396,15 @@ class TestSolveLinearImplicitComp(unittest.TestCase):
         for p in [self.p_fwd, self.p_rev]:
             ctd = p.check_totals(of=["z1", "z2"], wrt=["x", "y"], method='cs', compact_print=True, out_stream=None)
             for of_wrt in ctd:
-                np.testing.assert_almost_equal(actual=ctd[of_wrt]['J_fwd'],
+                # In OpenMDAO 3.26.0, the correct key is always `"J_fwd"`, but in 3.30.0 it depends on the `mode` argument to `problem.setup()`.
+                try:
+                    J_actual = ctd[of_wrt]["J_fwd"]
+                except KeyError:
+                    try:
+                        J_actual = ctd[of_wrt]["J_rev"]
+                    except KeyError:
+                        raise(ValueError(f"ctd[{of_wrt}] contains neither 'J_fwd' nor 'J_rev'.\nctd.keys() = {ctd.keys()}"))
+                np.testing.assert_almost_equal(actual=J_actual,
                                                desired=ctd[of_wrt]['J_fd'],
                                                decimal=12)
 
