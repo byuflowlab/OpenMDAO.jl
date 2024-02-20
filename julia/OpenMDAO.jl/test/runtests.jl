@@ -1044,9 +1044,26 @@ end
             for (pyvar, pywrt) in keys(ctd)
                 var = pyconvert(Any, pyvar)
                 wrt = pyconvert(Any, pywrt)
-                J_fwd = pyconvert(Dict, ctd[var, wrt])["J_fwd"]
+                # In OpenMDAO 3.26.0, the correct key is always `"J_fwd"`, but in 3.30.0 it depends on the `mode` argument to `problem.setup()`.
+                try
+                    J_actual = pyconvert(Dict, ctd[var, wrt])["J_fwd"]
+                catch e1
+                    if isa(e1, KeyError)
+                        try
+                            J_actual = pyconvert(Dict, ctd[var, wrt])["J_rev"]
+                        catch e2
+                            if isa(e2, KeyError)
+                                throw(KeyError("ctd[$(var), $(wrt)] contains neither \"J_fwd\" nor \"J_rev\""))
+                            else
+                                rethrow(e2)
+                            end
+                        end
+                    else
+                        rethrow(e1)
+                    end
+                end
                 J_fd = pyconvert(Dict, ctd[var, wrt])["J_fd"]
-                @test J_fwd ≈ J_fd
+                @test J_actual ≈ J_fd
             end
         end
 
