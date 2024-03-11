@@ -1,5 +1,8 @@
 module OpenMDAOCore
 
+using ComponentArrays: ComponentVector, ComponentMatrix, getaxes, getdata
+using SparseArrays: sparse, findnz
+
 include("utils.jl")
 
 export VarData, PartialsData, AbstractExplicitComp, AbstractImplicitComp
@@ -307,5 +310,32 @@ struct PartialsData{N,TRows<:Union{<:AbstractVector{Int64},Nothing},TCols<:Union
 end
 
 PartialsData(of, wrt; rows=nothing, cols=nothing, val=nothing, method="exact") = PartialsData(of, wrt, rows, cols, val, method)
+
+abstract type AutoSparseForwardDiffExplicitComp <: AbstractExplicitComp end
+
+get_callback(comp::AutoSparseForwardDiffExplicitComp) = comp.compute_forwarddiffable!
+get_input_ca(comp::AutoSparseForwardDiffExplicitComp) = comp.X_ca
+get_output_ca(comp::AutoSparseForwardDiffExplicitComp) = comp.Y_ca
+get_sparse_jacobian_ca(comp::AutoSparseForwardDiffExplicitComp) = comp.J_ca_sparse
+get_sparse_jacobian_cache(comp::AutoSparseForwardDiffExplicitComp) = comp.jac_cache
+get_units(comp::AutoSparseForwardDiffExplicitComp, varname) = comp.units_dict[varname]
+
+function get_var_data(self::AutoSparseForwardDiffExplicitComp, ca)
+    return [VarData(string(k); shape=size(ca[k]), val=ca[k], units=get_units(self, k)) for k in keys(ca)]
+end
+
+function get_partials_data(self::AutoSparseForwardDiffExplicitComp)
+    rcdict = get_rows_cols_dict(get_sparse_jacobian_ca(self))
+    partials_data = Vector{OpenMDAOCore.PartialsData}()
+    for (output_name, input_name) in keys(rcdict)
+        rows, cols = rcdict[output_name, input_name]
+        # Convert from 1-based to 0-based indexing.
+        rows0b = rows .- 1
+        cols0b = cols .- 1
+        push!(partials_data, OpenMDAOCore.PartialsData(string(output_name), string(input_name); rows=rows0b, cols=cols0b))
+    end
+
+    return partials_data
+end
 
 end # module
