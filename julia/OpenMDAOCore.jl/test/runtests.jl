@@ -716,6 +716,9 @@ end
     OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
     a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
     e_check = 2*a^2 .+ 3 .* b.^2.1 .+ 4*sum(c)^2.2 .+ 5 .* (sum(d; dims=1)[:]).^2.3
-    @test all(e_check .≈ outputs_dict["e"])
+    @test all(outputs_dict["e"] .≈ e_check)
+
+    f_check = 6*a^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
+    @test all(outputs_dict["f"] .≈ f_check)
 
 end
