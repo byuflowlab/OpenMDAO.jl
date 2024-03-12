@@ -120,7 +120,7 @@ function get_rows_cols_dict_from_sparsity(J::ComponentMatrix)
             # It'd be nice if I didn't have to do that.
             # But should be pretty small if the sub-jacobians are actually sparse.
             if typeof(Jsub) <: Number
-                # Both input and output is scalar, so rows and cols have to be just 1.
+                # Both input and output is scalar, so check if this scalar sub-Jacobian is zero or not.
                 if Jsub ≈ zero(Jsub)
                     rows = cols = Vector{Int}()
                 else

@@ -3,6 +3,7 @@ using Test
 using Documenter
 using ComponentArrays: ComponentVector, ComponentMatrix, getdata, getaxes
 using SparseArrays: sparse
+using SparseDiffTools: matrix_colors, ForwardColorJacCache
 
 doctest(OpenMDAOCore, manual=false)
 
@@ -636,5 +637,85 @@ end
         @test all(rows .== rows_check)
         @test all(cols .== cols_check)
     end
+
+end
+
+@testset "AbstractAutoSparseForwardDiffExplicitComp" begin
+    struct Comp1{TCompute,TX,TY,TJ,TCache} <: AbstractAutoSparseForwardDiffExplicitComp where {TCompute,TX,TY,TJ,TCache}
+        compute_forwarddiffable!::TCompute
+        X_ca::TX
+        Y_ca::TY
+        J_ca_sparse::TJ
+        jac_cache::TCache
+    end
+
+    function Comp1(M, N)
+        compute_forwarddiffable! = let M=M, N=N
+            (Y, X)->begin
+                a = only(X[:a])
+                b = @view X[:b]
+                c = @view X[:c]
+                d = @view X[:d]
+                e = @view Y[:e]
+                f = @view Y[:f]
+
+                for n in 1:N
+                    e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c)^2.2 + 5*sum(@view d[:, n])^2.3
+                    for m in 1:M
+                        f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+                    end
+                end
+                return nothing
+            end
+        end
+        X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
+        Y_ca = ComponentVector(e=zeros(Float64, N), f=zeros(Float64, M, N))
+
+        # Create a dense ComponentMatrix from the input and output arrays.
+        J_ca = Y_ca.*X_ca'
+
+        # Define the sparsity by writing ones and zeros to the J_ca dense `ComponentMatrix`.
+        J_ca .= 0.0
+        for n in 1:N
+            @view(J_ca[:e, :a])[n] = 1.0
+            @view(J_ca[:e, :b])[n, n] = 1.0
+            for m in 1:M
+                @view(J_ca[:e, :c])[n, m] = 1.0
+                @view(J_ca[:e, :d])[n, m, n] = 1.0
+
+                @view(J_ca[:f, :a])[m, n] = 1.0
+                @view(J_ca[:f, :b])[m, n, n] = 1.0
+                @view(J_ca[:f, :c])[m, n, m] = 1.0
+                @view(J_ca[:f, :d])[m, n, m, n] = 1.0
+            end
+        end
+
+        # Create a sparse matrix version of J_ca.
+        J_ca_sparse = ComponentMatrix(sparse(getdata(J_ca)), getaxes(J_ca))
+
+        # Get some colors!
+        colors = matrix_colors(getdata(J_ca_sparse))
+
+        # Create the cache object for `forwarddiff_color_jacobian!`.
+        jac_cache = ForwardColorJacCache(compute_forwarddiffable!, X_ca; dx=Y_ca, colorvec=colors, sparsity=getdata(J_ca_sparse))
+
+        return Comp1(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache)
+    end
+
+    # Don't worry about units for now.
+    get_units(self::Comp1, varname) = nothing
+
+    # Create the component.
+    N = 100
+    M = 4
+    comp = Comp1(M, N)
+
+    inputs_dict = Dict("a"=>2.0, "b"=>range(3.0, 4.0; length=N), "c"=>range(5.0, 6.0; length=M), "d"=>reshape(range(7.0, 8.0; length=M*N), M, N))
+    outputs_dict = Dict("e"=>zeros(Float64, N), "f"=>zeros(Float64, M, N))
+
+    OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
+    a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
+    e_check = 2*a^2 .+ 3 .* b.^2.1 .+ 4*sum(c)^2.2 .+ 5 .* (sum(d; dims=1)[:]).^2.3
+    @test all(e_check .≈ outputs_dict["e"])
 
 end
