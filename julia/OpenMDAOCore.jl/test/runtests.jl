@@ -833,7 +833,7 @@ end
             J_ca = Y_ca.*X_ca'
 
             # Hopefully create the sparsity automatically.
-            OpenMDAOCore.generate_perturbed_jacobian!(J_ca, compute_forwarddiffable!, Y_ca, X_ca)
+            generate_perturbed_jacobian!(J_ca, compute_forwarddiffable!, Y_ca, X_ca)
 
             # Create a sparse matrix version of J_ca.
             J_ca_sparse = ComponentMatrix(sparse(getdata(J_ca)), getaxes(J_ca))

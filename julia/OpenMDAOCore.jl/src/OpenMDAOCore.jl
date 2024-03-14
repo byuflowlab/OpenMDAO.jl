@@ -23,5 +23,6 @@ export PartialsData
 include("sparse_ad.jl")
 export AbstractAutoSparseForwardDiffExplicitComp
 export get_callback, get_input_ca, get_output_ca, get_sparse_jacobian_ca, get_sparse_jacobian_cache, get_units
+export generate_perturbed_jacobian!
 
 end # module
