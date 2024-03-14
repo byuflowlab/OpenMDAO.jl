@@ -2,7 +2,7 @@ using OpenMDAOCore
 using Test
 using Documenter
 using ComponentArrays: ComponentVector, ComponentMatrix, getdata, getaxes
-using SparseArrays: sparse
+using SparseArrays: sparse, findnz, nnz, issparse
 using SparseDiffTools: matrix_colors, ForwardColorJacCache
 
 doctest(OpenMDAOCore, manual=false)
@@ -641,84 +641,299 @@ end
 end
 
 @testset "AbstractAutoSparseForwardDiffExplicitComp" begin
-    struct Comp1{TCompute,TX,TY,TJ,TCache} <: AbstractAutoSparseForwardDiffExplicitComp where {TCompute,TX,TY,TJ,TCache}
-        compute_forwarddiffable!::TCompute
-        X_ca::TX
-        Y_ca::TY
-        J_ca_sparse::TJ
-        jac_cache::TCache
-    end
+    @testset "manual sparsity" begin
+        struct Comp1{TCompute,TX,TY,TJ,TCache} <: AbstractAutoSparseForwardDiffExplicitComp where {TCompute,TX,TY,TJ,TCache}
+            compute_forwarddiffable!::TCompute
+            X_ca::TX
+            Y_ca::TY
+            J_ca_sparse::TJ
+            jac_cache::TCache
+        end
 
-    function Comp1(M, N)
-        compute_forwarddiffable! = let M=M, N=N
-            (Y, X)->begin
-                a = only(X[:a])
-                b = @view X[:b]
-                c = @view X[:c]
-                d = @view X[:d]
-                e = @view Y[:e]
-                f = @view Y[:f]
+        function Comp1(M, N)
+            compute_forwarddiffable! = let M=M, N=N
+                (Y, X)->begin
+                    a = only(X[:a])
+                    b = @view X[:b]
+                    c = @view X[:c]
+                    d = @view X[:d]
+                    e = @view Y[:e]
+                    f = @view Y[:f]
 
-                for n in 1:N
-                    e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c)^2.2 + 5*sum(@view d[:, n])^2.3
-                    for m in 1:M
-                        f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+                    for n in 1:N
+                        e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
+                        for m in 1:M
+                            f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+                        end
                     end
+                    return nothing
                 end
-                return nothing
             end
+            X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
+            Y_ca = ComponentVector(e=zeros(Float64, N), f=zeros(Float64, M, N))
+
+            # Create a dense ComponentMatrix from the input and output arrays.
+            J_ca = Y_ca.*X_ca'
+
+            # Define the sparsity by writing ones and zeros to the J_ca dense `ComponentMatrix`.
+            J_ca .= 0.0
+            for n in 1:N
+                @view(J_ca[:e, :a])[n] = 1.0
+                @view(J_ca[:e, :b])[n, n] = 1.0
+                for m in 1:M
+                    @view(J_ca[:e, :c])[n, m] = 1.0
+                    @view(J_ca[:e, :d])[n, m, n] = 1.0
+
+                    @view(J_ca[:f, :a])[m, n] = 1.0
+                    @view(J_ca[:f, :b])[m, n, n] = 1.0
+                    @view(J_ca[:f, :c])[m, n, m] = 1.0
+                    @view(J_ca[:f, :d])[m, n, m, n] = 1.0
+                end
+            end
+
+            # Create a sparse matrix version of J_ca.
+            J_ca_sparse = ComponentMatrix(sparse(getdata(J_ca)), getaxes(J_ca))
+
+            # Get some colors!
+            colors = matrix_colors(getdata(J_ca_sparse))
+
+            # Create the cache object for `forwarddiff_color_jacobian!`.
+            jac_cache = ForwardColorJacCache(compute_forwarddiffable!, X_ca; dx=Y_ca, colorvec=colors, sparsity=getdata(J_ca_sparse))
+
+            return Comp1(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache)
         end
-        X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
-        Y_ca = ComponentVector(e=zeros(Float64, N), f=zeros(Float64, M, N))
 
-        # Create a dense ComponentMatrix from the input and output arrays.
-        J_ca = Y_ca.*X_ca'
+        # Don't worry about units for now.
+        get_units(self::Comp1, varname) = nothing
 
-        # Define the sparsity by writing ones and zeros to the J_ca dense `ComponentMatrix`.
-        J_ca .= 0.0
+        # Create the component.
+        N = 3
+        M = 4
+        comp = Comp1(M, N)
+
+        inputs_dict = ca2strdict(get_input_ca(comp))
+        inputs_dict["a"] = 2.0
+        inputs_dict["b"] .= range(3.0, 4.0; length=N)
+        inputs_dict["c"] .= range(5.0, 6.0; length=M)
+        inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+        outputs_dict = ca2strdict(get_output_ca(comp))
+
+        OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
+        a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
+        e_check = 2*a^2 .+ 3 .* b.^2.1 .+ 4*sum(c.^2.2) .+ 5 .* sum(d.^2.3; dims=1)[:]
+        @test all(outputs_dict["e"] .≈ e_check)
+
+        f_check = 6*a^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
+        @test all(outputs_dict["f"] .≈ f_check)
+
+        J_ca_sparse = get_sparse_jacobian_ca(comp)
+        @test issparse(getdata(J_ca_sparse))
+        @test size(getdata(J_ca_sparse)) == (length(get_output_ca(comp)), length(get_input_ca(comp)))
+        @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N
+        partials_dict = ca2strdict(J_ca_sparse)
+        OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
+
+        @test size(partials_dict[("e", "a")]) == (N,)
+        @test nnz(partials_dict[("e", "a")]) == N
+        deda_check = 4*a
+        @test all(partials_dict[("e", "a")] .≈ deda_check)
+
+        @test size(partials_dict[("e", "b")]) == (N, N)
+        @test nnz(partials_dict[("e", "b")]) == N
+        b = getindex(inputs_dict, "b")
+        dedb_check = (3*2.1).*b.^1.1
+        rows, cols, dedb = findnz(partials_dict["e", "b"])
+        @test all(dedb .≈ dedb_check)
+
+        @test size(partials_dict[("e", "c")]) == (N, M)
+        @test nnz(partials_dict[("e", "c")]) == N*M
+        c = inputs_dict["c"]
         for n in 1:N
-            @view(J_ca[:e, :a])[n] = 1.0
-            @view(J_ca[:e, :b])[n, n] = 1.0
             for m in 1:M
-                @view(J_ca[:e, :c])[n, m] = 1.0
-                @view(J_ca[:e, :d])[n, m, n] = 1.0
-
-                @view(J_ca[:f, :a])[m, n] = 1.0
-                @view(J_ca[:f, :b])[m, n, n] = 1.0
-                @view(J_ca[:f, :c])[m, n, m] = 1.0
-                @view(J_ca[:f, :d])[m, n, m, n] = 1.0
+                @test partials_dict["e", "c"][n, m] ≈ (4*2.2)*c[m]^1.2
             end
         end
 
-        # Create a sparse matrix version of J_ca.
-        J_ca_sparse = ComponentMatrix(sparse(getdata(J_ca)), getaxes(J_ca))
+        @test size(partials_dict["e", "d"]) == (N, M, N)
+        @test nnz(parent(partials_dict["e", "d"])) == M*N
+        d = inputs_dict["d"]
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["e", "d"][n, m, n] ≈ (5*2.3)*d[m, n]^1.3
+            end
+        end
 
-        # Get some colors!
-        colors = matrix_colors(getdata(J_ca_sparse))
+        @test size(partials_dict["f", "a"]) == (M, N)
+        @test nnz(parent(partials_dict["f", "a"])) == M*N
+        @test all(partials_dict["f", "a"] .≈ (6*2.4)*a^1.4)
 
-        # Create the cache object for `forwarddiff_color_jacobian!`.
-        jac_cache = ForwardColorJacCache(compute_forwarddiffable!, X_ca; dx=Y_ca, colorvec=colors, sparsity=getdata(J_ca_sparse))
+        @test size(partials_dict["f", "b"]) == (M, N, N)
+        @test nnz(parent(partials_dict["f", "b"])) == M*N
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["f", "b"][m, n, n] ≈ (7*2.5)*b[n]^1.5
+            end
+        end
 
-        return Comp1(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache)
+        @test size(partials_dict["f", "c"]) == (M, N, M)
+        @test nnz(parent(partials_dict["f", "c"])) == M*N
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["f", "c"][m, n, m] ≈ (8*2.6)*c[m]^1.6
+            end
+        end
+
+        @test size(partials_dict["f", "d"]) == (M, N, M, N)
+        @test nnz(parent(partials_dict["f", "d"])) == M*N
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["f", "d"][m, n, m, n] ≈ (9*2.7)*d[m, n]^1.7
+            end
+        end
+
     end
 
-    # Don't worry about units for now.
-    get_units(self::Comp1, varname) = nothing
+    @testset "automatic sparsity" begin
 
-    # Create the component.
-    N = 100
-    M = 4
-    comp = Comp1(M, N)
+        struct Comp2{TCompute,TX,TY,TJ,TCache} <: AbstractAutoSparseForwardDiffExplicitComp where {TCompute,TX,TY,TJ,TCache}
+            compute_forwarddiffable!::TCompute
+            X_ca::TX
+            Y_ca::TY
+            J_ca_sparse::TJ
+            jac_cache::TCache
+        end
 
-    inputs_dict = Dict("a"=>2.0, "b"=>range(3.0, 4.0; length=N), "c"=>range(5.0, 6.0; length=M), "d"=>reshape(range(7.0, 8.0; length=M*N), M, N))
-    outputs_dict = Dict("e"=>zeros(Float64, N), "f"=>zeros(Float64, M, N))
+        function Comp2(M, N)
+            compute_forwarddiffable! = let M=M, N=N
+                (Y, X)->begin
+                    a = only(X[:a])
+                    b = @view X[:b]
+                    c = @view X[:c]
+                    d = @view X[:d]
+                    e = @view Y[:e]
+                    f = @view Y[:f]
 
-    OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
-    a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
-    e_check = 2*a^2 .+ 3 .* b.^2.1 .+ 4*sum(c)^2.2 .+ 5 .* (sum(d; dims=1)[:]).^2.3
-    @test all(outputs_dict["e"] .≈ e_check)
+                    for n in 1:N
+                        e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
+                        for m in 1:M
+                            f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+                        end
+                    end
+                    return nothing
+                end
+            end
+            X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
+            @view(X_ca[:a]) .= 2.0
+            @view(X_ca[:b]) .= range(3.0, 4.0; length=N)
+            @view(X_ca[:c]) .= range(5.0, 6.0; length=M)
+            @view(X_ca[:d]) .= reshape(range(7.0, 8.0; length=M*N), M, N)
+            Y_ca = ComponentVector(e=zeros(Float64, N), f=zeros(Float64, M, N))
 
-    f_check = 6*a^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
-    @test all(outputs_dict["f"] .≈ f_check)
+            # Create a dense ComponentMatrix from the input and output arrays.
+            J_ca = Y_ca.*X_ca'
 
+            # Hopefully create the sparsity automatically.
+            OpenMDAOCore.generate_perturbed_jacobian!(J_ca, compute_forwarddiffable!, Y_ca, X_ca)
+
+            # Create a sparse matrix version of J_ca.
+            J_ca_sparse = ComponentMatrix(sparse(getdata(J_ca)), getaxes(J_ca))
+
+            # Get some colors!
+            colors = matrix_colors(getdata(J_ca_sparse))
+
+            # Create the cache object for `forwarddiff_color_jacobian!`.
+            jac_cache = ForwardColorJacCache(compute_forwarddiffable!, X_ca; dx=Y_ca, colorvec=colors, sparsity=getdata(J_ca_sparse))
+
+            return Comp2(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache)
+        end
+
+        # Don't worry about units for now.
+        get_units(self::Comp2, varname) = nothing
+
+        # Create the component.
+        N = 3
+        M = 4
+        comp = Comp2(M, N)
+
+        inputs_dict = ca2strdict(get_input_ca(comp))
+        inputs_dict["a"] = 2.0
+        inputs_dict["b"] .= range(3.0, 4.0; length=N)
+        inputs_dict["c"] .= range(5.0, 6.0; length=M)
+        inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+        outputs_dict = ca2strdict(get_output_ca(comp))
+
+        OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
+        a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
+        e_check = 2*a^2 .+ 3 .* b.^2.1 .+ 4*sum(c.^2.2) .+ 5 .* sum(d.^2.3; dims=1)[:]
+        @test all(outputs_dict["e"] .≈ e_check)
+
+        f_check = 6*a^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
+        @test all(outputs_dict["f"] .≈ f_check)
+
+        J_ca_sparse = get_sparse_jacobian_ca(comp)
+        @test issparse(getdata(J_ca_sparse))
+        @test size(getdata(J_ca_sparse)) == (length(get_output_ca(comp)), length(get_input_ca(comp)))
+        @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N
+        partials_dict = ca2strdict(J_ca_sparse)
+        OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
+
+        @test size(partials_dict[("e", "a")]) == (N,)
+        @test nnz(partials_dict[("e", "a")]) == N
+        deda_check = 4*a
+        @test all(partials_dict[("e", "a")] .≈ deda_check)
+
+        @test size(partials_dict[("e", "b")]) == (N, N)
+        @test nnz(partials_dict[("e", "b")]) == N
+        b = getindex(inputs_dict, "b")
+        dedb_check = (3*2.1).*b.^1.1
+        rows, cols, dedb = findnz(partials_dict["e", "b"])
+        @test all(dedb .≈ dedb_check)
+
+        @test size(partials_dict[("e", "c")]) == (N, M)
+        @test nnz(partials_dict[("e", "c")]) == N*M
+        c = inputs_dict["c"]
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["e", "c"][n, m] ≈ (4*2.2)*c[m]^1.2
+            end
+        end
+
+        @test size(partials_dict["e", "d"]) == (N, M, N)
+        @test nnz(parent(partials_dict["e", "d"])) == M*N
+        d = inputs_dict["d"]
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["e", "d"][n, m, n] ≈ (5*2.3)*d[m, n]^1.3
+            end
+        end
+
+        @test size(partials_dict["f", "a"]) == (M, N)
+        @test nnz(parent(partials_dict["f", "a"])) == M*N
+        @test all(partials_dict["f", "a"] .≈ (6*2.4)*a^1.4)
+
+        @test size(partials_dict["f", "b"]) == (M, N, N)
+        @test nnz(parent(partials_dict["f", "b"])) == M*N
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["f", "b"][m, n, n] ≈ (7*2.5)*b[n]^1.5
+            end
+        end
+
+        @test size(partials_dict["f", "c"]) == (M, N, M)
+        @test nnz(parent(partials_dict["f", "c"])) == M*N
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["f", "c"][m, n, m] ≈ (8*2.6)*c[m]^1.6
+            end
+        end
+
+        @test size(partials_dict["f", "d"]) == (M, N, M, N)
+        @test nnz(parent(partials_dict["f", "d"])) == M*N
+        for n in 1:N
+            for m in 1:M
+                @test partials_dict["f", "d"][m, n, m, n] ≈ (9*2.7)*d[m, n]^1.7
+            end
+        end
+
+    end
 end

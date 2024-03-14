@@ -109,8 +109,8 @@ Get a `Dict` of the non-zero row and column indices for a sparsity pattern defin
 function get_rows_cols_dict_from_sparsity(J::ComponentMatrix)
     rcdict = Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}()
     raxis, caxis = getaxes(J)
-    for output_name in keys(raxis)
-        for input_name in keys(caxis)
+    for input_name in keys(caxis)
+        for output_name in keys(raxis)
             # Grab the subjacobian we're interested in.
             Jsub = J[output_name, input_name]
             # We have to re-sparsify `Jsub` sometimes.
@@ -135,4 +135,14 @@ function get_rows_cols_dict_from_sparsity(J::ComponentMatrix)
     end
 
     return rcdict
+end
+
+function ca2strdict(ca::ComponentVector)
+    # Might be faster using `valkeys` instead of `keys`.
+    return Dict(string(k)=>ca[k] for k in keys(ca))
+end
+
+function ca2strdict(ca::ComponentMatrix)
+    raxis, caxis = getaxes(ca)
+    return Dict((string(rname), string(cname))=>ca[rname, cname] for rname in keys(raxis), cname in keys(caxis))
 end
