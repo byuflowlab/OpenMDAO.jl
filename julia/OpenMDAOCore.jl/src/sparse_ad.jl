@@ -6,6 +6,7 @@ get_output_ca(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.Y_ca
 get_sparse_jacobian_ca(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.J_ca_sparse
 get_sparse_jacobian_cache(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.jac_cache
 get_units(comp::AbstractAutoSparseForwardDiffExplicitComp, varname) = comp.units_dict[varname]
+get_rows_cols_dict(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.rcdict
 
 function get_input_var_data(self::AbstractAutoSparseForwardDiffExplicitComp)
     ca = get_input_ca(self)
@@ -18,7 +19,8 @@ function get_output_var_data(self::AbstractAutoSparseForwardDiffExplicitComp)
 end
 
 function get_partials_data(self::AbstractAutoSparseForwardDiffExplicitComp)
-    rcdict = get_rows_cols_dict(get_sparse_jacobian_ca(self))
+    # rcdict = get_rows_cols_dict_from_sparsity(get_sparse_jacobian_ca(self))
+    rcdict = get_rows_cols_dict(self)
     partials_data = Vector{OpenMDAOCore.PartialsData}()
     for (output_name, input_name) in keys(rcdict)
         rows, cols = rcdict[output_name, input_name]
@@ -76,9 +78,18 @@ function OpenMDAOCore.compute_partials!(self::AbstractAutoSparseForwardDiffExpli
 
     # Extract the derivatives from `J_ca_sparse` and put them in `partials`.
     raxis, caxis = getaxes(J_ca_sparse)
+    rcdict = get_rows_cols_dict(self)
     for oname in keys(raxis)
         for iname in keys(caxis)
-            partials[string(oname), string(iname)] .= @view(J_ca_sparse[oname, iname])
+            # Grab the subjacobian we're interested in.
+            Jsub = J_ca_sparse[oname, iname]
+            
+            # Need to reshape the subjacobian to correspond to the rows and cols.
+            Jsub_reshape = reshape(Jsub, length(raxis[oname]), length(caxis[iname]))
+
+            # Grab the entry in partials we're interested in, and write the data we want to it.
+            rows, cols = rcdict[oname, iname]
+            partials[string(oname), string(iname)] .= getindex.(Ref(Jsub_reshape), rows, cols)
         end
     end
 
@@ -89,17 +100,19 @@ has_setup_partials(self::AbstractAutoSparseForwardDiffExplicitComp) = false
 has_compute_partials(self::AbstractAutoSparseForwardDiffExplicitComp) = true
 has_compute_jacvec_product(self::AbstractAutoSparseForwardDiffExplicitComp) = false
 
-function generate_perturbed_jacobian!(J_ca, f!, Y_ca, X_ca, nevals=3)
+function generate_perturbed_jacobian!(J_ca, f!, Y_ca, X_ca, nevals=3, rel_perturb=0.001)
     if nevals < 1
         raise(ArgumentError("nevals must be >=1, but is $nevals"))
     end
     X_perturb = similar(X_ca)
     Y_perturb = similar(Y_ca)
     J_tmp = similar(J_ca)
+    perturb = similar(X_ca)
 
     J_ca .= 0.0
     for i in 0:(nevals-1)
-        X_perturb .= (1 + 0.01*i/nevals).*X_ca
+        rand!(perturb)
+        X_perturb .= (1 .+ rel_perturb.*perturb).*X_ca
         ForwardDiff.jacobian!(J_tmp, f!, Y_perturb, X_perturb)
         J_ca .+= abs.(J_tmp./nevals)
     end

@@ -146,3 +146,29 @@ function ca2strdict(ca::ComponentMatrix)
     raxis, caxis = getaxes(ca)
     return Dict((string(rname), string(cname))=>ca[rname, cname] for rname in keys(raxis), cname in keys(caxis))
 end
+
+function ca2strdict_sparse(ca::ComponentMatrix)
+    T = eltype(ca)
+    raxis, caxis = getaxes(ca)
+    out = Dict{Tuple{String,String}, Vector{T}}()
+    for input_name in keys(caxis)
+        for output_name in keys(raxis)
+            # @show ca[output_name, input_name]
+            Jsub = ca[output_name, input_name]
+            Jsub_reshape = reshape(Jsub, length(raxis[output_name]), length(caxis[input_name]))
+            data_sparse = sparse(Jsub_reshape)
+            out[string(output_name), string(input_name)] = nonzeros(data_sparse)
+        end
+    end
+    return out
+end
+
+function rcdict2strdict(::Type{T}, rcdict) where {T}
+    out = Dict{Tuple{String,String}, Vector{T}}()
+    for (output_name, input_name) in keys(rcdict)
+        rows, cols = rcdict[output_name, input_name]
+        out[string(output_name), string(input_name)] = zeros(T, length(rows))
+    end
+    return out
+end
+rcdict2strdict(rcdict) = rcdict2strdict(Float64, rcdict)

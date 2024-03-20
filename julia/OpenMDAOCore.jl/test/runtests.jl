@@ -641,13 +641,15 @@ end
 end
 
 @testset "AbstractAutoSparseForwardDiffExplicitComp" begin
+
     @testset "manual sparsity" begin
-        struct Comp1{TCompute,TX,TY,TJ,TCache} <: AbstractAutoSparseForwardDiffExplicitComp where {TCompute,TX,TY,TJ,TCache}
+        struct Comp1{TCompute,TX,TY,TJ,TCache,TRCDict} <: AbstractAutoSparseForwardDiffExplicitComp where {TCompute,TX,TY,TJ,TCache,TRCDict}
             compute_forwarddiffable!::TCompute
             X_ca::TX
             Y_ca::TY
             J_ca_sparse::TJ
             jac_cache::TCache
+            rcdict::TRCDict
         end
 
         function Comp1(M, N)
@@ -694,13 +696,16 @@ end
             # Create a sparse matrix version of J_ca.
             J_ca_sparse = ComponentMatrix(sparse(getdata(J_ca)), getaxes(J_ca))
 
+            # Get a dictionary describing the non-zero rows and cols for each subjacobian.
+            rcdict = get_rows_cols_dict_from_sparsity(J_ca_sparse)
+
             # Get some colors!
             colors = matrix_colors(getdata(J_ca_sparse))
 
             # Create the cache object for `forwarddiff_color_jacobian!`.
             jac_cache = ForwardColorJacCache(compute_forwarddiffable!, X_ca; dx=Y_ca, colorvec=colors, sparsity=getdata(J_ca_sparse))
 
-            return Comp1(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache)
+            return Comp1(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache, rcdict)
         end
 
         # Don't worry about units for now.
@@ -730,77 +735,91 @@ end
         @test issparse(getdata(J_ca_sparse))
         @test size(getdata(J_ca_sparse)) == (length(get_output_ca(comp)), length(get_input_ca(comp)))
         @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N
-        partials_dict = ca2strdict(J_ca_sparse)
+        partials_dict = rcdict2strdict(get_rows_cols_dict(comp))
         OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
 
         @test size(partials_dict[("e", "a")]) == (N,)
-        @test nnz(partials_dict[("e", "a")]) == N
         deda_check = 4*a
         @test all(partials_dict[("e", "a")] .≈ deda_check)
 
-        @test size(partials_dict[("e", "b")]) == (N, N)
-        @test nnz(partials_dict[("e", "b")]) == N
-        b = getindex(inputs_dict, "b")
+        @test size(partials_dict[("e", "b")]) == (N,)
+        b = inputs_dict["b"]
         dedb_check = (3*2.1).*b.^1.1
-        rows, cols, dedb = findnz(partials_dict["e", "b"])
-        @test all(dedb .≈ dedb_check)
+        @test all(partials_dict["e", "b"] .≈ dedb_check)
 
-        @test size(partials_dict[("e", "c")]) == (N, M)
-        @test nnz(partials_dict[("e", "c")]) == N*M
+        vals = partials_dict["e", "c"]
+        @test size(vals) == (N*M,)
         c = inputs_dict["c"]
+        vals_reshape = reshape(vals, N, M)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["e", "c"][n, m] ≈ (4*2.2)*c[m]^1.2
+                @test vals_reshape[n, m] ≈ (4*2.2)*c[m]^1.2
             end
         end
 
-        @test size(partials_dict["e", "d"]) == (N, M, N)
-        @test nnz(parent(partials_dict["e", "d"])) == M*N
+        vals = partials_dict["e", "d"]
+        @test size(vals) == (M*N,)
         d = inputs_dict["d"]
+        dedd_check = zeros(N, M, N)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["e", "d"][n, m, n] ≈ (5*2.3)*d[m, n]^1.3
+                dedd_check[n, m, n] = (5*2.3)*d[m, n]^1.3
             end
         end
+        dedd_check_sparse = sparse(reshape(dedd_check, N, M*N))
+        rows_check, cols_check, vals_check = findnz(dedd_check_sparse)
+        @test all(vals .≈ vals_check)
 
-        @test size(partials_dict["f", "a"]) == (M, N)
-        @test nnz(parent(partials_dict["f", "a"])) == M*N
+        @test size(partials_dict["f", "a"]) == (M*N,)
         @test all(partials_dict["f", "a"] .≈ (6*2.4)*a^1.4)
 
-        @test size(partials_dict["f", "b"]) == (M, N, N)
-        @test nnz(parent(partials_dict["f", "b"])) == M*N
+        vals = partials_dict["f", "b"]
+        @test size(vals) == (M*N,)
+        dfdb_check = zeros(M, N, N)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["f", "b"][m, n, n] ≈ (7*2.5)*b[n]^1.5
+                dfdb_check[m, n, n] = (7*2.5)*b[n]^1.5
             end
         end
+        dfdb_check_sparse = sparse(reshape(dfdb_check, M*N, N))
+        rows_check, cols_check, vals_check = findnz(dfdb_check_sparse)
+        @test all(vals .≈ vals_check)
 
-        @test size(partials_dict["f", "c"]) == (M, N, M)
-        @test nnz(parent(partials_dict["f", "c"])) == M*N
+        vals = partials_dict["f", "c"]
+        @test size(vals) == (M*N,)
+        dfdc_check = zeros(M, N, M)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["f", "c"][m, n, m] ≈ (8*2.6)*c[m]^1.6
+                dfdc_check[m, n, m] = (8*2.6)*c[m]^1.6
             end
         end
+        dfdc_check_sparse = sparse(reshape(dfdc_check, M*N, M))
+        rows_check, cols_check, vals_check = findnz(dfdc_check_sparse)
+        @test all(vals .≈ vals_check)
 
-        @test size(partials_dict["f", "d"]) == (M, N, M, N)
-        @test nnz(parent(partials_dict["f", "d"])) == M*N
+        vals = partials_dict["f", "d"]
+        @test size(vals) == (M*N,)
+        dfdd_check = zeros(M, N, M, N)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["f", "d"][m, n, m, n] ≈ (9*2.7)*d[m, n]^1.7
+                dfdd_check[m, n, m, n] = (9*2.7)*d[m, n]^1.7
             end
         end
+        dfdd_check_sparse = sparse(reshape(dfdd_check, M*N, M*N))
+        rows_check, cols_check, vals_check = findnz(dfdd_check_sparse)
+        @test all(vals .≈ vals_check)
 
     end
 
     @testset "automatic sparsity" begin
 
-        struct Comp2{TCompute,TX,TY,TJ,TCache} <: AbstractAutoSparseForwardDiffExplicitComp where {TCompute,TX,TY,TJ,TCache}
+        struct Comp2{TCompute,TX,TY,TJ,TCache,TRCDict} <: AbstractAutoSparseForwardDiffExplicitComp where {TCompute,TX,TY,TJ,TCache,TRCDict}
             compute_forwarddiffable!::TCompute
             X_ca::TX
             Y_ca::TY
             J_ca_sparse::TJ
             jac_cache::TCache
+            rcdict::TRCDict
         end
 
         function Comp2(M, N)
@@ -838,13 +857,16 @@ end
             # Create a sparse matrix version of J_ca.
             J_ca_sparse = ComponentMatrix(sparse(getdata(J_ca)), getaxes(J_ca))
 
+            # Get a dictionary describing the non-zero rows and cols for each subjacobian.
+            rcdict = get_rows_cols_dict_from_sparsity(J_ca_sparse)
+
             # Get some colors!
             colors = matrix_colors(getdata(J_ca_sparse))
 
             # Create the cache object for `forwarddiff_color_jacobian!`.
             jac_cache = ForwardColorJacCache(compute_forwarddiffable!, X_ca; dx=Y_ca, colorvec=colors, sparsity=getdata(J_ca_sparse))
 
-            return Comp2(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache)
+            return Comp2(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache, rcdict)
         end
 
         # Don't worry about units for now.
@@ -874,66 +896,79 @@ end
         @test issparse(getdata(J_ca_sparse))
         @test size(getdata(J_ca_sparse)) == (length(get_output_ca(comp)), length(get_input_ca(comp)))
         @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N
-        partials_dict = ca2strdict(J_ca_sparse)
+        partials_dict = rcdict2strdict(get_rows_cols_dict(comp))
         OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
 
         @test size(partials_dict[("e", "a")]) == (N,)
-        @test nnz(partials_dict[("e", "a")]) == N
         deda_check = 4*a
         @test all(partials_dict[("e", "a")] .≈ deda_check)
 
-        @test size(partials_dict[("e", "b")]) == (N, N)
-        @test nnz(partials_dict[("e", "b")]) == N
-        b = getindex(inputs_dict, "b")
+        @test size(partials_dict[("e", "b")]) == (N,)
+        b = inputs_dict["b"]
         dedb_check = (3*2.1).*b.^1.1
-        rows, cols, dedb = findnz(partials_dict["e", "b"])
-        @test all(dedb .≈ dedb_check)
+        @test all(partials_dict["e", "b"] .≈ dedb_check)
 
-        @test size(partials_dict[("e", "c")]) == (N, M)
-        @test nnz(partials_dict[("e", "c")]) == N*M
+        vals = partials_dict["e", "c"]
+        @test size(vals) == (N*M,)
         c = inputs_dict["c"]
+        vals_reshape = reshape(vals, N, M)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["e", "c"][n, m] ≈ (4*2.2)*c[m]^1.2
+                @test vals_reshape[n, m] ≈ (4*2.2)*c[m]^1.2
             end
         end
 
-        @test size(partials_dict["e", "d"]) == (N, M, N)
-        @test nnz(parent(partials_dict["e", "d"])) == M*N
+        vals = partials_dict["e", "d"]
+        @test size(vals) == (M*N,)
         d = inputs_dict["d"]
+        dedd_check = zeros(N, M, N)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["e", "d"][n, m, n] ≈ (5*2.3)*d[m, n]^1.3
+                dedd_check[n, m, n] = (5*2.3)*d[m, n]^1.3
             end
         end
+        dedd_check_sparse = sparse(reshape(dedd_check, N, M*N))
+        rows_check, cols_check, vals_check = findnz(dedd_check_sparse)
+        @test all(vals .≈ vals_check)
 
-        @test size(partials_dict["f", "a"]) == (M, N)
-        @test nnz(parent(partials_dict["f", "a"])) == M*N
+        @test size(partials_dict["f", "a"]) == (M*N,)
         @test all(partials_dict["f", "a"] .≈ (6*2.4)*a^1.4)
 
-        @test size(partials_dict["f", "b"]) == (M, N, N)
-        @test nnz(parent(partials_dict["f", "b"])) == M*N
+        vals = partials_dict["f", "b"]
+        @test size(vals) == (M*N,)
+        dfdb_check = zeros(M, N, N)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["f", "b"][m, n, n] ≈ (7*2.5)*b[n]^1.5
+                dfdb_check[m, n, n] = (7*2.5)*b[n]^1.5
             end
         end
+        dfdb_check_sparse = sparse(reshape(dfdb_check, M*N, N))
+        rows_check, cols_check, vals_check = findnz(dfdb_check_sparse)
+        @test all(vals .≈ vals_check)
 
-        @test size(partials_dict["f", "c"]) == (M, N, M)
-        @test nnz(parent(partials_dict["f", "c"])) == M*N
+        vals = partials_dict["f", "c"]
+        @test size(vals) == (M*N,)
+        dfdc_check = zeros(M, N, M)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["f", "c"][m, n, m] ≈ (8*2.6)*c[m]^1.6
+                dfdc_check[m, n, m] = (8*2.6)*c[m]^1.6
             end
         end
+        dfdc_check_sparse = sparse(reshape(dfdc_check, M*N, M))
+        rows_check, cols_check, vals_check = findnz(dfdc_check_sparse)
+        @test all(vals .≈ vals_check)
 
-        @test size(partials_dict["f", "d"]) == (M, N, M, N)
-        @test nnz(parent(partials_dict["f", "d"])) == M*N
+        vals = partials_dict["f", "d"]
+        @test size(vals) == (M*N,)
+        dfdd_check = zeros(M, N, M, N)
         for n in 1:N
             for m in 1:M
-                @test partials_dict["f", "d"][m, n, m, n] ≈ (9*2.7)*d[m, n]^1.7
+                dfdd_check[m, n, m, n] = (9*2.7)*d[m, n]^1.7
             end
         end
+        dfdd_check_sparse = sparse(reshape(dfdd_check, M*N, M*N))
+        rows_check, cols_check, vals_check = findnz(dfdd_check_sparse)
+        @test all(vals .≈ vals_check)
 
     end
 end
