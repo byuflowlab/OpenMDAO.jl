@@ -716,6 +716,8 @@ end
         M = 4
         comp = Comp1(M, N)
 
+        rcdict = get_rows_cols_dict(comp)
+
         inputs_dict = ca2strdict(get_input_ca(comp))
         inputs_dict["a"] = 2.0
         inputs_dict["b"] .= range(3.0, 4.0; length=N)
@@ -735,28 +737,56 @@ end
         @test issparse(getdata(J_ca_sparse))
         @test size(getdata(J_ca_sparse)) == (length(get_output_ca(comp)), length(get_input_ca(comp)))
         @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N
-        partials_dict = rcdict2strdict(get_rows_cols_dict(comp))
+        partials_dict = rcdict2strdict(rcdict)
         OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
 
-        @test size(partials_dict[("e", "a")]) == (N,)
-        deda_check = 4*a
-        @test all(partials_dict[("e", "a")] .≈ deda_check)
+        rows, cols = rcdict[:e, :a]
+        vals = partials_dict["e", "a"]
+        @test size(vals) == (N,)
+        a = inputs_dict["a"]
+        deda_check = zeros(N)
+        for n in 1:N
+            deda_check[n] = 4*a
+        end
+        deda_check_sparse = sparse(reshape(deda_check, N))
+        # `e` is a vector of length `N` and `a` is scalar, so the Jacobian isn't actually a Matrix (and isn't really sparse).
+        rows_check, vals_check = findnz(deda_check_sparse)
+        cols_check = fill(1, N)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
 
-        @test size(partials_dict[("e", "b")]) == (N,)
+        rows, cols = rcdict[:e, :b]
+        vals = partials_dict["e", "b"]
+        @test size(vals) == (N,)
         b = inputs_dict["b"]
-        dedb_check = (3*2.1).*b.^1.1
-        @test all(partials_dict["e", "b"] .≈ dedb_check)
+        dedb_check = zeros(N, N)
+        for n in 1:N
+            dedb_check[n, n] = (3*2.1)*b[n]^1.1
+        end
+        dedb_check_sparse = sparse(reshape(dedb_check, N, N))
+        rows_check, cols_check, vals_check = findnz(dedb_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:e, :c]
         vals = partials_dict["e", "c"]
         @test size(vals) == (N*M,)
         c = inputs_dict["c"]
-        vals_reshape = reshape(vals, N, M)
-        for n in 1:N
-            for m in 1:M
-                @test vals_reshape[n, m] ≈ (4*2.2)*c[m]^1.2
+        dedc_check = zeros(N, M)
+        for m in 1:M
+            for n in 1:N
+                dedc_check[n, m] = (4*2.2)*c[m]^1.2
             end
         end
+        dedc_check_sparse = sparse(reshape(dedc_check, N, M))
+        rows_check, cols_check, vals_check = findnz(dedc_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:e, :d]
         vals = partials_dict["e", "d"]
         @test size(vals) == (M*N,)
         d = inputs_dict["d"]
@@ -768,11 +798,27 @@ end
         end
         dedd_check_sparse = sparse(reshape(dedd_check, N, M*N))
         rows_check, cols_check, vals_check = findnz(dedd_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
 
-        @test size(partials_dict["f", "a"]) == (M*N,)
-        @test all(partials_dict["f", "a"] .≈ (6*2.4)*a^1.4)
+        rows, cols = rcdict[:f, :a]
+        vals = partials_dict["f", "a"]
+        @test size(vals) == (M*N,)
+        a = inputs_dict["a"]
+        dfda_check = zeros(M, N)
+        for m in 1:M
+            for n in 1:N
+                dfda_check[m, n] = (6*2.4)*a^1.4
+            end
+        end
+        dfda_check_sparse = sparse(reshape(dfda_check, M*N, 1))
+        rows_check, cols_check, vals_check = findnz(dfda_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:f, :b]
         vals = partials_dict["f", "b"]
         @test size(vals) == (M*N,)
         dfdb_check = zeros(M, N, N)
@@ -783,8 +829,11 @@ end
         end
         dfdb_check_sparse = sparse(reshape(dfdb_check, M*N, N))
         rows_check, cols_check, vals_check = findnz(dfdb_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:f, :c]
         vals = partials_dict["f", "c"]
         @test size(vals) == (M*N,)
         dfdc_check = zeros(M, N, M)
@@ -795,8 +844,11 @@ end
         end
         dfdc_check_sparse = sparse(reshape(dfdc_check, M*N, M))
         rows_check, cols_check, vals_check = findnz(dfdc_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:f, :d]
         vals = partials_dict["f", "d"]
         @test size(vals) == (M*N,)
         dfdd_check = zeros(M, N, M, N)
@@ -807,8 +859,9 @@ end
         end
         dfdd_check_sparse = sparse(reshape(dfdd_check, M*N, M*N))
         rows_check, cols_check, vals_check = findnz(dfdd_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
-
     end
 
     @testset "automatic sparsity" begin
@@ -877,6 +930,8 @@ end
         M = 4
         comp = Comp2(M, N)
 
+        rcdict = get_rows_cols_dict(comp)
+
         inputs_dict = ca2strdict(get_input_ca(comp))
         inputs_dict["a"] = 2.0
         inputs_dict["b"] .= range(3.0, 4.0; length=N)
@@ -896,28 +951,56 @@ end
         @test issparse(getdata(J_ca_sparse))
         @test size(getdata(J_ca_sparse)) == (length(get_output_ca(comp)), length(get_input_ca(comp)))
         @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N
-        partials_dict = rcdict2strdict(get_rows_cols_dict(comp))
+        partials_dict = rcdict2strdict(rcdict)
         OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
 
-        @test size(partials_dict[("e", "a")]) == (N,)
-        deda_check = 4*a
-        @test all(partials_dict[("e", "a")] .≈ deda_check)
+        rows, cols = rcdict[:e, :a]
+        vals = partials_dict["e", "a"]
+        @test size(vals) == (N,)
+        a = inputs_dict["a"]
+        deda_check = zeros(N)
+        for n in 1:N
+            deda_check[n] = 4*a
+        end
+        deda_check_sparse = sparse(reshape(deda_check, N))
+        # `e` is a vector of length `N` and `a` is scalar, so the Jacobian isn't actually a Matrix (and isn't really sparse).
+        rows_check, vals_check = findnz(deda_check_sparse)
+        cols_check = fill(1, N)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
 
-        @test size(partials_dict[("e", "b")]) == (N,)
+        rows, cols = rcdict[:e, :b]
+        vals = partials_dict["e", "b"]
+        @test size(vals) == (N,)
         b = inputs_dict["b"]
-        dedb_check = (3*2.1).*b.^1.1
-        @test all(partials_dict["e", "b"] .≈ dedb_check)
+        dedb_check = zeros(N, N)
+        for n in 1:N
+            dedb_check[n, n] = (3*2.1)*b[n]^1.1
+        end
+        dedb_check_sparse = sparse(reshape(dedb_check, N, N))
+        rows_check, cols_check, vals_check = findnz(dedb_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:e, :c]
         vals = partials_dict["e", "c"]
         @test size(vals) == (N*M,)
         c = inputs_dict["c"]
-        vals_reshape = reshape(vals, N, M)
-        for n in 1:N
-            for m in 1:M
-                @test vals_reshape[n, m] ≈ (4*2.2)*c[m]^1.2
+        dedc_check = zeros(N, M)
+        for m in 1:M
+            for n in 1:N
+                dedc_check[n, m] = (4*2.2)*c[m]^1.2
             end
         end
+        dedc_check_sparse = sparse(reshape(dedc_check, N, M))
+        rows_check, cols_check, vals_check = findnz(dedc_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:e, :d]
         vals = partials_dict["e", "d"]
         @test size(vals) == (M*N,)
         d = inputs_dict["d"]
@@ -929,11 +1012,27 @@ end
         end
         dedd_check_sparse = sparse(reshape(dedd_check, N, M*N))
         rows_check, cols_check, vals_check = findnz(dedd_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
 
-        @test size(partials_dict["f", "a"]) == (M*N,)
-        @test all(partials_dict["f", "a"] .≈ (6*2.4)*a^1.4)
+        rows, cols = rcdict[:f, :a]
+        vals = partials_dict["f", "a"]
+        @test size(vals) == (M*N,)
+        a = inputs_dict["a"]
+        dfda_check = zeros(M, N)
+        for m in 1:M
+            for n in 1:N
+                dfda_check[m, n] = (6*2.4)*a^1.4
+            end
+        end
+        dfda_check_sparse = sparse(reshape(dfda_check, M*N, 1))
+        rows_check, cols_check, vals_check = findnz(dfda_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:f, :b]
         vals = partials_dict["f", "b"]
         @test size(vals) == (M*N,)
         dfdb_check = zeros(M, N, N)
@@ -944,8 +1043,11 @@ end
         end
         dfdb_check_sparse = sparse(reshape(dfdb_check, M*N, N))
         rows_check, cols_check, vals_check = findnz(dfdb_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:f, :c]
         vals = partials_dict["f", "c"]
         @test size(vals) == (M*N,)
         dfdc_check = zeros(M, N, M)
@@ -956,8 +1058,11 @@ end
         end
         dfdc_check_sparse = sparse(reshape(dfdc_check, M*N, M))
         rows_check, cols_check, vals_check = findnz(dfdc_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:f, :d]
         vals = partials_dict["f", "d"]
         @test size(vals) == (M*N,)
         dfdd_check = zeros(M, N, M, N)
@@ -968,6 +1073,8 @@ end
         end
         dfdd_check_sparse = sparse(reshape(dfdd_check, M*N, M*N))
         rows_check, cols_check, vals_check = findnz(dfdd_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
 
     end
