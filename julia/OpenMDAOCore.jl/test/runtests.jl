@@ -661,18 +661,20 @@ end
                     d = @view X[:d]
                     e = @view Y[:e]
                     f = @view Y[:f]
+                    g = @view Y[:g]
 
                     for n in 1:N
                         e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
                         for m in 1:M
                             f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+                            g[n, m] = 10*sin(b[n])*cos(d[m, n])
                         end
                     end
                     return nothing
                 end
             end
             X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
-            Y_ca = ComponentVector(e=zeros(Float64, N), f=zeros(Float64, M, N))
+            Y_ca = ComponentVector(e=zeros(Float64, N), f=zeros(Float64, M, N), g=zeros(Float64, N, M))
 
             # Create a dense ComponentMatrix from the input and output arrays.
             J_ca = Y_ca.*X_ca'
@@ -690,6 +692,9 @@ end
                     @view(J_ca[:f, :b])[m, n, n] = 1.0
                     @view(J_ca[:f, :c])[m, n, m] = 1.0
                     @view(J_ca[:f, :d])[m, n, m, n] = 1.0
+
+                    @view(J_ca[:g, :b])[n, m, n] = 1.0
+                    @view(J_ca[:g, :d])[n, m, m, n] = 1.0
                 end
             end
 
@@ -733,10 +738,13 @@ end
         f_check = 6*a^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
         @test all(outputs_dict["f"] .≈ f_check)
 
+        g_check = 10 .* sin.(b).*cos.(transpose(d))
+        @test all(outputs_dict["g"] .≈ g_check)
+
         J_ca_sparse = get_sparse_jacobian_ca(comp)
         @test issparse(getdata(J_ca_sparse))
         @test size(getdata(J_ca_sparse)) == (length(get_output_ca(comp)), length(get_input_ca(comp)))
-        @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N
+        @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N + N*M + N*M
         partials_dict = rcdict2strdict(rcdict)
         OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
 
@@ -862,6 +870,50 @@ end
         @test all(rows .== rows_check)
         @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
+
+        rows, cols = rcdict[:g, :a]
+        vals = partials_dict["g", "a"]
+        @test size(vals) == (0,)
+        @test rows == Vector{Int}()
+        @test cols == Vector{Int}()
+        @test eltype(vals) == Float64
+
+        rows, cols = rcdict[:g, :b]
+        vals = partials_dict["g", "b"]
+        @test size(vals) == (N*M,)
+        dgdb_check = zeros(N, M, N)
+        for m in 1:M
+            for n in 1:N
+                dgdb_check[n, m, n] = 10*cos(b[n])*cos(d[m, n])
+            end
+        end
+        dgdb_check_sparse = sparse(reshape(dgdb_check, N*M, N))
+        rows_check, cols_check, vals_check = findnz(dgdb_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
+
+        rows, cols = rcdict[:g, :c]
+        vals = partials_dict["g", "c"]
+        @test size(vals) == (0,)
+        @test rows == Vector{Int}()
+        @test cols == Vector{Int}()
+        @test eltype(vals) == Float64
+
+        rows, cols = rcdict[:g, :d]
+        vals = partials_dict["g", "d"]
+        @test size(vals) == (N*M,)
+        dgdd_check = zeros(N, M, M, N)
+        for m in 1:M
+            for n in 1:N
+                dgdd_check[n, m, m, n] = -10*sin(b[n])*sin(d[m, n])
+            end
+        end
+        dgdd_check_sparse = sparse(reshape(dgdd_check, N*M, M*N))
+        rows_check, cols_check, vals_check = findnz(dgdd_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
     end
 
     @testset "automatic sparsity" begin
@@ -884,11 +936,13 @@ end
                     d = @view X[:d]
                     e = @view Y[:e]
                     f = @view Y[:f]
+                    g = @view Y[:g]
 
                     for n in 1:N
                         e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
                         for m in 1:M
                             f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+                            g[n, m] = 10*sin(b[n])*cos(d[m, n])
                         end
                     end
                     return nothing
@@ -899,7 +953,7 @@ end
             @view(X_ca[:b]) .= range(3.0, 4.0; length=N)
             @view(X_ca[:c]) .= range(5.0, 6.0; length=M)
             @view(X_ca[:d]) .= reshape(range(7.0, 8.0; length=M*N), M, N)
-            Y_ca = ComponentVector(e=zeros(Float64, N), f=zeros(Float64, M, N))
+            Y_ca = ComponentVector(e=zeros(Float64, N), f=zeros(Float64, M, N), g=zeros(Float64, N, M))
 
             # Create a dense ComponentMatrix from the input and output arrays.
             J_ca = Y_ca.*X_ca'
@@ -947,10 +1001,13 @@ end
         f_check = 6*a^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
         @test all(outputs_dict["f"] .≈ f_check)
 
+        g_check = 10 .* sin.(b).*cos.(transpose(d))
+        @test all(outputs_dict["g"] .≈ g_check)
+
         J_ca_sparse = get_sparse_jacobian_ca(comp)
         @test issparse(getdata(J_ca_sparse))
         @test size(getdata(J_ca_sparse)) == (length(get_output_ca(comp)), length(get_input_ca(comp)))
-        @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N
+        @test nnz(getdata(J_ca_sparse)) == N + N + N*M + N*M + M*N + M*N + M*N + M*N + N*M + N*M
         partials_dict = rcdict2strdict(rcdict)
         OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
 
@@ -1077,5 +1134,48 @@ end
         @test all(cols .== cols_check)
         @test all(vals .≈ vals_check)
 
+        rows, cols = rcdict[:g, :a]
+        vals = partials_dict["g", "a"]
+        @test size(vals) == (0,)
+        @test rows == Vector{Int}()
+        @test cols == Vector{Int}()
+        @test eltype(vals) == Float64
+
+        rows, cols = rcdict[:g, :b]
+        vals = partials_dict["g", "b"]
+        @test size(vals) == (N*M,)
+        dgdb_check = zeros(N, M, N)
+        for m in 1:M
+            for n in 1:N
+                dgdb_check[n, m, n] = 10*cos(b[n])*cos(d[m, n])
+            end
+        end
+        dgdb_check_sparse = sparse(reshape(dgdb_check, N*M, N))
+        rows_check, cols_check, vals_check = findnz(dgdb_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
+
+        rows, cols = rcdict[:g, :c]
+        vals = partials_dict["g", "c"]
+        @test size(vals) == (0,)
+        @test rows == Vector{Int}()
+        @test cols == Vector{Int}()
+        @test eltype(vals) == Float64
+
+        rows, cols = rcdict[:g, :d]
+        vals = partials_dict["g", "d"]
+        @test size(vals) == (N*M,)
+        dgdd_check = zeros(N, M, M, N)
+        for m in 1:M
+            for n in 1:N
+                dgdd_check[n, m, m, n] = -10*sin(b[n])*sin(d[m, n])
+            end
+        end
+        dgdd_check_sparse = sparse(reshape(dgdd_check, N*M, M*N))
+        rows_check, cols_check, vals_check = findnz(dgdd_check_sparse)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+        @test all(vals .≈ vals_check)
     end
 end
