@@ -1,8 +1,17 @@
 abstract type AbstractAutoSparseForwardDiffExplicitComp <: AbstractExplicitComp end
 
 get_callback(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.compute_forwarddiffable!
-get_input_ca(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.X_ca
-get_output_ca(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.Y_ca
+
+get_input_ca(::Type{Float64}, comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.X_ca
+get_input_ca(::Type{ComplexF64}, comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.X_ca_cs
+get_input_ca(::Type{Any}, comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.X_ca
+get_input_ca(comp::AbstractAutoSparseForwardDiffExplicitComp) = get_input_ca(Float64, comp)
+
+get_output_ca(::Type{Float64}, comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.Y_ca
+get_output_ca(::Type{ComplexF64}, comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.Y_ca_cs
+get_output_ca(::Type{Any}, comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.Y_ca
+get_output_ca(comp::AbstractAutoSparseForwardDiffExplicitComp) = get_output_ca(Float64, comp)
+
 get_sparse_jacobian_ca(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.J_ca_sparse
 get_sparse_jacobian_cache(comp::AbstractAutoSparseForwardDiffExplicitComp) = comp.jac_cache
 get_units(comp::AbstractAutoSparseForwardDiffExplicitComp, varname) = comp.units_dict[varname]
@@ -19,7 +28,6 @@ function get_output_var_data(self::AbstractAutoSparseForwardDiffExplicitComp)
 end
 
 function get_partials_data(self::AbstractAutoSparseForwardDiffExplicitComp)
-    # rcdict = get_rows_cols_dict_from_sparsity(get_sparse_jacobian_ca(self))
     rcdict = get_rows_cols_dict(self)
     partials_data = Vector{OpenMDAOCore.PartialsData}()
     for (output_name, input_name) in keys(rcdict)
@@ -43,14 +51,14 @@ end
 
 function OpenMDAOCore.compute!(self::AbstractAutoSparseForwardDiffExplicitComp, inputs, outputs)
     # Copy the inputs into the input `ComponentArray`.
-    X_ca = get_input_ca(self)
+    X_ca = get_input_ca(eltype(valtype(inputs)), self)
     for iname in keys(X_ca)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
         @view(X_ca[iname]) .= inputs[string(iname)]
     end
 
     # Call the actual function.
-    Y_ca = get_output_ca(self)
+    Y_ca = get_output_ca(eltype(valtype(outputs)), self)
     f! = get_callback(self)
     f!(Y_ca, X_ca)
 
