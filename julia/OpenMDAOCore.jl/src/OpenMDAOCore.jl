@@ -3,7 +3,7 @@ module OpenMDAOCore
 using ComponentArrays: ComponentArray, ComponentVector, ComponentMatrix, getaxes, getdata
 using ForwardDiff: ForwardDiff
 using Random: rand!
-using SparseArrays: sparse, findnz, nonzeros
+using SparseArrays: sparse, findnz, nonzeros, AbstractSparseArray
 using SparseDiffTools: forwarddiff_color_jacobian! 
 
 include("utils.jl")

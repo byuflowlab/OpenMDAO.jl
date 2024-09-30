@@ -70,6 +70,10 @@ function OpenMDAOCore.compute!(self::AbstractAutoSparseForwardDiffExplicitComp, 
     return nothing
 end
 
+_maybe_nonzeros(A::AbstractArray) = A
+_maybe_nonzeros(A::AbstractSparseArray) = nonzeros(A)
+_maybe_nonzeros(A::Base.ReshapedArray{T,N,P}) where {T,N,P<:AbstractSparseArray} = nonzeros(parent(A))
+
 function OpenMDAOCore.compute_partials!(self::AbstractAutoSparseForwardDiffExplicitComp, inputs, partials)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
@@ -90,14 +94,24 @@ function OpenMDAOCore.compute_partials!(self::AbstractAutoSparseForwardDiffExpli
     for oname in keys(raxis)
         for iname in keys(caxis)
             # Grab the subjacobian we're interested in.
-            Jsub = J_ca_sparse[oname, iname]
+            Jsub_in = J_ca_sparse[oname, iname]
             
             # Need to reshape the subjacobian to correspond to the rows and cols.
-            Jsub_reshape = reshape(Jsub, length(raxis[oname]), length(caxis[iname]))
+            nrows = length(raxis[oname])
+            ncols = length(caxis[iname])
+            Jsub_in_reshape = reshape(Jsub_in, nrows, ncols)
 
             # Grab the entry in partials we're interested in, and write the data we want to it.
             rows, cols = rcdict[oname, iname]
-            partials[string(oname), string(iname)] .= getindex.(Ref(Jsub_reshape), rows, cols)
+
+            # This gets the underlying Vector that stores the nonzero entries in the current sub-Jacobian that OpenMDAO sees.
+            Jsub_out = partials[string(oname), string(iname)]
+
+            # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
+            Jsub_out_vec = _maybe_nonzeros(Jsub_out)
+
+            # Now write the non-zero entries to Jsub_out_vec.
+            Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
         end
     end
 
@@ -118,7 +132,7 @@ function generate_perturbed_jacobian!(J_ca, f!, Y_ca, X_ca, nevals=3, rel_pertur
     perturb = similar(X_ca)
 
     J_ca .= 0.0
-    for i in 0:(nevals-1)
+    for i in 1:nevals
         rand!(perturb)
         X_perturb .= (1 .+ rel_perturb.*perturb).*X_ca
         ForwardDiff.jacobian!(J_tmp, f!, Y_perturb, X_perturb)
