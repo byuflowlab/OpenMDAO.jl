@@ -68,8 +68,9 @@ function Comp3(M, N)
     return Comp3(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache, rcdict, X_ca_cs, Y_ca_cs)
 end
 
-# Don't worry about units for now.
+# Don't worry about units and tags for now.
 get_units(self::Comp3, varname) = nothing
+get_tags(self::Comp3, varname) = nothing
 
 function doit()
     # Create the component.

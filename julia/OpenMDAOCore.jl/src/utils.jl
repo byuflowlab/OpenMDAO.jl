@@ -137,14 +137,22 @@ function get_rows_cols_dict_from_sparsity(J::ComponentMatrix)
     return rcdict
 end
 
+_at_least_1d(x) = [x]
+_at_least_1d(x::AbstractArray) = x
+
 function ca2strdict(ca::ComponentVector)
     # Might be faster using `valkeys` instead of `keys`.
-    return Dict(string(k)=>ca[k] for k in keys(ca))
+    return Dict(string(k)=>_at_least_1d(ca[k]) for k in keys(ca))
 end
+
+_at_least_2d(x) = [x;;]
+# Not sure what to do about the case when `x` is `<:AbstractVector`.
+# Could add a one to the size, but at the beginning or end?
+_at_least_2d(x::AbstractArray) = x
 
 function ca2strdict(ca::ComponentMatrix)
     raxis, caxis = getaxes(ca)
-    return Dict((string(rname), string(cname))=>ca[rname, cname] for rname in keys(raxis), cname in keys(caxis))
+    return Dict((string(rname), string(cname))=>_at_least_2d(ca[rname, cname]) for rname in keys(raxis), cname in keys(caxis))
 end
 
 function ca2strdict_sparse(ca::ComponentMatrix)

@@ -74,8 +74,9 @@ function Comp1(M, N)
     return Comp1(compute_forwarddiffable!, X_ca, Y_ca, J_ca_sparse, jac_cache, rcdict)
 end
 
-# Don't worry about units for now.
+# Don't worry about units and tags for now.
 get_units(self::Comp1, varname) = nothing
+get_tags(self::Comp1, varname) = nothing
 
 function doit()
     # Create the component.
@@ -86,7 +87,7 @@ function doit()
     rcdict = get_rows_cols_dict(comp)
 
     inputs_dict = ca2strdict(get_input_ca(comp))
-    inputs_dict["a"] = 2.0
+    inputs_dict["a"] .= 2.0
     inputs_dict["b"] .= range(3.0, 4.0; length=N)
     inputs_dict["c"] .= range(5.0, 6.0; length=M)
     inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
@@ -94,10 +95,10 @@ function doit()
 
     OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
     a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
-    e_check = 2*a^2 .+ 3 .* b.^2.1 .+ 4*sum(c.^2.2) .+ 5 .* sum(d.^2.3; dims=1)[:]
+    e_check = 2.0*a.^2 .+ 3 .* b.^2.1 .+ 4*sum(c.^2.2) .+ 5 .* sum(d.^2.3; dims=1)[:]
     @test all(outputs_dict["e"] .≈ e_check)
 
-    f_check = 6*a^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
+    f_check = 6.0*a.^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
     @test all(outputs_dict["f"] .≈ f_check)
 
     g_check = 10 .* sin.(b).*cos.(transpose(d))
@@ -115,7 +116,7 @@ function doit()
     @test size(vals) == (N,)
     deda_check = zeros(N)
     for n in 1:N
-        deda_check[n] = 4*a
+        deda_check[n] = 4*only(a)
     end
     deda_check_sparse = sparse(reshape(deda_check, N))
     # `e` is a vector of length `N` and `a` is scalar, so the Jacobian isn't actually a Matrix (and isn't really sparse).
@@ -174,7 +175,7 @@ function doit()
     dfda_check = zeros(M, N)
     for m in 1:M
         for n in 1:N
-            dfda_check[m, n] = (6*2.4)*a^1.4
+            dfda_check[m, n] = (6*2.4)*only(a)^1.4
         end
     end
     dfda_check_sparse = sparse(reshape(dfda_check, M*N, 1))
