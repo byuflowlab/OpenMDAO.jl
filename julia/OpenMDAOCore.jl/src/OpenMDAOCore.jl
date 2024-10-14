@@ -1,6 +1,7 @@
 module OpenMDAOCore
 
 using ComponentArrays: ComponentArray, ComponentVector, ComponentMatrix, getaxes, getdata
+using DifferentiationInterface: DifferentiationInterface
 using ForwardDiff: ForwardDiff
 using Random: rand!
 using SparseArrays: sparse, findnz, nonzeros, AbstractSparseArray
@@ -25,5 +26,9 @@ include("sparse_ad.jl")
 export AbstractAutoSparseForwardDiffExplicitComp, SimpleAutoSparseForwardDiffExplicitComp
 export get_callback, get_input_ca, get_output_ca, get_sparse_jacobian_ca, get_sparse_jacobian_cache, get_units, get_rows_cols_dict
 export generate_perturbed_jacobian!
+
+include("matrix_free_ad.jl")
+export SimpleMatrixFreeForwardDiffExplicitComp
+export get_dinput_ca, get_doutput_ca
 
 end # module

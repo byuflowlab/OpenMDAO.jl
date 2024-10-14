@@ -679,3 +679,10 @@ end
         include("autosparse_forward_complex_step.jl")
     end
 end
+
+@testset "SimpleMatrixFreeForwardDiffExplicitComp" begin
+    @safetestset "simple" begin
+        include("auto_matrix_free_forward.jl")
+    end
+end
+
