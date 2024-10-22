@@ -180,3 +180,268 @@ function rcdict2strdict(::Type{T}, rcdict) where {T}
     return out
 end
 rcdict2strdict(rcdict) = rcdict2strdict(Float64, rcdict)
+
+"""
+    PerturbedDenseSparsityDetector
+
+Tweaked version of [`DenseSparsityDetector`](https://gdalle.github.io/DifferentiationInterface.jl/DifferentiationInterface/stable/api/#DifferentiationInterface.DenseSparsityDetector) sparsity pattern detector satisfying the [detection API](https://sciml.github.io/ADTypes.jl/stable/#Sparse-AD) of [ADTypes.jl](https://github.com/SciML/ADTypes.jl) that evaluates the Jacobian multiple times using a perturbed input vector.
+Specifically, input vector `x` will be perturbed via
+
+```julia
+    x_perturb = (1 .+ rel_x_perturb.*perturb).*x
+```
+
+where `perturb` is a random `Vector` of numbers ranging from `-0.5` to `0.5`, and `rel_x_perturb` is a relative perturbation magnitude specified by the user.
+
+All of the caveats associated with the performance of `DenseSparsityDetector` apply to `PerturbedDenseSparsityDetector`, since it essentially does the same thing as `DenseSparsityDetector` multiple times.
+The nonzeros in a Jacobian or Hessian are detected by computing the relevant matrix with _dense_ AD, and thresholding the entries with a given tolerance (which can be numerically inaccurate).
+This process can be very slow, and should only be used if its output can be exploited multiple times to compute many sparse matrices.
+
+!!! danger
+    In general, the sparsity pattern you obtain can depend on the provided input `x`. If you want to reuse the pattern, make sure that it is input-agnostic.
+    Perturbing the input vector should hopefully guard against getting "unlucky" and finding zero Jacobian entries that aren't actually zero for all `x`, but is of course problem-dependent.
+
+# Fields
+
+- `backend::AbstractADType` is the dense AD backend used under the hood
+- `atol::Float64` is the minimum magnitude of a matrix entry to be considered nonzero
+- `nevals::Int=3` is the number of times the Jacobian will be evaluated using the perturbed input `x`
+- `rel_x_perturb=0.001`: is the relative magnitude of the `x` perturbation.
+
+# Constructor
+
+    PerturbedDenseSparsityDetector(backend; atol, method=:iterative, nevals=3, rel_x_perturb=0.001)
+
+The keyword argument `method::Symbol` can be either:
+
+- `:iterative`: compute the matrix in a sequence of matrix-vector products (memory-efficient)
+- `:direct`: compute the matrix all at once (memory-hungry but sometimes faster).
+
+Note that the constructor is type-unstable because `method` ends up being a type parameter of the `PerturbedDenseSparsityDetector` object (this is not part of the API and might change).
+
+"""
+struct PerturbedDenseSparsityDetector{method,B,TRelXPerturb} <: ADTypes.AbstractSparsityDetector
+    backend::B
+    atol::Float64
+    nevals::Int
+    rel_x_perturb::TRelXPerturb
+end
+
+function Base.show(io::IO, detector::PerturbedDenseSparsityDetector{method}) where {method}
+    (; backend, atol, nevals, rel_x_perturb) = detector
+    return print(
+        io,
+        PerturbedDenseSparsityDetector,
+        "(",
+        repr(backend; context=io),
+        "; atol=$atol, method=",
+        repr(method; context=io),
+        "nevals=$nevals, rel_x_perturb=$rel_x_perturb",
+        ")",
+    )
+end
+
+function PerturbedDenseSparsityDetector(
+    backend::ADTypes.AbstractADType; atol::Float64, method::Symbol=:iterative, nevals=3, rel_x_perturb=0.001
+)
+    if !(method in (:iterative, :direct))
+        throw(
+            ArgumentError("The keyword `method` must be either `:iterative` or `:direct`.")
+        )
+    end
+
+    if nevals < 1
+        throw(
+            ArgumentError("The keyword `nevals` should be > 0")
+        )
+    end
+
+    return PerturbedDenseSparsityDetector{method,typeof(backend),typeof(rel_x_perturb)}(backend, atol, nevals, rel_x_perturb)
+end
+
+## Direct
+
+function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:direct})
+    (; backend, atol, nevals, rel_x_perturb) = detector
+
+    x_perturb = similar(x)
+    perturb = similar(x)
+
+    rand!(perturb)
+    x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+    Jabs = abs.(DifferentiationInterface.jacobian(f, backend, x_perturb))
+
+    for i in 1:nevals-1
+        rand!(perturb)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        Jabs .+= abs.(DifferentiationInterface.jacobian(f, backend, x_perturb))
+    end
+
+    return sparse(Jabs .> atol)
+end
+
+function ADTypes.jacobian_sparsity(f!, y, x, detector::PerturbedDenseSparsityDetector{:direct})
+    (; backend, atol, nevals, rel_x_perturb) = detector
+
+    x_perturb = similar(x)
+    perturb = similar(x)
+
+    rand!(perturb)
+    x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+    Jabs = abs.(DifferentiationInterface.jacobian(f!, y, backend, x_perturb))
+
+    for i in 1:nevals-1
+        rand!(perturb)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        Jabs .+= abs.(DifferentiationInterface.jacobian(f!, y, backend, x_perturb))
+    end
+
+    return sparse(Jabs .> atol)
+end
+
+function ADTypes.hessian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:direct})
+    (; backend, atol, nevals, rel_x_perturb) = detector
+
+    x_perturb = similar(x)
+    perturb = similar(x)
+
+    rand!(perturb)
+    x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+    Habs = abs.(DifferentiationInterface.hessian(f, backend, x_perturb))
+
+    for i in 1:nevals-1
+        rand!(perturb)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        Habs .+= abs.(DifferentiationInterface.hessian(f, backend, x_perturb))
+    end
+
+    return sparse(Habs .> atol)
+end
+
+function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:iterative})
+    (; backend, atol, nevals, rel_x_perturb) = detector
+    y = f(x)
+
+    x_perturb = similar(x)
+    perturb = similar(x)
+
+    n, m = length(x), length(y)
+    IJ = Vector{Tuple{Int,Int}}()
+
+    # Need to make sure I don't add duplicates to I and J.
+    # I guess the only way to do that is just to check.
+    # It would be cool if I could skip adding non-zero entries for rows/columns that I've already identified as all non-sparse.
+    for _ in 1:nevals
+        rand!(perturb)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+
+        if DifferentiationInterface.pushforward_performance(backend) isa DifferentiationInterface.PushforwardFast
+            p = similar(y)
+            prep = DifferentiationInterface.prepare_pushforward_same_point(
+                f, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),)
+            )
+            for (kj, j) in enumerate(eachindex(x_perturb))
+                DifferentiationInterface.pushforward!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+                for ki in LinearIndices(p)
+                    if (abs(p[ki]) > atol) && !((ki, kj) in IJ)
+                        push!(IJ, (ki, kj))
+                    end
+                end
+            end
+        else
+            p = similar(x_perturb)
+            prep = DifferentiationInterface.prepare_pullback_same_point(
+                f, backend, x_perturb, (DifferentiationInterface.basis(backend, y, first(eachindex(y))),)
+            )
+            for (ki, i) in enumerate(eachindex(y))
+                DifferentiationInterface.pullback!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, y, i),))
+                for kj in LinearIndices(p)
+                    if (abs(p[kj]) > atol) && !((ki, kj) in IJ)
+                        push!(IJ, (ki, kj))
+                    end
+                end
+            end
+        end
+    end
+
+    I = getindex.(IJ, 1)
+    J = getindex.(IJ, 2)
+    return sparse(I, J, ones(Bool, length(I)), m, n)
+end
+
+function ADTypes.jacobian_sparsity(f!, y, x, detector::PerturbedDenseSparsityDetector{:iterative})
+    (; backend, atol, nevals, rel_x_perturb) = detector
+
+    x_perturb = similar(x)
+    perturb = similar(x)
+
+    n, m = length(x), length(y)
+    IJ = Vector{Tuple{Int,Int}}()
+
+    for _ in 1:nevals
+        rand!(perturb)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+
+        if DifferentiationInterface.pushforward_performance(backend) isa DifferentiationInterface.PushforwardFast
+            p = similar(y)
+            prep = DifferentiationInterface.prepare_pushforward_same_point(
+                f!, y, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),)
+            )
+            for (kj, j) in enumerate(eachindex(x_perturb))
+                DifferentiationInterface.pushforward!(f!, y, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+                for ki in LinearIndices(p)
+                    if (abs(p[ki]) > atol) && !((ki, kj) in IJ)
+                        push!(IJ, (ki, kj))
+                    end
+                end
+            end
+        else
+            p = similar(x_perturb)
+            prep = DifferentiationInterface.prepare_pullback_same_point(
+                f!, y, backend, x_perturb, (DifferentiationInterface.basis(backend, y, first(eachindex(y))),)
+            )
+            for (ki, i) in enumerate(eachindex(y))
+                DifferentiationInterface.pullback!(f!, y, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, y, i),))
+                for kj in LinearIndices(p)
+                    if (abs(p[kj]) > atol) && !((ki, kj) in IJ)
+                        push!(IJ, (ki, kj))
+                    end
+                end
+            end
+        end
+    end
+
+    I = getindex.(IJ, 1)
+    J = getindex.(IJ, 2)
+    return sparse(I, J, ones(Bool, length(I)), m, n)
+end
+
+function ADTypes.hessian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:iterative})
+    (; backend, atol, nevals, rel_x_perturb) = detector
+
+    x_perturb = similar(x)
+    perturb = similar(x)
+    p = similar(x)
+
+    n = length(x)
+    IJ = Vector{Tuple{Int,Int}}()
+    for _ in 1:nevals
+        rand!(perturb)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+
+        prep = DifferentiationInterface.prepare_hvp_same_point(f, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),))
+        for (kj, j) in enumerate(eachindex(x_perturb))
+            hvp!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+            for ki in LinearIndices(p)
+                if (abs(p[ki]) > atol) && !((ki, kj) in IJ)
+                    push!(IJ, (ki, kj))
+                end
+            end
+        end
+    end
+
+    I = getindex.(IJ, 1)
+    J = getindex.(IJ, 2)
+    return sparse(I, J, ones(Bool, length(I)), n, n)
+end
+

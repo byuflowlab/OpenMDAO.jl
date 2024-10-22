@@ -665,24 +665,20 @@ end
 
 end
 
-@testset "AbstractAutoSparseForwardDiffExplicitComp" begin
+@testset "SparseADExplicitComp" begin
 
     @safetestset "manual sparsity" begin
-        include("autosparse_forward_manual.jl")
+        include("autosparse_manual.jl")
     end
 
     @safetestset "automatic sparsity" begin
-        include("autosparse_forward_automatic.jl")
-    end
-
-    @safetestset "automatic sparsity, complex step check" begin
-        include("autosparse_forward_complex_step.jl")
+        include("autosparse_automatic.jl")
     end
 end
 
-@testset "SimpleMatrixFreeForwardDiffExplicitComp" begin
+@testset "MatrixFreeADExplicitComp" begin
     @safetestset "simple" begin
-        include("auto_matrix_free_forward.jl")
+        include("auto_matrix_free.jl")
     end
 end
 

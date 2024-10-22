@@ -1,5 +1,6 @@
-struct SimpleMatrixFreeForwardDiffExplicitComp{TCompute,TX,TY,TPrep,TXCS,TYCS} <: AbstractExplicitComp
-    compute_forwarddiffable!::TCompute
+struct MatrixFreeADExplicitComp{TAD, TCompute,TX,TY,TPrep,TXCS,TYCS} <: AbstractADExplicitComp
+    ad_backend::TAD
+    compute_adable!::TCompute
     X_ca::TX
     Y_ca::TY
     dX_ca::TX
@@ -11,55 +12,20 @@ struct SimpleMatrixFreeForwardDiffExplicitComp{TCompute,TX,TY,TPrep,TXCS,TYCS} <
     Y_ca_cs::TYCS
 end
 
-get_callback(comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.compute_forwarddiffable!
+get_dinput_ca(comp::MatrixFreeADExplicitComp) = comp.dX_ca
+get_doutput_ca(comp::MatrixFreeADExplicitComp) = comp.dY_ca
 
-get_input_ca(::Type{Float64}, comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.X_ca
-get_input_ca(::Type{ComplexF64}, comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.X_ca_cs
-get_input_ca(::Type{Any}, comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.X_ca
-get_input_ca(comp::SimpleMatrixFreeForwardDiffExplicitComp) = get_input_ca(Float64, comp)
-
-get_dinput_ca(comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.dX_ca
-
-get_output_ca(::Type{Float64}, comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.Y_ca
-get_output_ca(::Type{ComplexF64}, comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.Y_ca_cs
-get_output_ca(::Type{Any}, comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.Y_ca
-get_output_ca(comp::SimpleMatrixFreeForwardDiffExplicitComp) = get_output_ca(Float64, comp)
-
-get_doutput_ca(comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.dY_ca
-
-get_prep(comp::SimpleMatrixFreeForwardDiffExplicitComp) = comp.prep
-
-get_units(comp::SimpleMatrixFreeForwardDiffExplicitComp, varname) = get(comp.units_dict, varname, nothing)
-get_tags(comp::SimpleMatrixFreeForwardDiffExplicitComp, varname) = get(comp.tags_dict, varname, nothing)
-
-function get_input_var_data(self::SimpleMatrixFreeForwardDiffExplicitComp)
-    ca = get_input_ca(self)
-    return [VarData(string(k); shape=size(ca[k]), val=ca[k], units=get_units(self, k), tags=get_tags(self, k)) for k in keys(ca)]
-end
-
-function get_output_var_data(self::SimpleMatrixFreeForwardDiffExplicitComp)
-    ca = get_output_ca(self)
-    return [VarData(string(k); shape=size(ca[k]), val=ca[k], units=get_units(self, k), tags=get_tags(self, k)) for k in keys(ca)]
-end
-
-function get_partials_data(self::SimpleMatrixFreeForwardDiffExplicitComp)
+function get_partials_data(self::MatrixFreeADExplicitComp)
     return Vector{PartialsData}()
 end
 
-function OpenMDAOCore.setup(self::SimpleMatrixFreeForwardDiffExplicitComp)
-    input_data = get_input_var_data(self)
-    output_data = get_output_var_data(self)
-    partials_data = get_partials_data(self)
-
-    return input_data, output_data, partials_data
-end
-
 """
-    SimpleMatrixFreeForwardDiffExplicitComp(f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}())
+    MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), force_mode=nothing, disable_prep=false)
 
-Create a `SimpleAutoSparseForwardDiffExplicitComp` from a user-defined function and output and input `ComponentVector`s.
+Create a `MatrixFreeADExplicitComp` from a user-defined function and output and input `ComponentVector`s.
 
 # Positional Arguments
+* `ad_backend`: `<:ADTypes.AbstractADType` automatic differentation "backend" library
 * `f!`: function of the form `f!(Y_ca, X_ca, params)` which writes outputs to `Y_ca` using inputs `X_ca` and, optionally, parameters `params`.
 * `Y_ca`: `ComponentVector` of outputs
 * `X_ca`: `ComponentVector` of inputs
@@ -68,11 +34,16 @@ Create a `SimpleAutoSparseForwardDiffExplicitComp` from a user-defined function 
 * `params`: parameters passed to the third argument to `f!`. Could be anything, or `nothing`, but the derivatives of `Y_ca` with respect to `params` will not be calculated
 * `units_dict`: `Dict` mapping variable names (as `Symbol`s) to OpenMDAO units (expressed as `String`s)
 * `tags_dict`: `Dict` mapping variable names (as `Symbol`s) to `Vector`s of OpenMDAO tags
+* `force_mode=nothing`: If `fwd`, use `DifferentiationInterface.pushforward!` to compute the derivatives (aka perform a Jacobian-vector product).
+  If `rev`, use `DifferentiationInterface.pullback!` to compute the derivatives (aka perform a vector-Jacobian product).
+  If `nothing`, use whatever would be faster, as determined by `DifferentiationInterface.pushforward_performance` and `DifferentiationInterface.pullback_performance`, prefering `pushforward.
+* `disable_prep`: if `true`, do not use either `prepare_pushforward` or `prepare_pullback` to create a `DifferentiationInterface.PushforwardPrep` or `PullbackPrep` object to accelerate the derivative calculation.
+  Disabling prep can avoid correctness issues with ReverseDiff.jl, see [the discussion of branching and the `AbstractTape` API](https://juliadiff.org/ReverseDiff.jl/dev/api/#The-AbstractTape-API).
 """
-function SimpleMatrixFreeForwardDiffExplicitComp(f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}())
+function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), force_mode=nothing, disable_prep=false)
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
-    compute_forwarddiffable! = let params=params
+    compute_adable! = let params=params
         (Y, X)->begin
             f!(Y, X, params)
             return nothing
@@ -83,46 +54,45 @@ function SimpleMatrixFreeForwardDiffExplicitComp(f!, Y_ca::ComponentVector, X_ca
     dX_ca = similar(X_ca)
     dY_ca = similar(Y_ca)
 
-    # We'll use ForwardDiff.jl to do the AD.
-    backend = DifferentiationInterface.AutoForwardDiff()
-
     # Get the "preparation" objective for efficiency.
-    prep = DifferentiationInterface.prepare_pushforward(compute_forwarddiffable!, Y_ca, backend, X_ca, (dX_ca,))
+    if force_mode === nothing
+        if DifferentiationInterface.pushforward_performance(ad_backend) isa DifferentiationInterface.PushforwardFast
+            if disable_prep
+                prep = DifferentiationInterface.NoPushforwardPrep()
+            else
+                prep = DifferentiationInterface.prepare_pushforward(compute_adable!, Y_ca, ad_backend, X_ca, (dX_ca,))
+            end
+        else
+            if disable_prep
+                prep = DifferentiationInterface.NoPullbackPrep()
+            else
+                prep = DifferentiationInterface.prepare_pullback(compute_adable!, Y_ca, ad_backend, X_ca, (dY_ca,))
+            end
+        end
+    elseif force_mode == "fwd"
+        if disable_prep
+            prep = DifferentiationInterface.NoPushforwardPrep()
+        else
+            prep = DifferentiationInterface.prepare_pushforward(compute_adable!, Y_ca, ad_backend, X_ca, (dX_ca,))
+        end
+    elseif force_mode == "rev"
+        if disable_prep
+            prep = DifferentiationInterface.NoPullbackPrep()
+        else
+            prep = DifferentiationInterface.prepare_pullback(compute_adable!, Y_ca, ad_backend, X_ca, (dY_ca,))
+        end
+    else
+        throw(ArgumentError("force_mode keyword argument should be one of `nothing`, \"fwd\", or \"rev\" but is $(force_mode)"))
+    end
 
     # Create complex-valued versions of the X_ca and Y_ca arrays.
     X_ca_cs = similar(X_ca, ComplexF64)
     Y_ca_cs = similar(Y_ca, ComplexF64)
 
-    return SimpleMatrixFreeForwardDiffExplicitComp(compute_forwarddiffable!, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
+    return MatrixFreeADExplicitComp(ad_backend, compute_adable!, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
 end
 
-function OpenMDAOCore.compute!(self::SimpleMatrixFreeForwardDiffExplicitComp, inputs, outputs)
-    # Copy the inputs into the input `ComponentArray`.
-    X_ca = get_input_ca(eltype(valtype(inputs)), self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
-
-    # Call the actual function.
-    Y_ca = get_output_ca(eltype(valtype(outputs)), self)
-    f! = get_callback(self)
-    f!(Y_ca, X_ca)
-
-    # Copy the output `ComponentArray` to the outputs.
-    for oname in keys(Y_ca)
-        # This requires that each output is at least a vector.
-        outputs[string(oname)] .= @view(Y_ca[oname])
-    end
-
-    return nothing
-end
-
-function OpenMDAOCore.compute_jacvec_product!(self::SimpleMatrixFreeForwardDiffExplicitComp, inputs, d_inputs, d_outputs, mode)
-    if mode != "fwd"
-        throw(MethodError("only mode = \"fwd\" supported for SimpleMatrixFreeForwardDiffExplicitComp, but passed mode = $(mode)"))
-    end
-
+function _compute_pushforward!(self, inputs, d_inputs, d_outputs)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
     for iname in keys(X_ca)
@@ -151,20 +121,82 @@ function OpenMDAOCore.compute_jacvec_product!(self::SimpleMatrixFreeForwardDiffE
     dY_ca = get_doutput_ca(self)
 
     # This is the function that will actually do the computation.
-    compute_forwarddiffable! = get_callback(self)
+    compute_adable! = get_callback(self)
 
     # We stored the "preparation" for reusing.
     prep = get_prep(self)
 
-    # We'll use ForwardDiff.jl to do the AD.
-    backend = DifferentiationInterface.AutoForwardDiff()
+    # Get the AD backend.
+    backend = get_backend(self)
 
     # Now actually do the Jacobian-vector product.
-    DifferentiationInterface.pushforward!(compute_forwarddiffable!, Y_ca, (dY_ca,), prep, backend, X_ca, (dX_ca,))
+    DifferentiationInterface.pushforward!(compute_adable!, Y_ca, (dY_ca,), prep, backend, X_ca, (dX_ca,))
 
     # Now copy the output derivatives to `d_outputs`:
     for oname in keys(dY_ca)
         d_outputs[String(oname)] .= @view(dY_ca[oname])
+    end
+
+    return nothing
+end
+
+function _compute_pullback!(self, inputs, d_inputs, d_outputs)
+    # Copy the inputs into the input `ComponentArray`.
+    X_ca = get_input_ca(self)
+    for iname in keys(X_ca)
+        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
+        @view(X_ca[iname]) .= inputs[string(iname)]
+    end
+
+    dY_ca = get_doutput_ca(self)
+    dY_ca .= 0.0
+    for oname in keys(d_outputs)
+        @view(dY_ca[Symbol(oname)]) .= d_outputs[oname]
+    end
+
+    # The AD library will need the output component array to do the Jacobian-vector product.
+    Y_ca = get_output_ca(self)
+
+    # We'll write the result of the vector-Jacobian product to a different component array.
+    dX_ca = get_dinput_ca(self)
+
+    # This is the function that will actually do the computation.
+    compute_adable! = get_callback(self)
+
+    # Need the AD backend.
+    backend = get_backend(self)
+
+    # We stored the "preparation" for reusing.
+    prep = get_prep(self)
+
+    # Now actually do the Jacobian-vector product.
+    DifferentiationInterface.pullback!(compute_adable!, Y_ca, (dX_ca,), prep, backend, X_ca, (dY_ca,))
+
+    # Now copy the input derivatives to `d_inputs`:
+    for iname in keys(dX_ca)
+        d_inputs[String(iname)] .= @view(dX_ca[iname])
+    end
+
+    return nothing
+end
+
+function OpenMDAOCore.compute_jacvec_product!(self::MatrixFreeADExplicitComp, inputs, d_inputs, d_outputs, mode)
+    backend = get_backend(self)
+    prep = get_prep(self)
+    if mode == "fwd"
+        if prep isa DifferentiationInterface.PushforwardPrep
+            _compute_pushforward!(self, inputs, d_inputs, d_outputs)
+        else
+            throw(ArgumentError("mode = \"fwd\" not supported for AD backend $(backend), preparation $(prep)"))
+        end
+    elseif mode == "rev"
+        if prep isa DifferentiationInterface.PullbackPrep
+            _compute_pullback!(self, inputs, d_inputs, d_outputs)
+        else
+            throw(ArgumentError("mode = \"rev\" not supported for AD backend $(backend), preparation $(prep)"))
+        end
+    else
+        throw(ArgumentError("unknown mode = \"$(mode)\""))
     end
 
     return nothing
