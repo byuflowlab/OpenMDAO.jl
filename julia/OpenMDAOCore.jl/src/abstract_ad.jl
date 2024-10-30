@@ -1,6 +1,6 @@
-abstract type AbstractADExplicitComp <: AbstractExplicitComp end
+abstract type AbstractADExplicitComp{InPlace} <: AbstractExplicitComp end
 
-get_callback(comp::AbstractADExplicitComp) = comp.compute_adable!
+get_callback(comp::AbstractADExplicitComp) = comp.compute_adable
 
 get_input_ca(::Type{Float64}, comp::AbstractADExplicitComp) = comp.X_ca
 get_input_ca(::Type{ComplexF64}, comp::AbstractADExplicitComp) = comp.X_ca_cs
@@ -37,7 +37,7 @@ function OpenMDAOCore.setup(self::AbstractADExplicitComp)
     return input_data, output_data, partials_data
 end
 
-function OpenMDAOCore.compute!(self::AbstractADExplicitComp, inputs, outputs)
+function OpenMDAOCore.compute!(self::AbstractADExplicitComp{true}, inputs, outputs)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(eltype(valtype(inputs)), self)
     for iname in keys(X_ca)
@@ -49,6 +49,27 @@ function OpenMDAOCore.compute!(self::AbstractADExplicitComp, inputs, outputs)
     Y_ca = get_output_ca(eltype(valtype(outputs)), self)
     f! = get_callback(self)
     f!(Y_ca, X_ca)
+
+    # Copy the output `ComponentArray` to the outputs.
+    for oname in keys(Y_ca)
+        # This requires that each output is at least a vector.
+        outputs[string(oname)] .= @view(Y_ca[oname])
+    end
+
+    return nothing
+end
+
+function OpenMDAOCore.compute!(self::AbstractADExplicitComp{false}, inputs, outputs)
+    # Copy the inputs into the input `ComponentArray`.
+    X_ca = get_input_ca(eltype(valtype(inputs)), self)
+    for iname in keys(X_ca)
+        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
+        @view(X_ca[iname]) .= inputs[string(iname)]
+    end
+
+    # Call the actual function.
+    f = get_callback(self)
+    Y_ca = f(X_ca)
 
     # Copy the output `ComponentArray` to the outputs.
     for oname in keys(Y_ca)

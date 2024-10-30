@@ -342,5 +342,5 @@ function doit_reverse(; ad_type, disable_prep)
 end
 doit_reverse(; ad_type="reversediff", disable_prep=false)
 doit_reverse(; ad_type="reversediff", disable_prep=true)
-doit_reverse(; ad_type="enzymereverse", disable_prep=false)
+# doit_reverse(; ad_type="enzymereverse", disable_prep=false)
 # doit_reverse(; ad_type="zygote", disable_prep=false)
