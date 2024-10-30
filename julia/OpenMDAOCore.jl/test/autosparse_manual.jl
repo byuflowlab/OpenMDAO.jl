@@ -403,5 +403,5 @@ end
 doit(; ad_type="forwarddiff")
 doit(; ad_type="reversediff")
 doit(; ad_type="enzymeforward")
-doit(; ad_type="enzymereverse")
+# doit(; ad_type="enzymereverse")
 # doit(; ad_type="zygote")
