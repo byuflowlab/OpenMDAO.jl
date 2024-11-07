@@ -256,4 +256,32 @@ function OpenMDAOCore.compute_partials!(self::ECompShapeByConn, inputs, partials
     return nothing
 end
 
+struct ECompDomainError <: OpenMDAOCore.AbstractExplicitComp end
+
+function OpenMDAOCore.setup(self::ECompDomainError)
+    input_data = [VarData("x")]
+    output_data = [VarData("y")]
+    partials_data = [PartialsData("y", "x")]
+
+    return input_data, output_data, partials_data
+end
+
+function OpenMDAOCore.compute!(self::ECompDomainError, inputs, outputs)
+    if real(inputs["x"][1]) < 0
+        throw(DomainError(real(inputs["x"][1]), "x must be >= 0"))
+    else
+        outputs["y"][1] = 2*inputs["x"][1]^2 + 1
+    end
+    return nothing
+end
+
+function OpenMDAOCore.compute_partials!(self::ECompDomainError, inputs, partials)
+    if inputs["x"][1] < 0
+        throw(DomainError(x, "x must be >= 0"))
+    else
+        partials["y", "x"][1] = 4*inputs["x"][1]
+    end
+    return nothing
+end
+
 end # module

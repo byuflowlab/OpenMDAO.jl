@@ -10,6 +10,7 @@ import numpy as np
 
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
+from openmdao.core.analysis_error import AnalysisError
 
 
 from omjlcomps import JuliaExplicitComp
@@ -63,6 +64,7 @@ class TestSimpleJuliaExplicitCompWithRecording(unittest.TestCase):
         p.set_val("x", 3.0)
         p.run_model()
         p.record("final")
+        p.cleanup()
 
 
     def test_results(self):
@@ -71,7 +73,8 @@ class TestSimpleJuliaExplicitCompWithRecording(unittest.TestCase):
         actual = p.get_val("y")[0]
         np.testing.assert_almost_equal(actual, expected)
 
-        cr = om.CaseReader("simple_explicit.sql")
+        d = p.get_reports_dir()
+        cr = om.CaseReader(f"{d}/../simple_explicit.sql")
         c = cr.get_case("final")
         actual_rec = np.squeeze(c.get_val("y"))
         np.testing.assert_almost_equal(actual_rec, expected)
@@ -369,6 +372,48 @@ class TestShapeByConn(unittest.TestCase):
         for comp in cpd:
             for (var, wrt) in cpd[comp]:
                 np.testing.assert_allclose(actual=cpd[comp][var, wrt]['J_fwd'], desired=cpd[comp][var, wrt]['J_fd'], rtol=1e-12)
+
+
+class TestAnalysisError(unittest.TestCase):
+
+    def setUp(self):
+        p = self.p = om.Problem()
+        ecomp = jl.ECompTest.ECompDomainError()
+        comp = JuliaExplicitComp(jlcomp=ecomp)
+        p.model.add_subsystem("ecomp", comp, promotes_inputs=["x"], promotes_outputs=["y"])
+        p.setup(force_alloc_complex=True)
+        p.set_val("x", 3.0)
+        p.run_model()
+
+    def test_results(self):
+        p = self.p
+        p.set_val("x", 3.0)
+        expected = 2*p.get_val("x")[0]**2 + 1
+        actual = p.get_val("y")[0]
+        np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials(self):
+        p = self.p
+        p.set_val("x", 3.0)
+        np.set_printoptions(linewidth=1024)
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that the partials the user provided are correct.
+        ecomp_partials = cpd["ecomp"]
+        np.testing.assert_almost_equal(actual=ecomp_partials["y", "x"]['J_fwd'], desired=[[4*p.get_val("x")[0]]], decimal=12)
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
+                                               desired=cpd[comp][var, wrt]['J_fd'],
+                                               decimal=12)
+
+    def test_analysis_error(self):
+        p = self.p
+        p.set_val("x", -1.0)
+        self.assertRaises(AnalysisError, p.run_model)
+        self.assertRaises(AnalysisError, p.check_partials)
 
 
 if __name__ == '__main__':
