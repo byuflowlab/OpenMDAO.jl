@@ -11,6 +11,7 @@ jl.seval("using OpenMDAOCore: OpenMDAOCore")
 
 def _initialize_common(self):
     self.options.declare('jlcomp', recordable=False)
+    self.options.declare('noisy_julia_domain_error', default=False, types=bool)
 
 
 def _setup_common(self):
@@ -98,6 +99,8 @@ class JuliaExplicitComp(om.ExplicitComponent):
                     jl.OpenMDAOCore.compute_partials_b(self._jlcomp, inputs_dict, partials_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        if self.options['noisy_julia_domain_error']:
+                            print(f"caught Julia DomainError in {self}.compute_partials:\n{e}")
                         raise AnalysisError(f"caught Julia DomainError in {self}.compute_partials:\n{e}")
                     else:
                         raise e from None
@@ -117,6 +120,8 @@ class JuliaExplicitComp(om.ExplicitComponent):
                     jl.OpenMDAOCore.compute_jacvec_product_b(self._jlcomp, inputs_dict, d_inputs_dict, d_outputs_dict, mode)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        if self.options['noisy_julia_domain_error']:
+                            print(f"caught Julia DomainError in {self}.compute_jacvec_product:\n{e}")
                         raise AnalysisError(f"caught Julia DomainError in {self}.compute_jacvec_product:\n{e}")
                     else:
                         raise e from None
@@ -137,6 +142,8 @@ class JuliaExplicitComp(om.ExplicitComponent):
             jl.OpenMDAOCore.compute_b(self._jlcomp, inputs_dict, outputs_dict)
         except JuliaError as e:
             if jl.isa(e.exception, jl.DomainError):
+                if self.options['noisy_julia_domain_error']:
+                    print(f"caught Julia DomainError in {self}.compute:\n{e}")
                 raise AnalysisError(f"caught Julia DomainError in {self}.compute:\n{e}")
             else:
                 raise e from None
@@ -169,6 +176,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.apply_nonlinear_b(self._jlcomp, inputs_dict, outputs_dict, residuals_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        if self.options['noisy_julia_domain_error']:
+                            print(f"caught Julia DomainError in {self}.apply_nonlinear:\n{e}")
                         raise AnalysisError(f"caught Julia DomainError in {self}.apply_nonlinear:\n{e}")
                     else:
                         raise e from None
@@ -184,6 +193,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.solve_nonlinear_b(self._jlcomp, inputs_dict, outputs_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        if self.options['noisy_julia_domain_error']:
+                            print(f"caught Julia DomainError in {self}.solve_nonlinear:\n{e}")
                         raise AnalysisError(f"caught Julia DomainError in {self}.solve_nonlinear:\n{e}")
                     else:
                         raise e from None
@@ -208,6 +219,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.linearize_b(self._jlcomp, inputs_dict, outputs_dict, partials_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        if self.options['noisy_julia_domain_error']:
+                            print(f"caught Julia DomainError in {self}.linearize:\n{e}")
                         raise AnalysisError(f"caught Julia DomainError in {self}.linearize:\n{e}")
                     else:
                         raise e from None
@@ -227,6 +240,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
                             d_inputs_dict, d_outputs_dict, d_residuals_dict, mode)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        if self.options['noisy_julia_domain_error']:
+                            print(f"caught Julia DomainError in {self}.apply_linear:\n{e}")
                         raise AnalysisError(f"caught Julia DomainError in {self}.apply_linear:\n{e}")
                     else:
                         raise e from None
@@ -244,6 +259,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.solve_linear_b(self._jlcomp, d_outputs_dict, d_residuals_dict, mode)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        if self.options['noisy_julia_domain_error']:
+                            print(f"caught Julia DomainError in {self}.solve_linear:\n{e}")
                         raise AnalysisError(f"caught Julia DomainError in {self}.solve_linear:\n{e}")
                     else:
                         raise e from None
@@ -266,6 +283,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.guess_nonlinear_b(self._jlcomp, inputs_dict, outputs_dict, residuals_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        if self.options['noisy_julia_domain_error']:
+                            print(f"caught Julia DomainError in {self}.guess_nonlinear:\n{e}")
                         raise AnalysisError(f"caught Julia DomainError in {self}.guess_nonlinear:\n{e}")
                     else:
                         raise e from None
