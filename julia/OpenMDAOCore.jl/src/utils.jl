@@ -337,11 +337,15 @@ function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetecto
 
         if DifferentiationInterface.pushforward_performance(backend) isa DifferentiationInterface.PushforwardFast
             p = similar(y)
+            # prep = DifferentiationInterface.prepare_pushforward_same_point(
+            #     f, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),)
+            # )
             prep = DifferentiationInterface.prepare_pushforward_same_point(
-                f, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),)
+                f, backend, x_perturb, (DifferentiationInterface.basis(x_perturb, first(eachindex(x_perturb))),)
             )
             for (kj, j) in enumerate(eachindex(x_perturb))
-                DifferentiationInterface.pushforward!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+                # DifferentiationInterface.pushforward!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+                DifferentiationInterface.pushforward!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(x_perturb, j),))
                 for ki in LinearIndices(p)
                     if (abs(p[ki]) > atol) && !((ki, kj) in IJ)
                         push!(IJ, (ki, kj))
@@ -350,11 +354,15 @@ function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetecto
             end
         else
             p = similar(x_perturb)
+            # prep = DifferentiationInterface.prepare_pullback_same_point(
+            #     f, backend, x_perturb, (DifferentiationInterface.basis(backend, y, first(eachindex(y))),)
+            # )
             prep = DifferentiationInterface.prepare_pullback_same_point(
-                f, backend, x_perturb, (DifferentiationInterface.basis(backend, y, first(eachindex(y))),)
+                f, backend, x_perturb, (DifferentiationInterface.basis(y, first(eachindex(y))),)
             )
             for (ki, i) in enumerate(eachindex(y))
-                DifferentiationInterface.pullback!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, y, i),))
+                # DifferentiationInterface.pullback!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, y, i),))
+                DifferentiationInterface.pullback!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(y, i),))
                 for kj in LinearIndices(p)
                     if (abs(p[kj]) > atol) && !((ki, kj) in IJ)
                         push!(IJ, (ki, kj))
@@ -384,11 +392,15 @@ function ADTypes.jacobian_sparsity(f!, y, x, detector::PerturbedDenseSparsityDet
 
         if DifferentiationInterface.pushforward_performance(backend) isa DifferentiationInterface.PushforwardFast
             p = similar(y)
+            # prep = DifferentiationInterface.prepare_pushforward_same_point(
+            #     f!, y, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),)
+            # )
             prep = DifferentiationInterface.prepare_pushforward_same_point(
-                f!, y, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),)
+                f!, y, backend, x_perturb, (DifferentiationInterface.basis(x_perturb, first(eachindex(x_perturb))),)
             )
             for (kj, j) in enumerate(eachindex(x_perturb))
-                DifferentiationInterface.pushforward!(f!, y, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+                # DifferentiationInterface.pushforward!(f!, y, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+                DifferentiationInterface.pushforward!(f!, y, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(x_perturb, j),))
                 for ki in LinearIndices(p)
                     if (abs(p[ki]) > atol) && !((ki, kj) in IJ)
                         push!(IJ, (ki, kj))
@@ -397,11 +409,15 @@ function ADTypes.jacobian_sparsity(f!, y, x, detector::PerturbedDenseSparsityDet
             end
         else
             p = similar(x_perturb)
+            # prep = DifferentiationInterface.prepare_pullback_same_point(
+            #     f!, y, backend, x_perturb, (DifferentiationInterface.basis(backend, y, first(eachindex(y))),)
+            # )
             prep = DifferentiationInterface.prepare_pullback_same_point(
-                f!, y, backend, x_perturb, (DifferentiationInterface.basis(backend, y, first(eachindex(y))),)
+                f!, y, backend, x_perturb, (DifferentiationInterface.basis(y, first(eachindex(y))),)
             )
             for (ki, i) in enumerate(eachindex(y))
-                DifferentiationInterface.pullback!(f!, y, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, y, i),))
+                # DifferentiationInterface.pullback!(f!, y, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, y, i),))
+                DifferentiationInterface.pullback!(f!, y, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(y, i),))
                 for kj in LinearIndices(p)
                     if (abs(p[kj]) > atol) && !((ki, kj) in IJ)
                         push!(IJ, (ki, kj))
@@ -429,9 +445,11 @@ function ADTypes.hessian_sparsity(f, x, detector::PerturbedDenseSparsityDetector
         rand!(perturb)
         x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
 
-        prep = DifferentiationInterface.prepare_hvp_same_point(f, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),))
+        # prep = DifferentiationInterface.prepare_hvp_same_point(f, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),))
+        prep = DifferentiationInterface.prepare_hvp_same_point(f, backend, x_perturb, (DifferentiationInterface.basis(x_perturb, first(eachindex(x_perturb))),))
         for (kj, j) in enumerate(eachindex(x_perturb))
-            hvp!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+            # hvp!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, j),))
+            DifferentiationInterface.hvp!(f, (p,), prep, backend, x_perturb, (DifferentiationInterface.basis(x_perturb, j),))
             for ki in LinearIndices(p)
                 if (abs(p[ki]) > atol) && !((ki, kj) in IJ)
                     push!(IJ, (ki, kj))

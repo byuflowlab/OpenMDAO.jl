@@ -5,6 +5,10 @@ using SparseArrays: sparse, findnz, nnz, issparse
 using ADTypes: ADTypes
 using SparseMatrixColorings: SparseMatrixColorings
 using ForwardDiff: ForwardDiff
+using ReverseDiff: ReverseDiff
+using Zygote: Zygote
+using EnzymeCore: EnzymeCore
+using Enzyme: Enzyme
 
 function f_simple!(Y, X, params)
     a = only(X[:a])
@@ -41,7 +45,8 @@ function f_simple(X, params)
     return Y
 end
 
-function doit_in_place(; sparse_detect_method)
+function doit_in_place(; sparse_detect_method, ad_type)
+    # println("autosparse automatic in-place test with ad_type = $(ad_type), sparse_detect_method = $(sparse_detect_method)")
     # `M` and `N` will be passed via the params argument.
     N = 3
     M = 4
@@ -59,8 +64,22 @@ function doit_in_place(; sparse_detect_method)
 
     # Now we can create the component.
     sparse_atol = 1e-10
-    ad = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=PerturbedDenseSparsityDetector(ADTypes.AutoForwardDiff(); atol=sparse_atol, method=sparse_detect_method), coloring_algorithm=SparseMatrixColorings.GreedyColoringAlgorithm())
-    comp = SparseADExplicitComp(ad, f_simple!, Y_ca, X_ca; params=params_simple)
+    sparsity_detector = PerturbedDenseSparsityDetector(ADTypes.AutoForwardDiff(); atol=sparse_atol, method=sparse_detect_method)
+    coloring_algorithm = SparseMatrixColorings.GreedyColoringAlgorithm()
+    if ad_type == "forwarddiff"
+        ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
+    elseif ad_type == "reversediff"
+        ad_backend = ADTypes.AutoSparse(ADTypes.AutoReverseDiff(); sparsity_detector, coloring_algorithm)
+    elseif ad_type == "enzymeforward"
+        ad_backend = ADTypes.AutoSparse(ADTypes.AutoEnzyme(; mode=EnzymeCore.Forward); sparsity_detector, coloring_algorithm)
+    elseif ad_type == "enzymereverse"
+        ad_backend = ADTypes.AutoSparse(ADTypes.AutoEnzyme(; mode=EnzymeCore.Reverse); sparsity_detector, coloring_algorithm)
+    elseif ad_type == "zygote"
+        ad_backend = ADTypes.AutoSparse(ADTypes.AutoZygote(); sparsity_detector, coloring_algorithm)
+    else
+        error("unexpected ad_type = $(ad_type)")
+    end
+    comp = SparseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params=params_simple)
 
     # Now run all the checks from the previous case.
     rcdict = get_rows_cols_dict(comp)
@@ -379,11 +398,18 @@ function doit_in_place(; sparse_detect_method)
     end
 
 end
-doit_in_place(; sparse_detect_method=:iterative)
-doit_in_place(; sparse_detect_method=:direct)
+for sdm in [:direct, :iterative]
+    doit_in_place(; sparse_detect_method=sdm, ad_type="forwarddiff")
+    doit_in_place(; sparse_detect_method=sdm, ad_type="reversediff")
+    doit_in_place(; sparse_detect_method=sdm, ad_type="enzymeforward")
+    doit_in_place(; sparse_detect_method=sdm, ad_type="enzymereverse")
+   
+    # I don't think zygote works with in-place callback functions.
+    # doit_in_place(; sparse_detect_method=sdm, ad_type="zygote")
+end
 
 function doit_out_of_place(; ad_type, sparse_detect_method)
-    println("autosparse automatic test with ad_type = $(ad_type), sparse_detect_method = $(sparse_detect_method)")
+    # println("autosparse automatic out-of-place test with ad_type = $(ad_type), sparse_detect_method = $(sparse_detect_method)")
     # `M` and `N` will be passed via the params argument.
     N = 3
     M = 4
@@ -740,7 +766,21 @@ end
 for sdm in [:direct, :iterative]
     doit_out_of_place(; sparse_detect_method=sdm, ad_type="forwarddiff")
     doit_out_of_place(; sparse_detect_method=sdm, ad_type="reversediff")
+
+    # Got exception outside of a @test
+    # LoadError: UndefRefError: access to undefined reference
+    # Stacktrace:
+    #   [1] LLVM.Value(ref::Ptr{LLVM.API.LLVMOpaqueValue})
+    #     @ LLVM ~/.julia/packages/LLVM/b3kFs/src/core/value.jl:39
+    #   [2] jl_nthfield_fwd
+    #     @ ~/.julia/packages/Enzyme/QsaeA/src/rules/typeunstablerules.jl:1554 [inlined]
+    #   [3] jl_nthfield_fwd_cfunc(B::Ptr{LLVM.API.LLVMOpaqueBuilder}, OrigCI::Ptr{LLVM.API.LLVMOpaqueValue}, gutils::Ptr{Nothing}, normalR::Ptr{Ptr{LLVM.API.LLVMOpaqueValue}}, shadowR::Ptr{Ptr{LLVM.API.LLVMOpaqueVal
+#   ue}})
+    #     @ Enzyme.Compiler ~/.julia/packages/Enzyme/QsaeA/src/rules/llvmrules.jl:75
     # doit_out_of_place(; sparse_detect_method=sdm, ad_type="enzymeforward")
+
+    # Giant scary stacktrace from this one:
     # doit_out_of_place(; sparse_detect_method=sdm, ad_type="enzymereverse")
+
     doit_out_of_place(; sparse_detect_method=sdm, ad_type="zygote")
 end

@@ -7,9 +7,14 @@ get_input_ca(::Type{ComplexF64}, comp::AbstractADExplicitComp) = comp.X_ca_cs
 get_input_ca(::Type{Any}, comp::AbstractADExplicitComp) = comp.X_ca
 get_input_ca(comp::AbstractADExplicitComp) = get_input_ca(Float64, comp)
 
-get_output_ca(::Type{Float64}, comp::AbstractADExplicitComp) = comp.Y_ca
-get_output_ca(::Type{ComplexF64}, comp::AbstractADExplicitComp) = comp.Y_ca_cs
-get_output_ca(::Type{Any}, comp::AbstractADExplicitComp) = comp.Y_ca
+get_output_ca(::Type{Float64}, comp::AbstractADExplicitComp{true}) = comp.Y_ca
+get_output_ca(::Type{ComplexF64}, comp::AbstractADExplicitComp{true}) = comp.Y_ca_cs
+get_output_ca(::Type{Any}, comp::AbstractADExplicitComp{true}) = comp.Y_ca
+
+get_output_ca(::Type{Float64}, comp::AbstractADExplicitComp{false}) = get_callback(comp)(get_input_ca(Float64, comp))
+get_output_ca(::Type{ComplexF64}, comp::AbstractADExplicitComp{false}) = get_callback(comp)(get_input_ca(ComplexF64, comp))
+get_output_ca(::Type{Any}, comp::AbstractADExplicitComp{false}) = get_callback(comp)(get_input_ca(Float64, comp))
+
 get_output_ca(comp::AbstractADExplicitComp) = get_output_ca(Float64, comp)
 
 get_jacobian_ca(comp::AbstractADExplicitComp) = comp.J_ca_sparse

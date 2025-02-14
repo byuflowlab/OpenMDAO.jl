@@ -46,7 +46,6 @@ function doit_forward(; ad_type, disable_prep)
     X_ca[:d] .= reshape(range(7.0, 8.0; length=M*N), M, N)
 
     # Now we can create the component.
-    # ad_backend = ADTypes.AutoForwardDiff()
     if ad_type == "forwarddiff"
         ad_backend = ADTypes.AutoForwardDiff()
     elseif ad_type == "enzymeforward"
@@ -184,6 +183,17 @@ function doit_forward(; ad_type, disable_prep)
 end
 doit_forward(; disable_prep=false, ad_type="forwarddiff")
 doit_forward(; disable_prep=false, ad_type="enzymeforward")
+
+# This fails with 
+# in-place: Error During Test at /home/dingraha/.julia/packages/SafeTestsets/raUNr/src/SafeTestsets.jl:30
+#   Got exception outside of a @test
+#   LoadError: MethodError: no method matching value_and_pushforward(::OpenMDAOCore.var"#32#33"{typeof(Main.var"##in-place#230".f_simple!), Tup
+# le{Int64, Int64}}, ::ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(e = ViewAxis(1:3, Shaped1DAxis((3,
+# ))), f = ViewAxis(4:15, ShapedAxis((4, 3))), g = ViewAxis(16:27, ShapedAxis((3, 4))))}}}, ::DifferentiationInterface.NoPushforwardPrep, ::ADT
+# ypes.AutoForwardDiff{nothing, Nothing}, ::ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(a = 1, b = Vi
+# ewAxis(2:4, Shaped1DAxis((3,))), c = ViewAxis(5:8, Shaped1DAxis((4,))), d = ViewAxis(9:20, ShapedAxis((4, 3))))}}}, ::Tuple{ComponentArrays.C
+# omponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(a = 1, b = ViewAxis(2:4, Shaped1DAxis((3,))), c = ViewAxis(5:8, Shaped1D
+# Axis((4,))), d = ViewAxis(9:20, ShapedAxis((4, 3))))}}}})
 # doit_forward(; disable_prep=true, ad_type="forwarddiff")
 
 function doit_reverse(; ad_type, disable_prep)

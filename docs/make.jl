@@ -14,6 +14,7 @@ function doit()
                       "Variable Shapes at Runtime"=>"shape_by_conn.md",
                       "A Simple Dymos Example"=>"brachistochrone.md",
                       "Auto-Sparse Examples"=>"auto_sparse_ad.md",
+                      "Auto-Matrix-Free Examples"=>"matrix_free_ad.md",
                       "API Reference"=>"reference.md",
                       "Limitations"=>"limitations.md",
                       "Developer Docs"=>"dev_docs.md"])

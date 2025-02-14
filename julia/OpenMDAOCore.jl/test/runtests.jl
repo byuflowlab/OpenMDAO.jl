@@ -677,8 +677,11 @@ end
 end
 
 @testset "MatrixFreeADExplicitComp" begin
-    @safetestset "simple" begin
-        include("auto_matrix_free.jl")
+    @safetestset "in-place" begin
+        include("auto_matrix_free_in_place.jl")
+    end
+    @safetestset "out-of-place" begin
+        include("auto_matrix_free_out_of_place.jl")
     end
 end
 

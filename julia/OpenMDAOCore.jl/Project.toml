@@ -14,7 +14,7 @@ SparseMatrixColorings = "0a514795-09f3-496d-8182-132a7b665d35"
 [compat]
 julia = "1.8.5"
 ADTypes = "1.9.0"
-ComponentArrays = "0.15.17"
+ComponentArrays = "0.15.24"
 DifferentiationInterface = "0.6.12"
 SparseArrays = "1.10.0"
 SparseMatrixColorings = "0.4.7"

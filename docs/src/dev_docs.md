@@ -3,6 +3,17 @@ CurrentModule = OpenMDAODocs
 ```
 # Developer Docs
 
+## Getting Full Stacktraces from Documentation Example Blocks
+
+```julia
+# https://github.com/JuliaDocs/Documenter.jl/issues/1420
+try
+    # Do the thing that's throwing the error
+catch err
+    showerror(stderr, err, catch_backtrace())
+end
+```
+
 ## How to Release a New Version
 For either OpenMDAOCore.jl or OpenMDAO.jl, registering a new version should be as simple as commenting
 
