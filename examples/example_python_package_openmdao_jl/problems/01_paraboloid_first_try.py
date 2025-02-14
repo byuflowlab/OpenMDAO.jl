@@ -1,2 +1,0 @@
-import openmdao.api as om
-from example_python_package_openmdao_jl.paraboloid import get_parabaloid_comp
