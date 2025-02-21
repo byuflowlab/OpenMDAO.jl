@@ -10,14 +10,16 @@ struct MatrixFreeADExplicitComp{InPlace,TAD,TCompute,TX,TY,TdY,TPrep,TXCS,TYCS} 
     tags_dict::Dict{Symbol,Vector{String}}
     X_ca_cs::TXCS
     Y_ca_cs::TYCS
+    aviary_input_names::Dict{Symbol,String}
+    aviary_output_names::Dict{Symbol,String}
 
-    function MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
-        return new{true,typeof(ad_backend),typeof(compute_adable),typeof(X_ca),typeof(Y_ca),typeof(dY_ca),typeof(prep),typeof(X_ca_cs),typeof(Y_ca_cs)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
+    function MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names)
+        return new{true,typeof(ad_backend),typeof(compute_adable),typeof(X_ca),typeof(Y_ca),typeof(dY_ca),typeof(prep),typeof(X_ca_cs),typeof(Y_ca_cs)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names)
     end
 
-    function MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs)
+    function MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, aviary_input_names, aviary_output_names)
         Y_ca = Y_ca_cs = nothing
-        return new{false,typeof(ad_backend),typeof(compute_adable),typeof(X_ca),typeof(Y_ca),typeof(dY_ca),typeof(prep),typeof(X_ca_cs),typeof(Y_ca_cs)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
+        return new{false,typeof(ad_backend),typeof(compute_adable),typeof(X_ca),typeof(Y_ca),typeof(dY_ca),typeof(prep),typeof(X_ca_cs),typeof(Y_ca_cs)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names)
     end
 end
 
@@ -49,7 +51,7 @@ Create a `MatrixFreeADExplicitComp` from a user-defined function and output and 
 * `disable_prep`: if `true`, do not use either `prepare_pushforward` or `prepare_pullback` to create a `DifferentiationInterface.PushforwardPrep` or `PullbackPrep` object to accelerate the derivative calculation.
   Disabling prep can avoid correctness issues with ReverseDiff.jl, see [the discussion of branching and the `AbstractTape` API](https://juliadiff.org/ReverseDiff.jl/dev/api/#The-AbstractTape-API).
 """
-function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), force_mode=nothing, disable_prep=false)
+function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), force_mode=nothing, disable_prep=false, aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
     compute_adable = let params=params
@@ -59,9 +61,13 @@ function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::C
         end
     end
 
-    # Create copies of X_ca and Y_ca that will be use for the input and output tangents (not sure if that's the correct terminology).
-    dX_ca = similar(X_ca)
-    dY_ca = similar(Y_ca)
+    # Process the Aviary metadata.
+    X_ca_full, units_dict_tmp = _process_aviary_metadata(X_ca, units_dict, aviary_input_names, aviary_meta_data)
+    Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
+
+    # Create copies of X_ca_full and Y_ca_full that will be use for the input and output tangents (not sure if that's the correct terminology).
+    dX_ca = similar(X_ca_full)
+    dY_ca = similar(Y_ca_full)
 
     # Get the "preparation" objective for efficiency.
     if force_mode === nothing
@@ -69,39 +75,39 @@ function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::C
             if disable_prep
                 prep = DifferentiationInterface.NoPushforwardPrep()
             else
-                prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,))
+                prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca_full, ad_backend, X_ca_full, (dX_ca,))
             end
         else
             if disable_prep
                 prep = DifferentiationInterface.NoPullbackPrep()
             else
-                prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,))
+                prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca_full, ad_backend, X_ca_full, (dY_ca,))
             end
         end
     elseif force_mode == "fwd"
         if disable_prep
             prep = DifferentiationInterface.NoPushforwardPrep()
         else
-            prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,))
+            prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca_full, ad_backend, X_ca_full, (dX_ca,))
         end
     elseif force_mode == "rev"
         if disable_prep
             prep = DifferentiationInterface.NoPullbackPrep()
         else
-            prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,))
+            prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca_full, ad_backend, X_ca_full, (dY_ca,))
         end
     else
         throw(ArgumentError("force_mode keyword argument should be one of `nothing`, \"fwd\", or \"rev\" but is $(force_mode)"))
     end
 
-    # Create complex-valued versions of the X_ca and Y_ca arrays.
-    X_ca_cs = similar(X_ca, ComplexF64)
-    Y_ca_cs = similar(Y_ca, ComplexF64)
+    # Create complex-valued versions of the X_ca_full and Y_ca_full arrays.
+    X_ca_cs = similar(X_ca_full, ComplexF64)
+    Y_ca_cs = similar(Y_ca_full, ComplexF64)
 
-    return MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
+    return MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca_full, Y_ca_full, dX_ca, dY_ca, prep, units_dict_full, tags_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names)
 end
 
-function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), force_mode=nothing, disable_prep=false)
+function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), force_mode=nothing, disable_prep=false, aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
     compute_adable = let params=params
@@ -110,10 +116,18 @@ function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=n
         end
     end
 
-    # Create copies of X_ca and Y_ca that will be use for the input and output tangents (not sure if that's the correct terminology).
-    dX_ca = similar(X_ca)
-    Y_ca = compute_adable(X_ca)
-    dY_ca = similar(Y_ca)
+    # Process the Aviary metadata for the inputs.
+    X_ca_full, units_dict_tmp = _process_aviary_metadata(X_ca, units_dict, aviary_input_names, aviary_meta_data)
+
+    # Create a copy of X_ca_full that will be use for the input tangents (not sure if that's the correct terminology).
+    dX_ca = similar(X_ca_full)
+    Y_ca = compute_adable(X_ca_full)
+
+    # Process the Aviary metadata for the outputs.
+    Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
+
+    # Create a copy of Y_ca_full that will be use for the output tangents (not sure if that's the correct terminology).
+    dY_ca = similar(Y_ca_full)
 
     # Get the "preparation" objective for efficiency.
     if force_mode === nothing
@@ -121,44 +135,45 @@ function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=n
             if disable_prep
                 prep = DifferentiationInterface.NoPushforwardPrep()
             else
-                prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca, (dX_ca,))
+                prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca_full, (dX_ca,))
             end
         else
             if disable_prep
                 prep = DifferentiationInterface.NoPullbackPrep()
             else
-                prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca, (dY_ca,))
+                prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca_full, (dY_ca,))
             end
         end
     elseif force_mode == "fwd"
         if disable_prep
             prep = DifferentiationInterface.NoPushforwardPrep()
         else
-            prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca, (dX_ca,))
+            prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca_full, (dX_ca,))
         end
     elseif force_mode == "rev"
         if disable_prep
             prep = DifferentiationInterface.NoPullbackPrep()
         else
-            prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca, (dY_ca,))
+            prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca_full, (dY_ca,))
         end
     else
         throw(ArgumentError("force_mode keyword argument should be one of `nothing`, \"fwd\", or \"rev\" but is $(force_mode)"))
     end
 
-    # Create complex-valued versions of the X_ca and Y_ca arrays.
-    X_ca_cs = similar(X_ca, ComplexF64)
-    # Y_ca_cs = similar(Y_ca, ComplexF64)
+    # Create complex-valued versions of the X_ca_full and Y_ca_full arrays.
+    X_ca_cs = similar(X_ca_full, ComplexF64)
+    # Y_ca_cs = similar(Y_ca_full, ComplexF64)
 
-    return MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, dX_ca, dY_ca, prep, units_dict, tags_dict, X_ca_cs)
+    return MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca_full, dX_ca, dY_ca, prep, units_dict_full, tags_dict, X_ca_cs, aviary_input_names, aviary_output_names)
 end
 
 function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_inputs, d_outputs)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
     for iname in keys(X_ca)
+        iname_aviary = get_aviary_input_name(self, iname)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
+        @view(X_ca[iname]) .= inputs[iname_aviary]
     end
 
     # Hmm... how do the sizes work?
@@ -171,8 +186,14 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_i
     # And I should also zero out the input vector, in case d_inputs doesn't have everything.
     dX_ca = get_dinput_ca(self)
     dX_ca .= 0.0
-    for iname in keys(d_inputs)
-        @view(dX_ca[Symbol(iname)]) .= d_inputs[iname]
+    # for iname in keys(d_inputs)
+    #     @view(dX_ca[Symbol(iname)]) .= d_inputs[iname]
+    # end
+    for iname in keys(dX_ca)
+        iname_aviary = get_aviary_input_name(self, iname)
+        if iname_aviary in keys(d_inputs)
+            @view(dX_ca[iname]) .= d_inputs[iname_aviary]
+        end
     end
 
     # The AD library will need the output component array to do the Jacobian-vector product.
@@ -195,7 +216,8 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_i
 
     # Now copy the output derivatives to `d_outputs`:
     for oname in keys(dY_ca)
-        d_outputs[String(oname)] .= @view(dY_ca[oname])
+        oname_aviary = get_aviary_output_name(self, oname)
+        d_outputs[oname_aviary] .= @view(dY_ca[oname])
     end
 
     return nothing
@@ -205,8 +227,9 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{false}, inputs, d_
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
     for iname in keys(X_ca)
+        iname_aviary = get_aviary_input_name(self, iname)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
+        @view(X_ca[iname]) .= inputs[iname_aviary]
     end
 
     # Hmm... how do the sizes work?
@@ -219,8 +242,14 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{false}, inputs, d_
     # And I should also zero out the input vector, in case d_inputs doesn't have everything.
     dX_ca = get_dinput_ca(self)
     dX_ca .= 0.0
-    for iname in keys(d_inputs)
-        @view(dX_ca[Symbol(iname)]) .= d_inputs[iname]
+    # for iname in keys(d_inputs)
+    #     @view(dX_ca[Symbol(iname)]) .= d_inputs[iname]
+    # end
+    for iname in keys(dX_ca)
+        iname_aviary = get_aviary_input_name(self, iname)
+        if iname_aviary in keys(d_inputs)
+            @view(dX_ca[iname]) .= d_inputs[iname_aviary]
+        end
     end
 
     # We'll write the result of the Jacobian-vector product to a different component array.
@@ -239,8 +268,12 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{false}, inputs, d_
     DifferentiationInterface.pushforward!(compute_adable, (dY_ca,), prep, backend, X_ca, (dX_ca,))
 
     # Now copy the output derivatives to `d_outputs`:
+    # for oname in keys(dY_ca)
+    #     d_outputs[String(oname)] .= @view(dY_ca[oname])
+    # end
     for oname in keys(dY_ca)
-        d_outputs[String(oname)] .= @view(dY_ca[oname])
+        oname_aviary = get_aviary_output_name(self, oname)
+        d_outputs[oname_aviary] .= @view(dY_ca[oname])
     end
 
     return nothing
@@ -250,14 +283,21 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{true}, inputs, d_inpu
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
     for iname in keys(X_ca)
+        iname_aviary = get_aviary_input_name(self, iname)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
+        @view(X_ca[iname]) .= inputs[iname_aviary]
     end
 
     dY_ca = get_doutput_ca(self)
     dY_ca .= 0.0
-    for oname in keys(d_outputs)
-        @view(dY_ca[Symbol(oname)]) .= d_outputs[oname]
+    # for oname in keys(d_outputs)
+    #     @view(dY_ca[Symbol(oname)]) .= d_outputs[oname]
+    # end
+    for oname in keys(dY_ca)
+        oname_aviary = get_aviary_output_name(self, oname)
+        if oname_aviary in keys(d_outputs)
+            @view(dY_ca[oname]) .= d_outputs[oname_aviary]
+        end
     end
 
     # The AD library will need the output component array to do the Jacobian-vector product.
@@ -280,7 +320,8 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{true}, inputs, d_inpu
 
     # Now copy the input derivatives to `d_inputs`:
     for iname in keys(dX_ca)
-        d_inputs[String(iname)] .= @view(dX_ca[iname])
+        iname_aviary = get_aviary_input_name(self, iname)
+        d_inputs[iname_aviary] .= @view(dX_ca[iname])
     end
 
     return nothing
@@ -290,14 +331,21 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{false}, inputs, d_inp
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
     for iname in keys(X_ca)
+        iname_aviary = get_aviary_input_name(self, iname)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
+        @view(X_ca[iname]) .= inputs[iname_aviary]
     end
 
     dY_ca = get_doutput_ca(self)
     dY_ca .= 0.0
-    for oname in keys(d_outputs)
-        @view(dY_ca[Symbol(oname)]) .= d_outputs[oname]
+    # for oname in keys(d_outputs)
+    #     @view(dY_ca[Symbol(oname)]) .= d_outputs[oname]
+    # end
+    for oname in keys(dY_ca)
+        oname_aviary = get_aviary_output_name(self, oname)
+        if oname_aviary in keys(d_outputs)
+            @view(dY_ca[oname]) .= d_outputs[oname_aviary]
+        end
     end
 
     # We'll write the result of the vector-Jacobian product to a different component array.
@@ -316,8 +364,12 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{false}, inputs, d_inp
     DifferentiationInterface.pullback!(compute_adable, (dX_ca,), prep, backend, X_ca, (dY_ca,))
 
     # Now copy the input derivatives to `d_inputs`:
+    # for iname in keys(dX_ca)
+    #     d_inputs[String(iname)] .= @view(dX_ca[iname])
+    # end
     for iname in keys(dX_ca)
-        d_inputs[String(iname)] .= @view(dX_ca[iname])
+        iname_aviary = get_aviary_input_name(self, iname)
+        d_inputs[iname_aviary] .= @view(dX_ca[iname])
     end
 
     return nothing

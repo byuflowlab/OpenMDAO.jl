@@ -28,14 +28,16 @@ struct SparseADExplicitComp{InPlace,TAD,TCompute,TX,TY,TJ,TPrep,TXCS,TYCS} <: Ab
     tags_dict::Dict{Symbol,Vector{String}}
     X_ca_cs::TXCS
     Y_ca_cs::TYCS
+    aviary_input_names::Dict{Symbol,String}
+    aviary_output_names::Dict{Symbol,String}
 
-    function SparseADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
-        return new{true,typeof(ad_backend),typeof(compute_adable),typeof(X_ca),typeof(Y_ca),typeof(J_ca_sparse),typeof(prep),typeof(X_ca_cs),typeof(Y_ca_cs)}(ad_backend, compute_adable, X_ca, Y_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
+    function SparseADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names)
+        return new{true,typeof(ad_backend),typeof(compute_adable),typeof(X_ca),typeof(Y_ca),typeof(J_ca_sparse),typeof(prep),typeof(X_ca_cs),typeof(Y_ca_cs)}(ad_backend, compute_adable, X_ca, Y_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names)
     end
 
-    function SparseADExplicitComp{false}(ad_backend, compute_adable, X_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs)
+    function SparseADExplicitComp{false}(ad_backend, compute_adable, X_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs, aviary_input_names, aviary_output_names)
         Y_ca = Y_ca_cs = nothing
-        return new{false,typeof(ad_backend),typeof(compute_adable),typeof(X_ca),typeof(Y_ca),typeof(J_ca_sparse),typeof(prep),typeof(X_ca_cs),typeof(Y_ca_cs)}(ad_backend, compute_adable, X_ca, Y_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
+        return new{false,typeof(ad_backend),typeof(compute_adable),typeof(X_ca),typeof(Y_ca),typeof(J_ca_sparse),typeof(prep),typeof(X_ca_cs),typeof(Y_ca_cs)}(ad_backend, compute_adable, X_ca, Y_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names)
     end
 end
 
@@ -55,7 +57,8 @@ Create a `SparseADExplicitComp` from a user-defined function and output and inpu
 * `units_dict`: `Dict` mapping variable names (as `Symbol`s) to OpenMDAO units (expressed as `String`s)
 * `tags_dict`: `Dict` mapping variable names (as `Symbol`s) to `Vector`s of OpenMDAO tags
 """
-function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}()) where {TAD<:ADTypes.AutoSparse}
+function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}()) where {TAD<:ADTypes.AutoSparse}
+
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
     compute_adable = let params=params
@@ -65,26 +68,30 @@ function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::
         end
     end
 
+    # Process the Aviary metadata.
+    X_ca_full, units_dict_tmp = _process_aviary_metadata(X_ca, units_dict, aviary_input_names, aviary_meta_data)
+    Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
+
     # Need to "prepare" the backend.
-    prep = DifferentiationInterface.prepare_jacobian(compute_adable, Y_ca, ad_backend, X_ca)
+    prep = DifferentiationInterface.prepare_jacobian(compute_adable, Y_ca_full, ad_backend, X_ca_full)
 
     # Now I think I can get the sparse Jacobian from that.
     J_sparse = Float64.(SparseMatrixColorings.sparsity_pattern(prep))
 
     # Then use that sparse Jacobian to create the component matrix version.
-    J_ca_sparse = ComponentMatrix(J_sparse, (only(getaxes(Y_ca,)), only(getaxes(X_ca))))
+    J_ca_sparse = ComponentMatrix(J_sparse, (only(getaxes(Y_ca_full,)), only(getaxes(X_ca_full))))
 
     # Get a dictionary describing the non-zero rows and cols for each subjacobian.
     rcdict = get_rows_cols_dict_from_sparsity(J_ca_sparse)
 
-    # Create complex-valued versions of the X_ca and Y_ca arrays.
-    X_ca_cs = similar(X_ca, ComplexF64)
-    Y_ca_cs = similar(Y_ca, ComplexF64)
+    # Create complex-valued versions of the X_ca_full and Y_ca_full arrays.
+    X_ca_cs = similar(X_ca_full, ComplexF64)
+    Y_ca_cs = similar(Y_ca_full, ComplexF64)
 
-    return SparseADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs, Y_ca_cs)
+    return SparseADExplicitComp{true}(ad_backend, compute_adable, X_ca_full, Y_ca_full, J_ca_sparse, prep, rcdict, units_dict_full, tags_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names)
 end
 
-function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}()) where {TAD<:ADTypes.AutoSparse}
+function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}()) where {TAD<:ADTypes.AutoSparse}
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
     compute_adable = let params=params
@@ -93,25 +100,31 @@ function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=
         end
     end
 
+    # Process the Aviary metadata for the inputs.
+    X_ca_full, units_dict_tmp = _process_aviary_metadata(X_ca, units_dict, aviary_input_names, aviary_meta_data)
+
     # Need to "prepare" the backend.
-    prep = DifferentiationInterface.prepare_jacobian(compute_adable, ad_backend, X_ca)
+    prep = DifferentiationInterface.prepare_jacobian(compute_adable, ad_backend, X_ca_full)
 
     # Now I think I can get the sparse Jacobian from that.
     J_sparse = Float64.(SparseMatrixColorings.sparsity_pattern(prep))
 
     # Need the output component vector to define the axes of the Jacobian.
-    Y_ca = compute_adable(X_ca)
+    Y_ca = compute_adable(X_ca_full)
+
+    # Process the Aviary metadata for the outputs.
+    Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
 
     # Then use that sparse Jacobian to create the component matrix version.
-    J_ca_sparse = ComponentMatrix(J_sparse, (only(getaxes(Y_ca,)), only(getaxes(X_ca))))
+    J_ca_sparse = ComponentMatrix(J_sparse, (only(getaxes(Y_ca_full,)), only(getaxes(X_ca_full))))
 
     # Get a dictionary describing the non-zero rows and cols for each subjacobian.
     rcdict = get_rows_cols_dict_from_sparsity(J_ca_sparse)
 
-    # Create complex-valued versions of the X_ca and Y_ca arrays.
-    X_ca_cs = similar(X_ca, ComplexF64)
+    # Create complex-valued versions of the X_ca_full and Y_ca_full arrays.
+    X_ca_cs = similar(X_ca_full, ComplexF64)
 
-    return SparseADExplicitComp{false}(ad_backend, compute_adable, X_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, X_ca_cs)
+    return SparseADExplicitComp{false}(ad_backend, compute_adable, X_ca_full, J_ca_sparse, prep, rcdict, units_dict_full, tags_dict, X_ca_cs, aviary_input_names, aviary_output_names)
 end
 
 get_rows_cols_dict(comp::SparseADExplicitComp) = comp.rcdict
@@ -124,7 +137,7 @@ function get_partials_data(self::SparseADExplicitComp)
         # Convert from 1-based to 0-based indexing.
         rows0based = rows .- 1
         cols0based = cols .- 1
-        push!(partials_data, OpenMDAOCore.PartialsData(string(output_name), string(input_name); rows=rows0based, cols=cols0based))
+        push!(partials_data, OpenMDAOCore.PartialsData(get_aviary_output_name(self, output_name), get_aviary_input_name(self, input_name); rows=rows0based, cols=cols0based))
     end
 
     return partials_data
@@ -138,8 +151,9 @@ function OpenMDAOCore.compute_partials!(self::SparseADExplicitComp{true}, inputs
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
     for iname in keys(X_ca)
+        iname_aviary = get_aviary_input_name(self, iname)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
+        @view(X_ca[iname]) .= inputs[iname_aviary]
     end
 
     # Get the Jacobian.
@@ -167,7 +181,9 @@ function OpenMDAOCore.compute_partials!(self::SparseADExplicitComp{true}, inputs
             rows, cols = rcdict[oname, iname]
 
             # This gets the underlying Vector that stores the nonzero entries in the current sub-Jacobian that OpenMDAO sees.
-            Jsub_out = partials[string(oname), string(iname)]
+            iname_aviary = get_aviary_input_name(self, iname)
+            oname_aviary = get_aviary_output_name(self, oname)
+            Jsub_out = partials[oname_aviary, iname_aviary]
 
             # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
             Jsub_out_vec = _maybe_nonzeros(Jsub_out)
@@ -184,8 +200,9 @@ function OpenMDAOCore.compute_partials!(self::SparseADExplicitComp{false}, input
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
     for iname in keys(X_ca)
+        iname_aviary = get_aviary_input_name(self, iname)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
+        @view(X_ca[iname]) .= inputs[iname_aviary]
     end
 
     # Get the Jacobian.
@@ -213,7 +230,9 @@ function OpenMDAOCore.compute_partials!(self::SparseADExplicitComp{false}, input
             rows, cols = rcdict[oname, iname]
 
             # This gets the underlying Vector that stores the nonzero entries in the current sub-Jacobian that OpenMDAO sees.
-            Jsub_out = partials[string(oname), string(iname)]
+            iname_aviary = get_aviary_input_name(self, iname)
+            oname_aviary = get_aviary_output_name(self, oname)
+            Jsub_out = partials[oname_aviary, iname_aviary]
 
             # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
             Jsub_out_vec = _maybe_nonzeros(Jsub_out)

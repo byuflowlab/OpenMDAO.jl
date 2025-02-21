@@ -6,6 +6,7 @@ using DifferentiationInterface: DifferentiationInterface
 using Random: rand!
 using SparseArrays: sparse, findnz, nonzeros, AbstractSparseArray
 using SparseMatrixColorings: SparseMatrixColorings
+using Unitful: uparse, ustrip, uconvert
 
 include("utils.jl")
 export get_rows_cols, get_rows_cols_dict_from_sparsity, ca2strdict, ca2strdict_sparse, rcdict2strdict, PerturbedDenseSparsityDetector
@@ -23,7 +24,7 @@ include("partials_data.jl")
 export PartialsData
 
 include("abstract_ad.jl")
-export get_callback, get_input_ca, get_output_ca, get_jacobian_ca, get_units, get_backend, get_prep
+export get_callback, get_input_ca, get_output_ca, get_jacobian_ca, get_units, get_backend, get_prep, get_aviary_input_name, get_aviary_output_name
 
 include("sparse_ad.jl")
 export SparseADExplicitComp, get_rows_cols_dict

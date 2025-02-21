@@ -145,6 +145,10 @@ function ca2strdict(ca::ComponentVector)
     return Dict(string(k)=>_at_least_1d(ca[k]) for k in keys(ca))
 end
 
+function ca2strdict(ca::ComponentVector, names::Dict{Symbol,String})
+    return Dict(get(names, k, string(k))=>_at_least_1d(ca[k]) for k in keys(ca))
+end
+
 _at_least_2d(x) = [x;;]
 # Not sure what to do about the case when `x` is `<:AbstractVector`.
 # Could add a one to the size, but at the beginning or end?
@@ -155,13 +159,17 @@ function ca2strdict(ca::ComponentMatrix)
     return Dict((string(rname), string(cname))=>_at_least_2d(ca[rname, cname]) for rname in keys(raxis), cname in keys(caxis))
 end
 
+function ca2strdict(ca::ComponentMatrix, cnames::Dict{Symbol,String}, rnames::Dict{Symbol,String})
+    raxis, caxis = getaxes(ca)
+    return Dict((get(rnames, rname, string(rname)), get(cnames, cname, string(cname)))=>_at_least_2d(ca[rname, cname]) for rname in keys(raxis), cname in keys(caxis))
+end
+
 function ca2strdict_sparse(ca::ComponentMatrix)
     T = eltype(ca)
     raxis, caxis = getaxes(ca)
     out = Dict{Tuple{String,String}, Vector{T}}()
     for input_name in keys(caxis)
         for output_name in keys(raxis)
-            # @show ca[output_name, input_name]
             Jsub = ca[output_name, input_name]
             Jsub_reshape = reshape(Jsub, length(raxis[output_name]), length(caxis[input_name]))
             data_sparse = sparse(Jsub_reshape)
@@ -171,15 +179,16 @@ function ca2strdict_sparse(ca::ComponentMatrix)
     return out
 end
 
-function rcdict2strdict(::Type{T}, rcdict) where {T}
+function rcdict2strdict(::Type{T}, rcdict; cnames=Dict{Symbol,String}(), rnames=Dict{Symbol,String}()) where {T}
     out = Dict{Tuple{String,String}, Vector{T}}()
     for (output_name, input_name) in keys(rcdict)
         rows, cols = rcdict[output_name, input_name]
-        out[string(output_name), string(input_name)] = zeros(T, length(rows))
+        # out[string(output_name), string(input_name)] = zeros(T, length(rows))
+        out[get(rnames, output_name, string(output_name)), get(cnames, input_name, string(input_name))] = zeros(T, length(rows))
     end
     return out
 end
-rcdict2strdict(rcdict) = rcdict2strdict(Float64, rcdict)
+rcdict2strdict(rcdict; cnames=Dict{Symbol,String}(), rnames=Dict{Symbol,String}()) = rcdict2strdict(Float64, rcdict; cnames, rnames)
 
 """
     PerturbedDenseSparsityDetector
@@ -463,3 +472,98 @@ function ADTypes.hessian_sparsity(f, x, detector::PerturbedDenseSparsityDetector
     return sparse(I, J, ones(Bool, length(I)), n, n)
 end
 
+function _unitfulify_units(unit::String)
+    # Replace `**` with `^`, and `in` with `inch`.
+    return replace(unit, "**"=>"^", r"\bin\b"=>"inch")
+end
+
+function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_names::Dict{Symbol,String}, aviary_meta_data::AbstractDict{String,<:Any})
+    # So, the goal here is to do what Aviary does for `add_aviary_input` and `add_aviary_output`, which is all this:
+    # def add_aviary_input(comp, varname, val=None, units=None, desc=None, shape_by_conn=False,
+    #                      meta_data=_MetaData, shape=None):
+    #
+    # meta = meta_data[varname]
+    # # units of None are overwritten with defaults. Overwriting units with None is
+    # # unnecessary as it will cause errors down the line if the default is not already
+    # # None
+    # default_units = meta['units']
+
+    # if units:
+    #     input_units = units
+    # else:
+    #     input_units = default_units
+
+    # if desc:
+    #     input_desc = desc
+    # else:
+    #     input_desc = meta['desc']
+    # if val is None:
+    #     if shape is None:
+    #         val = meta['default_value']
+    #         if val is None:
+    #             val = 0.0
+    #     else:
+    #         val = meta['default_value']
+    #         if val is None:
+    #             val = np.zeros(shape)
+    #         else:
+    #             val = np.ones(shape) * val
+
+    #     # val was not provided but different units were
+    #     if input_units != default_units:
+    #         try:
+    #             # convert the default units to requested units
+    #             val = convert_units(val, default_units, input_units)
+    #         except ValueError:
+    #             raise ValueError(
+    #                 f'The requested units {units} for input {varname} in component '
+    #                 f'{comp.name} are invalid.'
+    #             )
+
+    # comp.add_input(varname, val=val, units=input_units,
+    #                desc=input_desc, shape_by_conn=shape_by_conn, shape=shape)
+
+    units_dict_full = deepcopy(units_dict)
+    for (ca_name, aviary_name) in aviary_names
+        meta = aviary_meta_data[aviary_name]
+
+        default_units = meta["units"]
+        # Check if user specified units.
+        if ca_name in keys(units_dict_full)
+            input_units = units_dict_full[ca_name]
+        else
+            # No units specified by user, so use the default units.
+            input_units = default_units
+            units_dict_full[ca_name] = default_units
+        end
+
+        if !(ca_name in keys(X_ca))
+            val = meta["default_value"]
+            if val === nothing
+                val = zero(eltype(X_ca))
+            end
+
+            if input_units != default_units
+                # Convert default value from default units to requested units.
+                iu = uparse(_unitfulify_units(input_units))
+                du = uparse(_unitfulify_units(default_units))
+                val_convert = val * ustrip(uconvert(iu, one(eltype(X_ca))*du))
+            else
+                # No change in units, so no conversion necessary.
+                val_convert = val
+            end
+
+            # Finally, need to add the new value to `X_ca`.
+            # Hmm... but I don't think it's possible to extend ComponentVectors.
+            # So I'll need to vcat I think.
+            # val_ca = ComponentVector(Dict(ca_name=>val_convert))
+            # X_ca = vcat(X_ca, val_ca)
+            # Lame, `vcat` flattens components with ndims > 1.
+            d = Dict{Symbol,Any}(k=>X_ca[k] for k in keys(X_ca))
+            d[ca_name] = val_convert
+            X_ca = ComponentVector(d)
+        end
+    end
+
+    return X_ca, units_dict_full
+end

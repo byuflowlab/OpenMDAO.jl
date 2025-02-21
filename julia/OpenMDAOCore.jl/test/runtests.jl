@@ -666,13 +666,14 @@ end
 end
 
 @testset "SparseADExplicitComp" begin
-
     @safetestset "manual sparsity" begin
         include("autosparse_manual.jl")
     end
-
     @safetestset "automatic sparsity" begin
         include("autosparse_automatic.jl")
+    end
+    @safetestset "automatic sparsity, with Aviary metadata" begin
+        include("autosparse_automatic_aviary.jl")
     end
 end
 
@@ -680,8 +681,14 @@ end
     @safetestset "in-place" begin
         include("auto_matrix_free_in_place.jl")
     end
+    @safetestset "in-place, with Aviary metadata" begin
+        include("auto_matrix_free_in_place_aviary.jl")
+    end
     @safetestset "out-of-place" begin
         include("auto_matrix_free_out_of_place.jl")
+    end
+    @safetestset "out-of-place" begin
+        include("auto_matrix_free_out_of_place_aviary.jl")
     end
 end
 

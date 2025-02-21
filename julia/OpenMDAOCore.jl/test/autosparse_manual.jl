@@ -417,7 +417,7 @@ end
 doit_in_place(; ad_type="forwarddiff")
 doit_in_place(; ad_type="reversediff")
 doit_in_place(; ad_type="enzymeforward")
-# doit_in_place(; ad_type="enzymereverse")
+doit_in_place(; ad_type="enzymereverse")
 # doit_in_place(; ad_type="zygote")
 
 function doit_out_of_place(; ad_type)

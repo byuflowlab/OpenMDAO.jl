@@ -26,16 +26,41 @@ function doit_forward(; ad_type, disable_prep)
     # `M` and `N` will be passed via the params argument.
     N = 3
     M = 4
-    params_simple = (M, N)
+    params = (M, N)
 
     # Also need copies of X_ca.
-    X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
+    # X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
+    X_ca = ComponentVector(a=zero(Float64), d=zeros(Float64, M, N))
+    aviary_meta_data = Dict(
+                            "foo:bar:baz:a"=>Dict("units"=>"ft", "default_value"=>zero(Float64)),
+                            "foo:bar:baz:b"=>Dict("units"=>"in**2", "default_value"=>zeros(Float64, N)),
+                            "foo:bar:baz:c"=>Dict("units"=>"mi/hr", "default_value"=>zeros(Float64, M)),
+                            "foo:bar:baz:d"=>Dict("units"=>"kg", "default_value"=>zeros(Float64, M, N)),
+                            "foo:bar:baz:e"=>Dict("units"=>"psi", "default_value"=>zeros(Float64, N)),
+                            "foo:bar:baz:f"=>Dict("units"=>"kg/m**3", "default_value"=>zeros(Float64, M, N)),
+                            "foo:bar:baz:g"=>Dict("units"=>"s", "default_value"=>zeros(Float64, N, M)))
+    aviary_input_names = Dict(
+                            :a=>"foo:bar:baz:a",
+                            :b=>"foo:bar:baz:b",
+                            :c=>"foo:bar:baz:c",
+                            :d=>"foo:bar:baz:d")
+    aviary_output_names = Dict(
+                            :e=>"foo:bar:baz:e",
+                            :f=>"foo:bar:baz:f",
+                            :g=>"foo:bar:baz:g")
 
     # Need to fill `X_ca` with "reasonable" values for the sparsity detection stuff to work.
-    X_ca[:a] = 2.0
-    X_ca[:b] .= range(3.0, 4.0; length=N)
-    X_ca[:c] .= range(5.0, 6.0; length=M)
+    # X_ca[:a] = 2.0
+    aviary_meta_data[aviary_input_names[:a]]["default_value"] = 2.0*(1/0.0254)*(1/12)
+    # X_ca[:b] .= range(3.0, 4.0; length=N)
+    # X_ca[:c] .= range(5.0, 6.0; length=M)
+    aviary_meta_data[aviary_input_names[:b]]["default_value"] .= range(3.0, 4.0; length=N) .* 0.0254^2
+    aviary_meta_data[aviary_input_names[:c]]["default_value"] .= range(5.0, 6.0; length=M) .* 2.23694
     X_ca[:d] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+
+    # Have the inputs a, b, and c set to the default values in the aviary metadata, but convert them from the default units to specified units.
+    # Also make sure output e has different units than default.
+    units_dict = Dict(:a=>"m", :b=>"m**2", :c=>"m/s", :e=>"Pa")
 
     # Now we can create the component.
     if ad_type == "forwarddiff"
@@ -45,31 +70,42 @@ function doit_forward(; ad_type, disable_prep)
     else
         error("unexpected ad_type = $(ad_type)")
     end
-    comp = MatrixFreeADExplicitComp(ad_backend, f_simple, X_ca; params=params_simple, disable_prep=disable_prep)
+    comp = MatrixFreeADExplicitComp(ad_backend, f_simple, X_ca; params, disable_prep, units_dict, aviary_input_names, aviary_output_names, aviary_meta_data)
 
-    inputs_dict = ca2strdict(get_input_ca(comp))
-    inputs_dict["a"] .= 2.0
-    inputs_dict["b"] .= range(3.0, 4.0; length=N)
-    inputs_dict["c"] .= range(5.0, 6.0; length=M)
-    inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
-    outputs_dict = ca2strdict(f_simple(X_ca, params_simple))
+    # Need to make sure the units are what I expect them to be.
+    @test get_units(comp, :a) == "m"
+    @test get_units(comp, :b) == "m**2"
+    @test get_units(comp, :c) == "m/s"
+    @test get_units(comp, :d) == "kg"
+    @test get_units(comp, :e) == "Pa"
+    @test get_units(comp, :f) == "kg/m**3"
+    @test get_units(comp, :g) == "s"
+
+    # inputs_dict["a"] .= 2.0
+    # inputs_dict["b"] .= range(3.0, 4.0; length=N)
+    # inputs_dict["c"] .= range(5.0, 6.0; length=M)
+    # inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+    inputs_dict = ca2strdict(get_input_ca(comp), aviary_input_names)
+    # outputs_dict = ca2strdict(f_simple(get_input_ca(comp), params))
+    outputs_dict = ca2strdict(f_simple(get_input_ca(comp), params), aviary_output_names)
 
     OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
-    a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
+    # a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
+    a, b, c, d = getindex.(Ref(inputs_dict), [get_aviary_input_name(comp, :a), get_aviary_input_name(comp, :b), get_aviary_input_name(comp, :c), get_aviary_input_name(comp, :d)])
     e_check = 2.0*a.^2 .+ 3 .* b.^2.1 .+ 4*sum(c.^2.2) .+ 5 .* sum(d.^2.3; dims=1)[:]
-    @test all(outputs_dict["e"] .≈ e_check)
+    @test all(outputs_dict[get_aviary_output_name(comp, :e)] .≈ e_check)
 
     f_check = 6.0*a.^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
-    @test all(outputs_dict["f"] .≈ f_check)
+    @test all(outputs_dict[get_aviary_output_name(comp, :f)] .≈ f_check)
 
     g_check = 10 .* sin.(b).*cos.(transpose(d))
-    @test all(outputs_dict["g"] .≈ g_check)
+    @test all(outputs_dict[get_aviary_output_name(comp, :g)] .≈ g_check)
 
     # So, to call `_compute_jacvec_product!`, I need a dict of derivatives that, I think, is like the inputs.
     dx = get_dinput_ca(comp)
     dx .= rand(length(dx))
-    dinputs_dict = ca2strdict(dx)
-    doutputs_dict = ca2strdict(get_doutput_ca(comp))
+    dinputs_dict = ca2strdict(dx, aviary_input_names)
+    doutputs_dict = ca2strdict(get_doutput_ca(comp), aviary_output_names)
     OpenMDAOCore.compute_jacvec_product!(comp, inputs_dict, dinputs_dict, doutputs_dict, "fwd")
 
     # Hmm... so how do I check this?
@@ -117,7 +153,7 @@ function doit_forward(; ad_type, disable_prep)
     de_check .+= dedd_check_rs * dxd_rs
 
     # Did all the inputs to `e`, so we're ready to test.
-    @test all(doutputs_dict["e"] .≈ de_check)
+    @test all(doutputs_dict[get_aviary_output_name(comp, :e)] .≈ de_check)
 
     # Now do `f`.
     df_check = similar(f_check)
@@ -147,7 +183,7 @@ function doit_forward(; ad_type, disable_prep)
         end
     end
 
-    @test all(doutputs_dict["f"] .≈ df_check)
+    @test all(doutputs_dict[get_aviary_output_name(comp, :f)] .≈ df_check)
 
     # Now do `g`.
     dg_check = similar(g_check)
@@ -171,28 +207,10 @@ function doit_forward(; ad_type, disable_prep)
         end
     end
 
-    @test all(doutputs_dict["g"] .≈ dg_check)
+    @test all(doutputs_dict[get_aviary_output_name(comp, :g)] .≈ dg_check)
 end
 
 doit_forward(; disable_prep=false, ad_type="forwarddiff")
-
-# This fails with 
-# out-of-place: Error During Test at /home/dingraha/.julia/packages/SafeTestsets/raUNr/src/SafeTestsets.jl:30
-#   Got exception outside of a @test
-#   LoadError: MethodError: no method matching similar(::DifferentiationInterface.NoPushforwardPrep, ::Type{ForwardDiff.Dual{ForwardDiff.Tag{Op
-# enMDAOCore.var"#37#38"{typeof(Main.var"##out-of-place#247".f_simple), Tuple{Int64, Int64}}, Float64}, Any, 1}})
-#   The function `similar` exists, but no method is defined for this combination of argument types.
-  
-#   Closest candidates are:
-#     similar(::Type{A}, ::Type{T}, ::StaticArraysCore.Size{S}) where {A<:Array, T, S}
-#      @ StaticArrays ~/.julia/packages/StaticArrays/2dZx4/src/abstractarray.jl:136
-#     similar(::Type{SA}, ::Type{T}, ::StaticArraysCore.Size{S}) where {SA<:StaticArraysCore.SizedArray, T, S}
-#      @ StaticArrays ~/.julia/packages/StaticArrays/2dZx4/src/abstractarray.jl:135
-#     similar(::Type{SA}, ::Type{T}) where {SA<:StaticArraysCore.StaticArray, T}
-#      @ StaticArrays ~/.julia/packages/StaticArrays/2dZx4/src/abstractarray.jl:120
-#     ...
-  
-# doit_forward(; disable_prep=true, ad_type="forwarddiff")
 
 # Fails with
 #
@@ -266,16 +284,42 @@ function doit_reverse(; ad_type, disable_prep)
     # `M` and `N` will be passed via the params argument.
     N = 3
     M = 4
-    params_simple = (M, N)
+    params = (M, N)
 
     # Also need copies of X_ca and Y_ca.
-    X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
+    # X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
+    X_ca = ComponentVector(d=zeros(Float64, M, N))
+    aviary_meta_data = Dict(
+                            "foo:bar:baz:a"=>Dict("units"=>"ft", "default_value"=>zero(Float64)),
+                            "foo:bar:baz:b"=>Dict("units"=>"in**2", "default_value"=>zeros(Float64, N)),
+                            "foo:bar:baz:c"=>Dict("units"=>"mi/hr", "default_value"=>zeros(Float64, M)),
+                            "foo:bar:baz:d"=>Dict("units"=>"kg", "default_value"=>zeros(Float64, M, N)),
+                            "foo:bar:baz:e"=>Dict("units"=>"psi", "default_value"=>zeros(Float64, N)),
+                            "foo:bar:baz:f"=>Dict("units"=>"kg/m**3", "default_value"=>zeros(Float64, M, N)),
+                            "foo:bar:baz:g"=>Dict("units"=>"s", "default_value"=>zeros(Float64, N, M)))
+    aviary_input_names = Dict(
+                            :a=>"foo:bar:baz:a",
+                            :b=>"foo:bar:baz:b",
+                            :c=>"foo:bar:baz:c",
+                            :d=>"foo:bar:baz:d")
+    aviary_output_names = Dict(
+                            :e=>"foo:bar:baz:e",
+                            :f=>"foo:bar:baz:f",
+                            :g=>"foo:bar:baz:g")
+
 
     # Need to fill `X_ca` with "reasonable" values for the sparsity detection stuff to work.
-    X_ca[:a] = 2.0
-    X_ca[:b] .= range(3.0, 4.0; length=N)
-    X_ca[:c] .= range(5.0, 6.0; length=M)
+    # X_ca[:a] = 2.0
+    aviary_meta_data[aviary_input_names[:a]]["default_value"] = 2.0*(1/0.0254)*(1/12)
+    # X_ca[:b] .= range(3.0, 4.0; length=N)
+    # X_ca[:c] .= range(5.0, 6.0; length=M)
+    aviary_meta_data[aviary_input_names[:b]]["default_value"] .= range(3.0, 4.0; length=N) .* 0.0254^2
+    aviary_meta_data[aviary_input_names[:c]]["default_value"] .= range(5.0, 6.0; length=M) .* 2.23694
     X_ca[:d] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+
+    # Have the inputs a, b, and c set to the default values in the aviary metadata, but convert them from the default units to specified units.
+    # Also make sure output e has different units than default.
+    units_dict = Dict(:a=>"m", :b=>"m**2", :c=>"m/s", :e=>"Pa")
 
     # Now we can create the component.
     if ad_type == "reversediff"
@@ -287,31 +331,41 @@ function doit_reverse(; ad_type, disable_prep)
     else
         error("unexpected ad_type = $(ad_type)")
     end
-    comp = MatrixFreeADExplicitComp(ad_backend, f_simple, X_ca; params=params_simple, disable_prep=disable_prep)
+    comp = MatrixFreeADExplicitComp(ad_backend, f_simple, X_ca; params, disable_prep, units_dict, aviary_input_names, aviary_output_names, aviary_meta_data)
 
-    inputs_dict = ca2strdict(get_input_ca(comp))
-    inputs_dict["a"] .= 2.0
-    inputs_dict["b"] .= range(3.0, 4.0; length=N)
-    inputs_dict["c"] .= range(5.0, 6.0; length=M)
-    inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
-    outputs_dict = ca2strdict(f_simple(X_ca, params_simple))
+    # Need to make sure the units are what I expect them to be.
+    @test get_units(comp, :a) == "m"
+    @test get_units(comp, :b) == "m**2"
+    @test get_units(comp, :c) == "m/s"
+    @test get_units(comp, :d) == "kg"
+    @test get_units(comp, :e) == "Pa"
+    @test get_units(comp, :f) == "kg/m**3"
+    @test get_units(comp, :g) == "s"
+
+    # inputs_dict = ca2strdict(get_input_ca(comp))
+    # inputs_dict["a"] .= 2.0
+    # inputs_dict["b"] .= range(3.0, 4.0; length=N)
+    # inputs_dict["c"] .= range(5.0, 6.0; length=M)
+    # inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+    inputs_dict = ca2strdict(get_input_ca(comp), aviary_input_names)
+    outputs_dict = ca2strdict(get_output_ca(comp), aviary_output_names)
 
     OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
-    a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
+    a, b, c, d = getindex.(Ref(inputs_dict), [get_aviary_input_name(comp, :a), get_aviary_input_name(comp, :b), get_aviary_input_name(comp, :c), get_aviary_input_name(comp, :d)])
     e_check = 2.0*a.^2 .+ 3 .* b.^2.1 .+ 4*sum(c.^2.2) .+ 5 .* sum(d.^2.3; dims=1)[:]
-    @test all(outputs_dict["e"] .≈ e_check)
+    @test all(outputs_dict[get_aviary_output_name(comp, :e)] .≈ e_check)
 
     f_check = 6.0*a.^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
-    @test all(outputs_dict["f"] .≈ f_check)
+    @test all(outputs_dict[get_aviary_output_name(comp, :f)] .≈ f_check)
 
     g_check = 10 .* sin.(b).*cos.(transpose(d))
-    @test all(outputs_dict["g"] .≈ g_check)
+    @test all(outputs_dict[get_aviary_output_name(comp, :g)] .≈ g_check)
 
     # So, to call `_compute_jacvec_product!`, I need a dict of derivatives that, I think, is like the outputs.
     dy = get_doutput_ca(comp)
     dy .= rand(length(dy))
-    doutputs_dict = ca2strdict(dy)
-    dinputs_dict = ca2strdict(get_dinput_ca(comp))
+    doutputs_dict = ca2strdict(dy, aviary_output_names)
+    dinputs_dict = ca2strdict(get_dinput_ca(comp), aviary_input_names)
     OpenMDAOCore.compute_jacvec_product!(comp, inputs_dict, dinputs_dict, doutputs_dict, "rev")
 
     # Hmm... so how do I check this?
@@ -334,7 +388,7 @@ function doit_reverse(; ad_type, disable_prep)
     # Derivative of g wrt a is zero.
 
     # Did all the outputs with `a`, so we're ready to test.
-    @test all(dinputs_dict["a"] .≈ da_check)
+    @test all(dinputs_dict[get_aviary_input_name(comp, :a)] .≈ da_check)
 
     # Next, `b`.
     db_check = similar(b)
@@ -360,7 +414,7 @@ function doit_reverse(; ad_type, disable_prep)
     end
 
     # That's all the outputs with `b`, so we're ready to check.
-    @test all(dinputs_dict["b"] .≈ db_check)
+    @test all(dinputs_dict[get_aviary_input_name(comp, :b)] .≈ db_check)
 
     # Now derivatives wrt c.
     dc_check = similar(c)
@@ -383,7 +437,7 @@ function doit_reverse(; ad_type, disable_prep)
     # Derivative of `g` wrt c is 0.
     
     # Did all the outputs, so ready to check.
-    @test all(dinputs_dict["c"] .≈ dc_check)
+    @test all(dinputs_dict[get_aviary_input_name(comp, :c)] .≈ dc_check)
 
     # Now derivatives wrt d.
     dd_check = similar(d)
@@ -411,7 +465,7 @@ function doit_reverse(; ad_type, disable_prep)
     end
 
     # Now check.
-    @test all(dinputs_dict["d"] .≈ dd_check)
+    @test all(dinputs_dict[get_aviary_input_name(comp, :d)] .≈ dd_check)
 
     return nothing
 end
