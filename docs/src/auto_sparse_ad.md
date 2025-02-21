@@ -184,8 +184,6 @@ So now we just need to proceed with the paraboloid example as usual:
 ```@example simple_auto_sparse_forwarddiff_paraboloid
 using OpenMDAO: om
 
-prob = om.Problem()
-
 model = om.Group()
 model.add_subsystem("parab_comp", parab_comp)
 
