@@ -1,0 +1,17 @@
+{"packages": {
+    "ADTypes": {
+        "uuid": "47edcb42-4c32-4615-8424-f2b9edc5f35b",
+        "version": "1.13.0"},
+    "ForwardDiff": {
+        "uuid": "f6369f11-7733-5829-9624-2563aa707210",
+        "version": "0.10.38"},
+    "SparseMatrixColorings": {
+        "uuid": "0a514795-09f3-496d-8182-132a7b665d35",
+        "version": "0.4.13"},
+    "OpenMDAOCore": {
+        "uuid": "24d19c10-6eee-420f-95df-4537264b2753",
+        "dev": true,
+        "path": "../../../julia/OpenMDAOCore.jl"},
+    "ComponentArrays": {
+        "uuid": "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66",
+        "version": "0.15.24"}}}

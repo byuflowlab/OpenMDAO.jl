@@ -477,7 +477,7 @@ function _unitfulify_units(unit::String)
     return replace(unit, "**"=>"^", r"\bin\b"=>"inch")
 end
 
-function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_names::Dict{Symbol,String}, aviary_meta_data::AbstractDict{String,<:Any})
+function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_names::Dict{Symbol,String}, aviary_meta_data::AbstractDict)
     # So, the goal here is to do what Aviary does for `add_aviary_input` and `add_aviary_output`, which is all this:
     # def add_aviary_input(comp, varname, val=None, units=None, desc=None, shape_by_conn=False,
     #                      meta_data=_MetaData, shape=None):

@@ -292,3 +292,8 @@ class JuliaImplicitComp(om.ImplicitComponent):
             self.guess_nonlinear = MethodType(guess_nonlinear, self)
             # Hmm...
             self._has_guess = True
+
+
+def to_jlsymstrdict(d):
+    T = juliacall.Main.Dict[juliacall.Main.Symbol,juliacall.Main.String]
+    return juliacall.convert(T, d)
