@@ -687,7 +687,7 @@ end
     @safetestset "out-of-place" begin
         include("auto_matrix_free_out_of_place.jl")
     end
-    @safetestset "out-of-place" begin
+    @safetestset "out-of-place, with Aviary metadata" begin
         include("auto_matrix_free_out_of_place_aviary.jl")
     end
 end

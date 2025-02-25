@@ -567,3 +567,23 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
 
     return X_ca, units_dict_full
 end
+
+function _resize_component_vector(X_ca, sizes)
+    X_dict = Dict{Symbol}()
+    for ca_name in keys(X_ca)
+        ca_name_str = string(ca_name)
+
+        if ca_name_str in keys(sizes)
+            # Create an array of the appropriate size.
+            X_dict[ca_name] = zeros(eltype(X_ca), sizes[ca_name_str])
+            # Fill it with the value it should have.
+            X_dict[ca_name] .= X_ca[ca_name]
+        else
+            X_dict[ca_name] = X_ca[ca_name]
+        end
+
+    end
+
+    return ComponentVector(X_dict)
+end
+

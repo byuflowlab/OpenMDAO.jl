@@ -50,7 +50,7 @@ function doit_in_place(; sparse_detect_method, ad_type)
     # `M` and `N` will be passed via the params argument.
     N = 3
     M = 4
-    params_simple = (M, N)
+    params = (M, N)
 
     # Also need copies of X_ca and Y_ca.
     X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
@@ -79,7 +79,7 @@ function doit_in_place(; sparse_detect_method, ad_type)
     else
         error("unexpected ad_type = $(ad_type)")
     end
-    comp = SparseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params=params_simple)
+    comp = SparseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params=params)
 
     # Now run all the checks from the previous case.
     rcdict = get_rows_cols_dict(comp)
@@ -413,8 +413,8 @@ function doit_out_of_place(; ad_type, sparse_detect_method)
     # `M` and `N` will be passed via the params argument.
     N = 3
     M = 4
-    # params_simple = (M, N)
-    params_simple = nothing
+    # params = (M, N)
+    params = nothing
 
     # Also need copies of X_ca and Y_ca.
     X_ca = ComponentVector(a=zero(Float64), b=zeros(Float64, N), c=zeros(Float64, M), d=zeros(Float64, M, N))
@@ -425,7 +425,7 @@ function doit_out_of_place(; ad_type, sparse_detect_method)
     X_ca[:c] .= range(5.0, 6.0; length=M)
     X_ca[:d] .= reshape(range(7.0, 8.0; length=M*N), M, N)
 
-    Y_ca = f_simple(X_ca, params_simple)
+    Y_ca = f_simple(X_ca, params)
 
     # Now we can create the component.
     sparse_atol = 1e-10
@@ -445,7 +445,7 @@ function doit_out_of_place(; ad_type, sparse_detect_method)
         error("unexpected ad_type = $(ad_type)")
     end
 
-    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; params=params_simple)
+    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; params=params)
 
     # Now run all the checks from the previous case.
     rcdict = get_rows_cols_dict(comp)

@@ -169,3 +169,8 @@ function has_guess_nonlinear(self::AbstractImplicitComp)
     return !(specific === fallback)
 end
 
+get_aviary_input_name(comp::AbstractComp, ca_name::Symbol) = string(ca_name)
+get_aviary_input_name(comp::AbstractComp, ca_name::AbstractString) = ca_name
+
+get_aviary_output_name(comp::AbstractComp, ca_name::Symbol) = string(ca_name)
+get_aviary_output_name(comp::AbstractComp, ca_name::AbstractString) = ca_name

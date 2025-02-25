@@ -25,24 +25,27 @@ get_tags(comp::AbstractADExplicitComp, varname) = get(comp.tags_dict, varname, V
 get_backend(comp::AbstractADExplicitComp) = comp.ad_backend
 
 get_aviary_input_name(comp::AbstractADExplicitComp, ca_name::Symbol) = get(comp.aviary_input_names, ca_name, string(ca_name))
+get_aviary_input_name(comp::AbstractADExplicitComp, ca_name::AbstractString) = get_aviary_input_name(comp, Symbol(ca_name))
+
 get_aviary_output_name(comp::AbstractADExplicitComp, ca_name::Symbol) = get(comp.aviary_output_names, ca_name, string(ca_name))
+get_aviary_output_name(comp::AbstractADExplicitComp, ca_name::AbstractString) = get_aviary_input_name(comp, Symbol(ca_name))
 
 function get_input_var_data(self::AbstractADExplicitComp)
     ca = get_input_ca(self)
-    return [VarData(get_aviary_input_name(self, k); shape=size(ca[k]), val=ca[k], units=get_units(self, k), tags=get_tags(self, k)) for k in keys(ca)]
+    return [VarData(get_aviary_input_name(self, k); shape=size(ca[k]), val=ca[k], units=get_units(self, k), tags=get_tags(self, k), shape_by_conn=get(self.shape_by_conn_dict, k, false)) for k in keys(ca)]
 end
 
 function get_output_var_data(self::AbstractADExplicitComp)
     ca = get_output_ca(self)
-    return [VarData(get_aviary_output_name(self, k); shape=size(ca[k]), val=ca[k], units=get_units(self, k), tags=get_tags(self, k)) for k in keys(ca)]
+    return [VarData(get_aviary_output_name(self, k); shape=size(ca[k]), val=ca[k], units=get_units(self, k), tags=get_tags(self, k), shape_by_conn=get(self.shape_by_conn_dict, k, false)) for k in keys(ca)]
 end
 
 function OpenMDAOCore.setup(self::AbstractADExplicitComp)
     input_data = get_input_var_data(self)
     output_data = get_output_var_data(self)
-    partials_data = get_partials_data(self)
+    # partials_data = get_partials_data(self)
 
-    return input_data, output_data, partials_data
+    return input_data, output_data, Vector{PartialsData}()
 end
 
 function OpenMDAOCore.compute!(self::AbstractADExplicitComp{true}, inputs, outputs)
