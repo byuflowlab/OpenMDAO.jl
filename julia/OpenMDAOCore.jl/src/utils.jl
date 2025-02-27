@@ -559,7 +559,11 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
             # val_ca = ComponentVector(Dict(ca_name=>val_convert))
             # X_ca = vcat(X_ca, val_ca)
             # Lame, `vcat` flattens components with ndims > 1.
-            d = Dict{Symbol,Any}(k=>X_ca[k] for k in keys(X_ca))
+            # Does this need to be an OrderedDict?
+            # I don't think so, since this is called before any of the prep stuff is created, etc.
+            # Also when insert new variables into the component vector, it seems reasonable that the user can't rely on what order things show up in the component vector.
+            # On the other hand, it might make more sense to add them at the end, which would be done if I switch to the OrderedDict.
+            d = OrderedDict{Symbol,Any}(k=>X_ca[k] for k in keys(X_ca))
             d[ca_name] = val_convert
             X_ca = ComponentVector(d)
         end
@@ -569,13 +573,11 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
 end
 
 function _resize_component_vector(X_ca, sizes)
-    X_dict = Dict{Symbol}()
+    X_dict = OrderedDict{Symbol,Any}()
     for ca_name in keys(X_ca)
-        ca_name_str = string(ca_name)
-
-        if ca_name_str in keys(sizes)
+        if ca_name in keys(sizes)
             # Create an array of the appropriate size.
-            X_dict[ca_name] = zeros(eltype(X_ca), sizes[ca_name_str])
+            X_dict[ca_name] = zeros(eltype(X_ca), sizes[ca_name])
             # Fill it with the value it should have.
             X_dict[ca_name] .= X_ca[ca_name]
         else

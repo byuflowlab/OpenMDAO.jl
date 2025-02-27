@@ -70,6 +70,16 @@ Create a `SparseADExplicitComp` from a user-defined function and output and inpu
 """
 function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}()) where {TAD<:ADTypes.AutoSparse}
 
+    # Check that the values in `aviary_input_names` are unique.
+    if length(unique(values(aviary_input_names))) != length(aviary_input_names)
+        throw(ArgumentError("values of aviary_input_names must be unique. aviary_input_names = $(aviary_input_names)"))
+    end
+
+    # Check that the values in `aviary_output_names` are unique.
+    if length(unique(values(aviary_output_names))) != length(aviary_output_names)
+        throw(ArgumentError("values of aviary_output_names must be unique. aviary_output_names = $(aviary_output_names)"))
+    end
+
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
     compute_adable = let params=params
@@ -84,7 +94,16 @@ function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::
     Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
 
     # Get the prep-related stuff.
-    prep, J_ca_sparse, rcdict, X_ca_cs, Y_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, Y_ca_full, X_ca_full)
+    if !any(values(shape_by_conn_dict))
+        prep, J_ca_sparse, rcdict, X_ca_cs, Y_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, Y_ca_full, X_ca_full)
+    else
+        # No point in getting a "good" prep when we don't know all the shapes.
+        prep = DifferentiationInterface.NoJacobianPrep()
+        J_ca_sparse = ComponentMatrix{eltype(X_ca_full)}()
+        rcdict = Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}()
+        X_ca_cs = ComponentVector{ComplexF64}()
+        Y_ca_cs = ComponentVector{ComplexF64}()
+    end
 
     return SparseADExplicitComp{true}(ad_backend, compute_adable, X_ca_full, Y_ca_full, J_ca_sparse, prep, rcdict, units_dict_full, tags_dict, shape_by_conn_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
 end
@@ -109,6 +128,16 @@ Create a `SparseADExplicitComp` from a user-defined function and output and inpu
 * `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
 """
 function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}()) where {TAD<:ADTypes.AutoSparse}
+    # Check that the values in `aviary_input_names` are unique.
+    if length(unique(values(aviary_input_names))) != length(aviary_input_names)
+        throw(ArgumentError("values of aviary_input_names must be unique. aviary_input_names = $(aviary_input_names)"))
+    end
+
+    # Check that the values in `aviary_output_names` are unique.
+    if length(unique(values(aviary_output_names))) != length(aviary_output_names)
+        throw(ArgumentError("values of aviary_output_names must be unique. aviary_output_names = $(aviary_output_names)"))
+    end
+
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
     compute_adable = let params=params
@@ -123,7 +152,16 @@ function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=
     Y_ca = compute_adable(X_ca_full)
     Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
 
-    prep, J_ca_sparse, rcdict, X_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, X_ca_full)
+    # Get the prep-related stuff.
+    if !any(values(shape_by_conn_dict))
+        prep, J_ca_sparse, rcdict, X_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, X_ca_full)
+    else
+        # No point in getting a "good" prep when we don't know all the shapes.
+        prep = DifferentiationInterface.NoJacobianPrep()
+        J_ca_sparse = ComponentMatrix{eltype(X_ca_full)}()
+        rcdict = Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}()
+        X_ca_cs = ComponentVector{ComplexF64}()
+    end
 
     return SparseADExplicitComp{false}(ad_backend, compute_adable, X_ca_full, J_ca_sparse, prep, rcdict, units_dict_full, tags_dict, shape_by_conn_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
 end
@@ -172,7 +210,7 @@ function _get_sparse_prep_stuff(ad_backend, f, X_ca)
     return prep, J_ca_sparse, rcdict, X_ca_cs
 end
 
-function update_prep!(self::SparseADExplicitComp{true}, input_sizes, output_sizes)
+function update_prep!(self::SparseADExplicitComp{true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
 
     if (length(input_sizes) > 0) || (length(output_sizes) > 0)
         X_ca_old = get_input_ca(self)
@@ -199,7 +237,7 @@ function update_prep!(self::SparseADExplicitComp{true}, input_sizes, output_size
     return nothing
 end
 
-function update_prep!(self::SparseADExplicitComp{false}, input_sizes, output_sizes)
+function update_prep!(self::SparseADExplicitComp{false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
 
     if length(input_sizes) > 0
         X_ca_old = get_input_ca(self)
@@ -239,7 +277,14 @@ function get_partials_data(self::SparseADExplicitComp)
 end
 
 function setup_partials(self::SparseADExplicitComp, input_sizes, output_sizes)
-    update_prep!(self, input_sizes, output_sizes)
+
+    input_av_name_to_ca_name = Dict(get_aviary_input_name(self, k)=>k for k in keys(get_input_ca(self)))
+    input_sizes_ca = Dict(input_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in input_sizes)
+
+    output_av_name_to_ca_name = Dict(get_aviary_output_name(self, k)=>k for k in keys(get_output_ca(self)))
+    output_sizes_ca = Dict(output_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in output_sizes)
+
+    update_prep!(self, input_sizes_ca, output_sizes_ca)
 
     # Now finally get the partials data.
     return get_partials_data(self)

@@ -2,6 +2,7 @@ module OpenMDAOCore
 
 using ADTypes: ADTypes
 using ComponentArrays: ComponentArray, ComponentVector, ComponentMatrix, getaxes, getdata
+using DataStructures: OrderedDict
 using DifferentiationInterface: DifferentiationInterface
 using Random: rand!
 using SparseArrays: sparse, findnz, nonzeros, AbstractSparseArray

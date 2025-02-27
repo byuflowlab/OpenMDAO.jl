@@ -61,7 +61,7 @@ def _setup_partials_common(self):
         input_sizes_d = {}
         for vd in input_data:
             if vd.shape_by_conn or vd.copy_shape:
-                input_sizes_d[vd.name] = self._get_var_meta(jl.OpenMDAOCore.get_aviary_input_name(self._jlcomp, vd.name), "shape")
+                input_sizes_d[vd.name] = self._get_var_meta(vd.name, "shape")
         input_sizes = juliacall.convert(jl.Dict, input_sizes_d)
 
         # Build up a dict mapping the output names to their size.
@@ -69,7 +69,7 @@ def _setup_partials_common(self):
         output_sizes_d = {}
         for vd in output_data:
             if vd.shape_by_conn or vd.copy_shape:
-                output_sizes_d[vd.name] = self._get_var_meta(jl.OpenMDAOCore.get_aviary_output_name(self._jlcomp, vd.name), "shape")
+                output_sizes_d[vd.name] = self._get_var_meta(vd.name, "shape")
         output_sizes = juliacall.convert(jl.Dict, output_sizes_d)
 
         partials_data = jl.OpenMDAOCore.setup_partials(self._jlcomp, input_sizes, output_sizes)
