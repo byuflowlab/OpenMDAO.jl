@@ -466,7 +466,10 @@ function doit_in_place_shape_by_conn(; sparse_detect_method, ad_type)
     else
         error("unexpected ad_type = $(ad_type)")
     end
-    comp = SparseADExplicitComp(ad_backend, f_simple_no_params!, Y_ca, X_ca; shape_by_conn_dict=Dict(:b=>true, :d=>true, :e=>true, :f=>true, :g=>true))
+    # comp = SparseADExplicitComp(ad_backend, f_simple_no_params!, Y_ca, X_ca; shape_by_conn_dict=Dict(:b=>true, :d=>true, :e=>true, :f=>true, :g=>true))
+    shape_by_conn_dict = Dict(:b=>true, :d=>true, :g=>true)
+    copy_shape_dict = Dict(:e=>:b, :f=>:d)
+    comp = SparseADExplicitComp(ad_backend, f_simple_no_params!, Y_ca, X_ca; shape_by_conn_dict, copy_shape_dict)
 
     # Now set the size of b to the correct thing.
     input_sizes = Dict(:b=>N, :d=>(M, N))

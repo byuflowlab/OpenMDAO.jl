@@ -11,20 +11,21 @@ mutable struct MatrixFreeADExplicitComp{InPlace,TAD,TCompute} <: AbstractADExpli
     const units_dict::Dict{Symbol,String}
     const tags_dict::Dict{Symbol,Vector{String}}
     const shape_by_conn_dict::Dict{Symbol,Bool}
+    const copy_shape_dict::Dict{Symbol,Symbol}
     X_ca_cs::ComponentVector
     Y_ca_cs::ComponentVector
     const aviary_input_names::Dict{Symbol,String}
     const aviary_output_names::Dict{Symbol,String}
     const aviary_meta_data::Dict{String,Any}
 
-    function MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-        return new{true,typeof(ad_backend),typeof(compute_adable)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+    function MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+        return new{true,typeof(ad_backend),typeof(compute_adable)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
     end
 
-    function MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+    function MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
         Y_ca = ComponentVector{eltype(X_ca)}()
         Y_ca_cs = ComponentVector{eltype(X_ca_cs)}()
-        return new{false,typeof(ad_backend),typeof(compute_adable)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+        return new{false,typeof(ad_backend),typeof(compute_adable)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
     end
 end
 
@@ -38,7 +39,7 @@ function get_partials_data(self::MatrixFreeADExplicitComp)
 end
 
 """
-    MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
+    MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
 
 Create a `MatrixFreeADExplicitComp` from a user-defined function and output and input `ComponentVector`s.
 
@@ -58,20 +59,14 @@ Create a `MatrixFreeADExplicitComp` from a user-defined function and output and 
 * `units_dict`: `Dict` mapping variable names (as `Symbol`s) to OpenMDAO units (expressed as `String`s)
 * `tags_dict`: `Dict` mapping variable names (as `Symbol`s) to `Vector`s of OpenMDAO tags
 * `shape_by_conn_dict`: `Dict` mapping variable names (as `Symbol`s) to `Bool`s indicating if the variable's shape (size) will be set dynamically by a connection
+* `copy_shape_dict`: `Dict` mapping variable names to other variable names indicating the "key" symbol should take its size from the "value" symbol
 * `aviary_input_names::Dict{Symbol,String}`: mapping of input variable names to Aviary names.
 * `aviary_output_names::Dict{Symbol,String}`: mapping of output variable names to Aviary names.
 * `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
 """
-function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
-    # Check that the values in `aviary_input_names` are unique.
-    if length(unique(values(aviary_input_names))) != length(aviary_input_names)
-        throw(ArgumentError("values of aviary_input_names must be unique. aviary_input_names = $(aviary_input_names)"))
-    end
+function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
 
-    # Check that the values in `aviary_output_names` are unique.
-    if length(unique(values(aviary_output_names))) != length(aviary_output_names)
-        throw(ArgumentError("values of aviary_output_names must be unique. aviary_output_names = $(aviary_output_names)"))
-    end
+    _check_aviary_names(aviary_input_names, aviary_output_names)
 
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
@@ -86,7 +81,7 @@ function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::C
     X_ca_full, units_dict_tmp = _process_aviary_metadata(X_ca, units_dict, aviary_input_names, aviary_meta_data)
     Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
 
-    if !any(values(shape_by_conn_dict))
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
         prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs = _get_matrix_free_prep_stuff_in_place(ad_backend, compute_adable, Y_ca_full, X_ca_full, force_mode, disable_prep)
     else
         # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep!`.
@@ -97,11 +92,11 @@ function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::C
         Y_ca_cs = ComponentVector{ComplexF64}()
     end
 
-    return MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca_full, Y_ca_full, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict_full, tags_dict, shape_by_conn_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+    return MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca_full, Y_ca_full, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict_full, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
 end
 
 """
-    MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
+    MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
 
 Create a `MatrixFreeADExplicitComp` from a user-defined function and output and input `ComponentVector`s.
 
@@ -120,20 +115,14 @@ Create a `MatrixFreeADExplicitComp` from a user-defined function and output and 
 * `units_dict`: `Dict` mapping variable names (as `Symbol`s) to OpenMDAO units (expressed as `String`s)
 * `tags_dict`: `Dict` mapping variable names (as `Symbol`s) to `Vector`s of OpenMDAO tags
 * `shape_by_conn_dict`: `Dict` mapping variable names (as `Symbol`s) to `Bool`s indicating if the variable's shape (size) will be set dynamically by a connection
+* `copy_shape_dict`: `Dict` mapping variable names to other variable names indicating the "key" symbol should take its size from the "value" symbol
 * `aviary_input_names::Dict{Symbol,String}`: mapping of input variable names to Aviary names.
 * `aviary_output_names::Dict{Symbol,String}`: mapping of output variable names to Aviary names.
 * `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
 """
-function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
-    # Check that the values in `aviary_input_names` are unique.
-    if length(unique(values(aviary_input_names))) != length(aviary_input_names)
-        throw(ArgumentError("values of aviary_input_names must be unique. aviary_input_names = $(aviary_input_names)"))
-    end
+function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
 
-    # Check that the values in `aviary_output_names` are unique.
-    if length(unique(values(aviary_output_names))) != length(aviary_output_names)
-        throw(ArgumentError("values of aviary_output_names must be unique. aviary_output_names = $(aviary_output_names)"))
-    end
+    _check_aviary_names(aviary_input_names, aviary_output_names)
 
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
@@ -149,7 +138,7 @@ function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=n
     Y_ca = compute_adable(X_ca_full)
     Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
 
-    if !any(values(shape_by_conn_dict))
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
         prep, dX_ca, dY_ca, X_ca_cs = _get_matrix_free_prep_stuff_out_of_place(ad_backend, compute_adable, Y_ca_full, X_ca_full, force_mode, disable_prep)
     else
         # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep!`.
@@ -159,7 +148,7 @@ function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=n
         X_ca_cs = ComponentVector{ComplexF64}()
     end
 
-    return MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca_full, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict_full, tags_dict, shape_by_conn_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+    return MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca_full, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict_full, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
 end
 
 function _get_matrix_free_prep_stuff_in_place(ad_backend, compute_adable, Y_ca, X_ca, force_mode::String, disable_prep::Bool)

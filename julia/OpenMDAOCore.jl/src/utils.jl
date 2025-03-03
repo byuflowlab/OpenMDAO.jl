@@ -589,3 +589,28 @@ function _resize_component_vector(X_ca, sizes)
     return ComponentVector(X_dict)
 end
 
+
+function _check_aviary_names(aviary_input_names, aviary_output_names)
+    # Check that the values in `aviary_input_names` are unique.
+    if length(unique(values(aviary_input_names))) != length(aviary_input_names)
+        throw(ArgumentError("values of aviary_input_names must be unique. aviary_input_names = $(aviary_input_names)"))
+    end
+
+    # Check that the values in `aviary_output_names` are unique.
+    if length(unique(values(aviary_output_names))) != length(aviary_output_names)
+        throw(ArgumentError("values of aviary_output_names must be unique. aviary_output_names = $(aviary_output_names)"))
+    end
+
+    # Check that the keys in aviary_input_names and aviary_output_names don't overlap.
+    common_ca_names = intersect(keys(aviary_input_names), keys(aviary_output_names))
+    if length(common_ca_names) != 0
+        throw(ArgumentError("aviary_input_names and aviary_output_names share keys: $(common_ca_names)"))
+    end
+
+    common_aviary_names = intersect(values(aviary_input_names), values(aviary_output_names))
+    if length(common_aviary_names) != 0
+        throw(ArgumentError("aviary_input_names and aviary_output_names share values: $(common_aviary_names)"))
+    end
+
+    return nothing
+end

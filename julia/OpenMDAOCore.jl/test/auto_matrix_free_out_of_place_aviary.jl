@@ -324,7 +324,8 @@ function doit_forward_shape_by_conn(; ad_type, disable_prep)
     # Also make sure output e has different units than default.
     units_dict = Dict(:a=>"m", :b=>"m**2", :c=>"m/s", :e=>"Pa")
 
-    shape_by_conn_dict = Dict(:c=>true, :d=>true, :f=>true, :g=>true)
+    shape_by_conn_dict = Dict(:c=>true, :d=>true, :g=>true)
+    copy_shape_dict = Dict(:f=>:d)
 
     # Now we can create the component.
     if ad_type == "forwarddiff"
