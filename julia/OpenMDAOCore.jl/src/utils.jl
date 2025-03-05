@@ -474,10 +474,111 @@ end
 
 function _unitfulify_units(unit::String)
     # Replace `**` with `^`, and `in` with `inch`.
-    return replace(unit, "**"=>"^", r"\bin\b"=>"inch")
+    return replace(unit,
+                   "**"=>"^",
+                   r"\bin\b"=>"inch",
+                   r"\bmin\b"=>"minute",
+                   r"\bdeg\b"=>"°",
+                   r"\brev\b"=>"turn",
+                   r"\blbm\b"=>"lb")
 end
 
-function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_names::Dict{Symbol,String}, aviary_meta_data::AbstractDict)
+# function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_names::Dict{Symbol,String}, aviary_meta_data::AbstractDict)
+#     # So, the goal here is to do what Aviary does for `add_aviary_input` and `add_aviary_output`, which is all this:
+#     # def add_aviary_input(comp, varname, val=None, units=None, desc=None, shape_by_conn=False,
+#     #                      meta_data=_MetaData, shape=None):
+#     #
+#     # meta = meta_data[varname]
+#     # # units of None are overwritten with defaults. Overwriting units with None is
+#     # # unnecessary as it will cause errors down the line if the default is not already
+#     # # None
+#     # default_units = meta['units']
+
+#     # if units:
+#     #     input_units = units
+#     # else:
+#     #     input_units = default_units
+
+#     # if desc:
+#     #     input_desc = desc
+#     # else:
+#     #     input_desc = meta['desc']
+#     # if val is None:
+#     #     if shape is None:
+#     #         val = meta['default_value']
+#     #         if val is None:
+#     #             val = 0.0
+#     #     else:
+#     #         val = meta['default_value']
+#     #         if val is None:
+#     #             val = np.zeros(shape)
+#     #         else:
+#     #             val = np.ones(shape) * val
+
+#     #     # val was not provided but different units were
+#     #     if input_units != default_units:
+#     #         try:
+#     #             # convert the default units to requested units
+#     #             val = convert_units(val, default_units, input_units)
+#     #         except ValueError:
+#     #             raise ValueError(
+#     #                 f'The requested units {units} for input {varname} in component '
+#     #                 f'{comp.name} are invalid.'
+#     #             )
+
+#     # comp.add_input(varname, val=val, units=input_units,
+#     #                desc=input_desc, shape_by_conn=shape_by_conn, shape=shape)
+
+#     units_dict_full = deepcopy(units_dict)
+#     for (ca_name, aviary_name) in aviary_names
+#         meta = aviary_meta_data[aviary_name]
+
+#         default_units = meta["units"]
+#         # Check if user specified units.
+#         if ca_name in keys(units_dict_full)
+#             input_units = units_dict_full[ca_name]
+#         else
+#             # No units specified by user, so use the default units.
+#             input_units = default_units
+#             units_dict_full[ca_name] = default_units
+#         end
+
+#         if !(ca_name in keys(X_ca))
+#             val = meta["default_value"]
+#             if val === nothing
+#                 val = zero(eltype(X_ca))
+#             end
+
+#             if input_units != default_units
+#                 # Convert default value from default units to requested units.
+#                 iu = uparse(_unitfulify_units(input_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
+#                 du = uparse(_unitfulify_units(default_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
+#                 val_convert = val * ustrip(uconvert(iu, one(eltype(X_ca))*du))
+#             else
+#                 # No change in units, so no conversion necessary.
+#                 val_convert = val
+#             end
+
+#             # Finally, need to add the new value to `X_ca`.
+#             # Hmm... but I don't think it's possible to extend ComponentVectors.
+#             # So I'll need to vcat I think.
+#             # val_ca = ComponentVector(Dict(ca_name=>val_convert))
+#             # X_ca = vcat(X_ca, val_ca)
+#             # Lame, `vcat` flattens components with ndims > 1.
+#             # Does this need to be an OrderedDict?
+#             # I don't think so, since this is called before any of the prep stuff is created, etc.
+#             # Also when insert new variables into the component vector, it seems reasonable that the user can't rely on what order things show up in the component vector.
+#             # On the other hand, it might make more sense to add them at the end, which would be done if I switch to the OrderedDict.
+#             d = OrderedDict{Symbol,Any}(k=>X_ca[k] for k in keys(X_ca))
+#             d[ca_name] = val_convert
+#             X_ca = ComponentVector(d)
+#         end
+#     end
+
+#     return X_ca, units_dict_full
+# end
+
+function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_vars::AbstractDict{Symbol,<:AbstractDict{String,<:Any}}, aviary_meta_data::AbstractDict)
     # So, the goal here is to do what Aviary does for `add_aviary_input` and `add_aviary_output`, which is all this:
     # def add_aviary_input(comp, varname, val=None, units=None, desc=None, shape_by_conn=False,
     #                      meta_data=_MetaData, shape=None):
@@ -524,8 +625,11 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
     #                desc=input_desc, shape_by_conn=shape_by_conn, shape=shape)
 
     units_dict_full = deepcopy(units_dict)
-    for (ca_name, aviary_name) in aviary_names
+    aviary_names = Dict{Symbol,String}()
+    for (ca_name, aviary_data) in aviary_vars
+        aviary_name = aviary_names[ca_name] = aviary_data["name"]
         meta = aviary_meta_data[aviary_name]
+        shape = get(aviary_data, "shape", nothing)
 
         default_units = meta["units"]
         # Check if user specified units.
@@ -538,15 +642,24 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
         end
 
         if !(ca_name in keys(X_ca))
-            val = meta["default_value"]
-            if val === nothing
-                val = zero(eltype(X_ca))
+            if shape === nothing
+                val = meta["default_value"]
+                if val === nothing
+                    val = zero(eltype(X_ca))
+                end
+            else
+                val = meta["default_value"]
+                if val === nothing
+                    val = zeros(eltype(X_ca), shape)
+                else
+                    val = ones(eltype(X_ca), shape) * val
+                end
             end
 
             if input_units != default_units
                 # Convert default value from default units to requested units.
-                iu = uparse(_unitfulify_units(input_units))
-                du = uparse(_unitfulify_units(default_units))
+                iu = uparse(_unitfulify_units(input_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
+                du = uparse(_unitfulify_units(default_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
                 val_convert = val * ustrip(uconvert(iu, one(eltype(X_ca))*du))
             else
                 # No change in units, so no conversion necessary.
@@ -569,7 +682,7 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
         end
     end
 
-    return X_ca, units_dict_full
+    return X_ca, units_dict_full, aviary_names
 end
 
 function _resize_component_vector(X_ca, sizes)
@@ -614,3 +727,7 @@ function _check_aviary_names(aviary_input_names, aviary_output_names)
 
     return nothing
 end
+
+
+# Took this definition from the OpenMDAO units code.
+@unit hp "hp" Horsepower (7457//10)*Unitful.W false

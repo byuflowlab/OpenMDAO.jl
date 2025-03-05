@@ -12,6 +12,7 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseMatrixColorings = "0a514795-09f3-496d-8182-132a7b665d35"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+UnitfulAngles = "6fb2a4bd-7999-5318-a3b2-8ad61056cd98"
 
 [compat]
 ADTypes = "1.9.0"
@@ -21,4 +22,5 @@ DifferentiationInterface = "0.6.12"
 SparseArrays = "1.10.0"
 SparseMatrixColorings = "0.4.7"
 Unitful = "1.22.0"
+UnitfulAngles = "0.7.2"
 julia = "1.8.5"

@@ -11,12 +11,22 @@ my_sum(x::Number; kwargs...) = x
 my_sum(x; kwargs...) = sum(x; kwargs...)
 
 function f1(X, params)
-    return ComponentVector(y=0.5.*X.x, z=3.0.*my_reverse(X.x).*X.x.^2 .+ 4.0.*my_sum(X.x; dims=ndims(X.x)))
+    Y = ComponentVector(
+        y=0.5.*X.x,
+        z=3.0.*my_reverse(X.x).*X.x.^2 .+ 4.0.*my_sum(X.x; dims=ndims(X.x)),
+    )
+    if length(X.x) > 1
+        Y.z .+= 2*X.x[1, 2, 1]*X.x[2, 1, 2]
+    end
+    return Y
 end
     
 function f1!(Y, X, params)
     Y.y .= 0.5.*X.x
     Y.z .= 3.0.*my_reverse(X.x).*X.x.^2 .+ 4.0.*my_sum(X.x; dims=ndims(X.x))
+    if length(X.x) > 1
+        Y.z .+= 2*X.x[1, 2, 1]*X.x[2, 1, 2]
+    end
     return nothing
 end
     

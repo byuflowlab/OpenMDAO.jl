@@ -42,12 +42,9 @@ class TestExplicitADSparseInPlace(unittest.TestCase):
         np.testing.assert_almost_equal(y_actual, y_expected)
 
         x_actual_rev = x_actual.flatten()[::-1].reshape(self._x_shape)
-        z_expected = 3.0 * x_actual_rev*x_actual**2 + 4*np.sum(x_actual, -1, keepdims=True)
+        z_expected = 3.0 * x_actual_rev*x_actual**2 + 4*np.sum(x_actual, -1, keepdims=True) + 2*x_actual[0, 1, 0]*x_actual[1, 0, 1]
         z_actual = p.get_val("z")
         np.testing.assert_almost_equal(z_actual, z_expected)
-
-        # print(x_actual, y_actual, z_actual)
-        print(x_actual.shape, y_actual.shape, z_actual.shape)
 
     def test_partials(self):
         p = self.p
@@ -59,9 +56,6 @@ class TestExplicitADSparseInPlace(unittest.TestCase):
             for (var, wrt) in cpd[comp]:
                 J_fd = cpd[comp][var, wrt]['J_fd']
                 J_fwd = cpd[comp][var, wrt]['J_fwd']
-                print(f"of = {var}, wrt = {wrt}")
-                print(f"J_fd =\n{J_fd}")
-                print(f"J_fwd =\n{J_fwd}")
                 np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
                                                desired=cpd[comp][var, wrt]['J_fd'],
                                                decimal=12)
@@ -91,12 +85,10 @@ class TestMatrixFreeADInPlace(unittest.TestCase):
         np.testing.assert_almost_equal(y_actual, y_expected)
 
         x_actual_rev = x_actual.flatten()[::-1].reshape(self._x_shape)
-        z_expected = 3.0 * x_actual_rev*x_actual**2 + 4*np.sum(x_actual, -1, keepdims=True)
+        z_expected = 3.0 * x_actual_rev*x_actual**2 + 4*np.sum(x_actual, -1, keepdims=True) + 2*x_actual[0, 1, 0]*x_actual[1, 0, 1]
         z_actual = p.get_val("z")
         np.testing.assert_almost_equal(z_actual, z_expected)
 
-        # print(x_actual, y_actual, z_actual)
-        print(x_actual.shape, y_actual.shape, z_actual.shape)
 
     def test_partials(self):
         p = self.p
@@ -137,12 +129,9 @@ class TestExplicitADSparseOutOfPlace(unittest.TestCase):
         np.testing.assert_almost_equal(y_actual, y_expected)
 
         x_actual_rev = x_actual.flatten()[::-1].reshape(self._x_shape)
-        z_expected = 3.0 * x_actual_rev*x_actual**2 + 4*np.sum(x_actual, -1, keepdims=True)
+        z_expected = 3.0 * x_actual_rev*x_actual**2 + 4*np.sum(x_actual, -1, keepdims=True) + 2*x_actual[0, 1, 0]*x_actual[1, 0, 1]
         z_actual = p.get_val("z")
         np.testing.assert_almost_equal(z_actual, z_expected)
-
-        # print(x_actual, y_actual, z_actual)
-        print(x_actual.shape, y_actual.shape, z_actual.shape)
 
     def test_partials(self):
         p = self.p
@@ -154,9 +143,6 @@ class TestExplicitADSparseOutOfPlace(unittest.TestCase):
             for (var, wrt) in cpd[comp]:
                 J_fd = cpd[comp][var, wrt]['J_fd']
                 J_fwd = cpd[comp][var, wrt]['J_fwd']
-                print(f"of = {var}, wrt = {wrt}")
-                print(f"J_fd =\n{J_fd}")
-                print(f"J_fwd =\n{J_fwd}")
                 np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
                                                desired=cpd[comp][var, wrt]['J_fd'],
                                                decimal=12)
@@ -186,12 +172,9 @@ class TestMatrixFreeADOutOfPlace(unittest.TestCase):
         np.testing.assert_almost_equal(y_actual, y_expected)
 
         x_actual_rev = x_actual.flatten()[::-1].reshape(self._x_shape)
-        z_expected = 3.0 * x_actual_rev*x_actual**2 + 4*np.sum(x_actual, -1, keepdims=True)
+        z_expected = 3.0 * x_actual_rev*x_actual**2 + 4*np.sum(x_actual, -1, keepdims=True) + 2*x_actual[0, 1, 0]*x_actual[1, 0, 1]
         z_actual = p.get_val("z")
         np.testing.assert_almost_equal(z_actual, z_expected)
-
-        # print(x_actual, y_actual, z_actual)
-        print(x_actual.shape, y_actual.shape, z_actual.shape)
 
     def test_partials(self):
         p = self.p

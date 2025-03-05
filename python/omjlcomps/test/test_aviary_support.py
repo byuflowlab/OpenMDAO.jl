@@ -10,7 +10,7 @@ import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.core.analysis_error import AnalysisError
 
-from omjlcomps import JuliaExplicitComp, to_jlsymstrdict
+from omjlcomps import JuliaExplicitComp, to_jlsymdictstranydict
 
 
 d = os.path.dirname(os.path.abspath(__file__))
@@ -25,8 +25,8 @@ class TestAviaryMatrixFreeInPlacePropellerRadiusComp(unittest.TestCase):
         p = self.p = om.Problem()
         jlcomp = jl.get_aviary_matrix_free_test_comp(
             in_place=True,
-            aviary_input_names=to_jlsymstrdict({"Dtip": av.Aircraft.Engine.Propeller.DIAMETER}),
-            aviary_output_names=to_jlsymstrdict({"thrust": av.Dynamic.Vehicle.Propulsion.THRUST}),
+            aviary_input_vars=to_jlsymdictstranydict({"Dtip": {"name": av.Aircraft.Engine.Propeller.DIAMETER}}),
+            aviary_output_vars=to_jlsymdictstranydict({"thrust": {"name": av.Dynamic.Vehicle.Propulsion.THRUST}}),
             aviary_meta_data=av.CoreMetaData)
 
         comp = JuliaExplicitComp(jlcomp=jlcomp)
@@ -77,8 +77,8 @@ class TestAviaryMatrixFreeOutOfPlacePropellerRadiusComp(unittest.TestCase):
         p = self.p = om.Problem()
         jlcomp = jl.get_aviary_matrix_free_test_comp(
             in_place=False,
-            aviary_input_names=to_jlsymstrdict({"Dtip": av.Aircraft.Engine.Propeller.DIAMETER}),
-            aviary_output_names=to_jlsymstrdict({"thrust": av.Dynamic.Vehicle.Propulsion.THRUST}),
+            aviary_input_vars=to_jlsymdictstranydict({"Dtip": {"name": av.Aircraft.Engine.Propeller.DIAMETER}}),
+            aviary_output_vars=to_jlsymdictstranydict({"thrust": {"name": av.Dynamic.Vehicle.Propulsion.THRUST}}),
             aviary_meta_data=av.CoreMetaData)
 
         comp = JuliaExplicitComp(jlcomp=jlcomp)
@@ -129,8 +129,8 @@ class TestAviarySparseInPlacePropellerRadiusComp(unittest.TestCase):
         p = self.p = om.Problem()
         jlcomp = jl.get_aviary_sparse_test_comp(
             in_place=True,
-            aviary_input_names=to_jlsymstrdict({"Dtip": av.Aircraft.Engine.Propeller.DIAMETER}),
-            aviary_output_names=to_jlsymstrdict({"thrust": av.Dynamic.Vehicle.Propulsion.THRUST}),
+            aviary_input_vars=to_jlsymdictstranydict({"Dtip": {"name": av.Aircraft.Engine.Propeller.DIAMETER}}),
+            aviary_output_vars=to_jlsymdictstranydict({"thrust": {"name": av.Dynamic.Vehicle.Propulsion.THRUST}}),
             aviary_meta_data=av.CoreMetaData)
 
         comp = JuliaExplicitComp(jlcomp=jlcomp)
@@ -181,8 +181,8 @@ class TestAviarySparseOutOfPlacePropellerRadiusComp(unittest.TestCase):
         p = self.p = om.Problem()
         jlcomp = jl.get_aviary_sparse_test_comp(
             in_place=False,
-            aviary_input_names=to_jlsymstrdict({"Dtip": av.Aircraft.Engine.Propeller.DIAMETER}),
-            aviary_output_names=to_jlsymstrdict({"thrust": av.Dynamic.Vehicle.Propulsion.THRUST}),
+            aviary_input_vars=to_jlsymdictstranydict({"Dtip": {"name": av.Aircraft.Engine.Propeller.DIAMETER}}),
+            aviary_output_vars=to_jlsymdictstranydict({"thrust": {"name": av.Dynamic.Vehicle.Propulsion.THRUST}}),
             aviary_meta_data=av.CoreMetaData)
 
         comp = JuliaExplicitComp(jlcomp=jlcomp)

@@ -15,25 +15,23 @@ function f_radius!(Y, X, params)
 end
     
 
-function get_aviary_matrix_free_test_comp(; in_place, aviary_input_names, aviary_output_names, aviary_meta_data)
+function get_aviary_matrix_free_test_comp(; in_place, aviary_input_vars, aviary_output_vars, aviary_meta_data)
     ad_backend = ADTypes.AutoForwardDiff()
 
-    # aviary_input_names = Dict(:Dtip=>aviary_diameter_name)
-    
     units_dict = Dict(:Rtip=>"ft")
 
     X_ca = ComponentVector{Float64}()
     if in_place
         Y_ca = ComponentVector{Float64}(Rtip=0.0)
-        comp = OpenMDAOCore.MatrixFreeADExplicitComp(ad_backend, f_radius!, Y_ca, X_ca; aviary_input_names, aviary_output_names, aviary_meta_data, units_dict)
+        comp = OpenMDAOCore.MatrixFreeADExplicitComp(ad_backend, f_radius!, Y_ca, X_ca; aviary_input_vars, aviary_output_vars, aviary_meta_data, units_dict)
     else
-        comp = OpenMDAOCore.MatrixFreeADExplicitComp(ad_backend, f_radius, X_ca; aviary_input_names, aviary_output_names, aviary_meta_data, units_dict)
+        comp = OpenMDAOCore.MatrixFreeADExplicitComp(ad_backend, f_radius, X_ca; aviary_input_vars, aviary_output_vars, aviary_meta_data, units_dict)
     end
 
     return comp
 end
 
-function get_aviary_sparse_test_comp(; in_place, aviary_input_names, aviary_output_names, aviary_meta_data)
+function get_aviary_sparse_test_comp(; in_place, aviary_input_vars, aviary_output_vars, aviary_meta_data)
     sparse_atol = 1e-10
     sparsity_detector = OpenMDAOCore.PerturbedDenseSparsityDetector(ADTypes.AutoForwardDiff(); atol=sparse_atol, method=:direct)
     coloring_algorithm = SparseMatrixColorings.GreedyColoringAlgorithm()
@@ -44,9 +42,9 @@ function get_aviary_sparse_test_comp(; in_place, aviary_input_names, aviary_outp
     X_ca = ComponentVector{Float64}()
     if in_place
         Y_ca = ComponentVector{Float64}(Rtip=0.0)
-        comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_radius!, Y_ca, X_ca; aviary_input_names, aviary_output_names, aviary_meta_data, units_dict)
+        comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_radius!, Y_ca, X_ca; aviary_input_vars, aviary_output_vars, aviary_meta_data, units_dict)
     else
-        comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_radius, X_ca; aviary_input_names, aviary_output_names, aviary_meta_data, units_dict)
+        comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_radius, X_ca; aviary_input_vars, aviary_output_vars, aviary_meta_data, units_dict)
     end
 
     return comp

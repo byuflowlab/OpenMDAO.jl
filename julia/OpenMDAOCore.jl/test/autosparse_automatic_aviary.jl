@@ -78,21 +78,23 @@ function doit_in_place(; sparse_detect_method, ad_type)
     Y_ca = ComponentVector{Float64}()
     aviary_meta_data = Dict(
                             "foo:bar:baz:a"=>Dict("units"=>"m", "default_value"=>zero(Float64)),
-                            "foo:bar:baz:b"=>Dict("units"=>"m**2", "default_value"=>zeros(Float64, N)),
+                            # "foo:bar:baz:b"=>Dict("units"=>"m**2", "default_value"=>zeros(Float64, N)),
+                            "foo:bar:baz:b"=>Dict("units"=>"m**2", "default_value"=>zero(Float64)),
                             "foo:bar:baz:c"=>Dict("units"=>"m/s", "default_value"=>zeros(Float64, M)),
-                            "foo:bar:baz:d"=>Dict("units"=>"kg", "default_value"=>zeros(Float64, M, N)),
+                            # "foo:bar:baz:d"=>Dict("units"=>"kg", "default_value"=>zeros(Float64, M, N)),
+                            "foo:bar:baz:d"=>Dict("units"=>"kg", "default_value"=>zero(Float64)),
                             "foo:bar:baz:e"=>Dict("units"=>"Pa", "default_value"=>zeros(Float64, N)),
                             "foo:bar:baz:f"=>Dict("units"=>"kg/m**3", "default_value"=>zeros(Float64, M, N)),
                             "foo:bar:baz:g"=>Dict("units"=>"s", "default_value"=>zeros(Float64, N, M)))
-    aviary_input_names = Dict(
-                            :a=>"foo:bar:baz:a",
-                            :b=>"foo:bar:baz:b",
-                            :c=>"foo:bar:baz:c",
-                            :d=>"foo:bar:baz:d")
-    aviary_output_names = Dict(
-                            :e=>"foo:bar:baz:e",
-                            :f=>"foo:bar:baz:f",
-                            :g=>"foo:bar:baz:g")
+    aviary_input_vars = Dict(:a=>Dict("name"=>"foo:bar:baz:a"),
+                             :b=>Dict("name"=>"foo:bar:baz:b", "shape"=>N),
+                             :c=>Dict("name"=>"foo:bar:baz:c"),
+                             :d=>Dict("name"=>"foo:bar:baz:d", "shape"=>(M, N)))
+    aviary_output_vars = Dict(:e=>Dict("name"=>"foo:bar:baz:e"),
+                              :f=>Dict("name"=>"foo:bar:baz:f"),
+                              :g=>Dict("name"=>"foo:bar:baz:g"))
+    aviary_input_names = Dict(k=>v["name"] for (k, v) in aviary_input_vars)
+    aviary_output_names = Dict(k=>v["name"] for (k, v) in aviary_output_vars)
 
     # Need to fill `X_ca` with "reasonable" values for the sparsity detection stuff to work.
     # X_ca[:a] = 2.0
@@ -100,9 +102,11 @@ function doit_in_place(; sparse_detect_method, ad_type)
     # X_ca[:c] .= range(5.0, 6.0; length=M)
     # X_ca[:d] .= reshape(range(7.0, 8.0; length=M*N), M, N)
     aviary_meta_data[aviary_input_names[:a]]["default_value"] = 2.0
-    aviary_meta_data[aviary_input_names[:b]]["default_value"] .= range(3.0, 4.0; length=N)
+    # aviary_meta_data[aviary_input_names[:b]]["default_value"] .= range(3.0, 4.0; length=N)
+    aviary_meta_data[aviary_input_names[:b]]["default_value"] = 3.0
     aviary_meta_data[aviary_input_names[:c]]["default_value"] .= range(5.0, 6.0; length=M)
-    aviary_meta_data[aviary_input_names[:d]]["default_value"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+    # aviary_meta_data[aviary_input_names[:d]]["default_value"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+    aviary_meta_data[aviary_input_names[:d]]["default_value"] = 7.0
 
     # Now we can create the component.
     sparse_atol = 1e-10
@@ -121,7 +125,7 @@ function doit_in_place(; sparse_detect_method, ad_type)
     else
         error("unexpected ad_type = $(ad_type)")
     end
-    comp = SparseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params, aviary_input_names, aviary_output_names, aviary_meta_data)
+    comp = SparseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params, aviary_input_vars, aviary_output_vars, aviary_meta_data)
 
     # Need to make sure the units are what I expect them to be.
     @test get_units(comp, :a) == "m"
@@ -131,6 +135,16 @@ function doit_in_place(; sparse_detect_method, ad_type)
     @test get_units(comp, :e) == "Pa"
     @test get_units(comp, :f) == "kg/m**3"
     @test get_units(comp, :g) == "s"
+
+    # Make sure the component vectors were set appropriately.
+    X_ca = get_input_ca(comp)
+    @test X_ca.a ≈ 2.0
+    @test size(X_ca.b) == (N,)
+    @test all(X_ca.b .≈ 3.0)
+    @test size(X_ca.c) == (M,)
+    @test all(X_ca.c .≈ range(5.0, 6.0; length=M))
+    @test size(X_ca.d) == (M, N)
+    @test all(X_ca.d .≈ 7.0)
 
     # Now run all the checks from the previous case.
     rcdict = get_rows_cols_dict(comp)
@@ -479,15 +493,15 @@ function doit_in_place_shape_by_conn(; sparse_detect_method, ad_type)
                             "foo:bar:baz:e"=>Dict("units"=>"Pa", "default_value"=>zeros(Float64, N_wrong)),
                             "foo:bar:baz:f"=>Dict("units"=>"kg/m**3", "default_value"=>zeros(Float64, M, N_wrong)),
                             "foo:bar:baz:g"=>Dict("units"=>"s", "default_value"=>zeros(Float64, N_wrong, M)))
-    aviary_input_names = Dict(
-                            :a=>"foo:bar:baz:a",
-                            :b=>"foo:bar:baz:b",
-                            :c=>"foo:bar:baz:c",
-                            :d=>"foo:bar:baz:d")
-    aviary_output_names = Dict(
-                            :e=>"foo:bar:baz:e",
-                            :f=>"foo:bar:baz:f",
-                            :g=>"foo:bar:baz:g")
+    aviary_input_vars = Dict(:a=>Dict("name"=>"foo:bar:baz:a"),
+                             :b=>Dict("name"=>"foo:bar:baz:b"),
+                             :c=>Dict("name"=>"foo:bar:baz:c"),
+                             :d=>Dict("name"=>"foo:bar:baz:d"))
+    aviary_output_vars = Dict(:e=>Dict("name"=>"foo:bar:baz:e"),
+                              :f=>Dict("name"=>"foo:bar:baz:f"),
+                              :g=>Dict("name"=>"foo:bar:baz:g"))
+    aviary_input_names = Dict(k=>v["name"] for (k, v) in aviary_input_vars)
+    aviary_output_names = Dict(k=>v["name"] for (k, v) in aviary_output_vars)
 
     # Need to fill `X_ca` with "reasonable" values for the sparsity detection stuff to work.
     # X_ca[:a] = 2.0
@@ -517,7 +531,7 @@ function doit_in_place_shape_by_conn(; sparse_detect_method, ad_type)
     else
         error("unexpected ad_type = $(ad_type)")
     end
-    comp = SparseADExplicitComp(ad_backend, f_simple_no_params!, Y_ca, X_ca; shape_by_conn_dict=Dict(:b=>true, :d=>true, :e=>true, :f=>true, :g=>true), aviary_input_names, aviary_output_names, aviary_meta_data)
+    comp = SparseADExplicitComp(ad_backend, f_simple_no_params!, Y_ca, X_ca; shape_by_conn_dict=Dict(:b=>true, :d=>true, :e=>true, :f=>true, :g=>true), aviary_input_vars, aviary_output_vars, aviary_meta_data)
 
     # Now set the size of b to the correct thing.
     input_sizes = Dict(:b=>N, :d=>(M, N))
@@ -881,15 +895,15 @@ function doit_out_of_place(; ad_type, sparse_detect_method)
                             "foo:bar:baz:e"=>Dict("units"=>"Pa", "default_value"=>zeros(Float64, N)),
                             "foo:bar:baz:f"=>Dict("units"=>"kg/m**3", "default_value"=>zeros(Float64, M, N)),
                             "foo:bar:baz:g"=>Dict("units"=>"s", "default_value"=>zeros(Float64, N, M)))
-    aviary_input_names = Dict(
-                            :a=>"foo:bar:baz:a",
-                            # :b=>"foo:bar:baz:b",
-                            :c=>"foo:bar:baz:c",
-                            :d=>"foo:bar:baz:d")
-    aviary_output_names = Dict(
-                            :e=>"foo:bar:baz:e",
-                            :f=>"foo:bar:baz:f",
-                            :g=>"foo:bar:baz:g")
+    aviary_input_vars = Dict(:a=>Dict("name"=>"foo:bar:baz:a"),
+                             # :b=>Dict("name"=>"foo:bar:baz:b"),
+                             :c=>Dict("name"=>"foo:bar:baz:c"),
+                             :d=>Dict("name"=>"foo:bar:baz:d"))
+    aviary_output_vars = Dict(:e=>Dict("name"=>"foo:bar:baz:e"),
+                              :f=>Dict("name"=>"foo:bar:baz:f"),
+                              :g=>Dict("name"=>"foo:bar:baz:g"))
+    aviary_input_names = Dict(k=>v["name"] for (k, v) in aviary_input_vars)
+    aviary_output_names = Dict(k=>v["name"] for (k, v) in aviary_output_vars)
 
     # Need to fill `X_ca` with "reasonable" values for the sparsity detection stuff to work.
     # X_ca[:a] = 2.0
@@ -921,7 +935,7 @@ function doit_out_of_place(; ad_type, sparse_detect_method)
 
     units_dict = Dict(:b=>"m**2")
 
-    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; params, units_dict, aviary_input_names, aviary_output_names, aviary_meta_data)
+    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; params, units_dict, aviary_input_vars, aviary_output_vars, aviary_meta_data)
 
     # Need to make sure the units are what I expect them to be.
     @test get_units(comp, :a) == "m"
@@ -1303,15 +1317,15 @@ function doit_out_of_place_shape_by_conn(; ad_type, sparse_detect_method)
                             "foo:bar:baz:e"=>Dict("units"=>"Pa", "default_value"=>zeros(Float64, N)),
                             "foo:bar:baz:f"=>Dict("units"=>"kg/m**3", "default_value"=>zeros(Float64, M_wrong, N)),
                             "foo:bar:baz:g"=>Dict("units"=>"s", "default_value"=>zeros(Float64, N, M_wrong)))
-    aviary_input_names = Dict(
-                            :a=>"foo:bar:baz:a",
-                            # :b=>"foo:bar:baz:b",
-                            :c=>"foo:bar:baz:c",
-                            :d=>"foo:bar:baz:d")
-    aviary_output_names = Dict(
-                            :e=>"foo:bar:baz:e",
-                            :f=>"foo:bar:baz:f",
-                            :g=>"foo:bar:baz:g")
+    aviary_input_vars = Dict(:a=>Dict("name"=>"foo:bar:baz:a"),
+                             # :b=>Dict("name"=>"foo:bar:baz:b"),
+                             :c=>Dict("name"=>"foo:bar:baz:c"),
+                             :d=>Dict("name"=>"foo:bar:baz:d"))
+    aviary_output_vars = Dict(:e=>Dict("name"=>"foo:bar:baz:e"),
+                              :f=>Dict("name"=>"foo:bar:baz:f"),
+                              :g=>Dict("name"=>"foo:bar:baz:g"))
+    aviary_input_names = Dict(k=>v["name"] for (k, v) in aviary_input_vars)
+    aviary_output_names = Dict(k=>v["name"] for (k, v) in aviary_output_vars)
 
     # Need to fill `X_ca` with "reasonable" values for the sparsity detection stuff to work.
     # X_ca[:a] = 2.0
@@ -1344,7 +1358,7 @@ function doit_out_of_place_shape_by_conn(; ad_type, sparse_detect_method)
 
     units_dict = Dict(:b=>"m**2")
 
-    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; params, units_dict, shape_by_conn_dict=Dict(:c=>true, :d=>true, :f=>true, :g=>true), aviary_input_names, aviary_output_names, aviary_meta_data)
+    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; params, units_dict, shape_by_conn_dict=Dict(:c=>true, :d=>true, :f=>true, :g=>true), aviary_input_vars, aviary_output_vars, aviary_meta_data)
 
     # Now set the size of b to the correct thing.
     input_sizes = Dict(:c=>M, :d=>(M, N))

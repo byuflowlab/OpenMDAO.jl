@@ -665,6 +665,10 @@ end
 
 end
 
+@safetestset "unitfulify" begin
+    include("unitfulify.jl")
+end
+
 @testset "SparseADExplicitComp" begin
     @safetestset "manual sparsity" begin
         include("autosparse_manual.jl")

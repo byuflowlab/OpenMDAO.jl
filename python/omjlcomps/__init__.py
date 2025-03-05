@@ -308,3 +308,10 @@ class JuliaImplicitComp(om.ImplicitComponent):
 def to_jlsymstrdict(d):
     T = juliacall.Main.Dict[juliacall.Main.Symbol,juliacall.Main.String]
     return juliacall.convert(T, d)
+
+def to_jlsymdictstranydict(d):
+    T = juliacall.Main.Dict[
+            juliacall.Main.Symbol,
+            juliacall.Main.Dict[
+                juliacall.Main.String, juliacall.Main.Any]]
+    return juliacall.convert(T, d)

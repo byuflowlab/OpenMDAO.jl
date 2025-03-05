@@ -7,7 +7,8 @@ using DifferentiationInterface: DifferentiationInterface
 using Random: rand!
 using SparseArrays: sparse, findnz, nonzeros, AbstractSparseArray
 using SparseMatrixColorings: SparseMatrixColorings
-using Unitful: uparse, ustrip, uconvert
+using Unitful: Unitful, uconvert, uparse, ustrip, @unit
+using UnitfulAngles: UnitfulAngles  # needed for converting an OpenMDAO `rev` to a UnitfulAngles `turn`
 
 include("utils.jl")
 export get_rows_cols, get_rows_cols_dict_from_sparsity, ca2strdict, ca2strdict_sparse, rcdict2strdict, PerturbedDenseSparsityDetector
@@ -32,5 +33,9 @@ export SparseADExplicitComp, get_rows_cols_dict
 
 include("matrix_free_ad.jl")
 export MatrixFreeADExplicitComp, get_dinput_ca, get_doutput_ca
+
+function __init__()
+    Unitful.register(OpenMDAOCore)
+end
 
 end # module

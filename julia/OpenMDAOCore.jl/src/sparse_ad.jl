@@ -50,7 +50,7 @@ mutable struct SparseADExplicitComp{InPlace,TAD,TCompute} <: AbstractADExplicitC
 end
 
 """
-    SparseADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
+    SparseADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false, aviary_input_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_output_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_meta_data=Dict{String,Any}())
 
 Create a `SparseADExplicitComp` from a user-defined function and output and input `ComponentVector`s.
 
@@ -66,13 +66,12 @@ Create a `SparseADExplicitComp` from a user-defined function and output and inpu
 * `tags_dict`: `Dict` mapping variable names (as `Symbol`s) to `Vector`s of OpenMDAO tags
 * `shape_by_conn_dict`: `Dict` mapping variable names (as `Symbol`s) to `Bool`s indicating if the variable's shape (size) will be set dynamically by a connection
 * `copy_shape_dict`: `Dict` mapping variable names to other variable names indicating the "key" symbol should take its size from the "value" symbol
-* `aviary_input_names::Dict{Symbol,String}`: mapping of input variable names to Aviary names.
-* `aviary_output_names::Dict{Symbol,String}`: mapping of output variable names to Aviary names.
+* `force_skip_prep`: if true, defer creating internal arrays and other structs until the user calls `update_prep!`
+* `aviary_input_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of input variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary input variables.
+* `aviary_output_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of output variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary output variables.
 * `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
 """
-function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}()) where {TAD<:ADTypes.AutoSparse}
-
-    _check_aviary_names(aviary_input_names, aviary_output_names)
+function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false, aviary_input_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_output_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_meta_data=Dict{String,Any}()) where {TAD<:ADTypes.AutoSparse}
 
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
@@ -84,11 +83,13 @@ function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::
     end
 
     # Process the Aviary metadata.
-    X_ca_full, units_dict_tmp = _process_aviary_metadata(X_ca, units_dict, aviary_input_names, aviary_meta_data)
-    Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
+    X_ca_full, units_dict_tmp, aviary_input_names = _process_aviary_metadata(X_ca, units_dict, aviary_input_vars, aviary_meta_data)
+    Y_ca_full, units_dict_full, aviary_output_names = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_vars, aviary_meta_data)
+
+    _check_aviary_names(aviary_input_names, aviary_output_names)
 
     # Get the prep-related stuff.
-    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0) && (!force_skip_prep)
         prep, J_ca_sparse, rcdict, X_ca_cs, Y_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, Y_ca_full, X_ca_full)
     else
         # No point in getting a "good" prep when we don't know all the shapes.
@@ -103,7 +104,7 @@ function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::
 end
 
 """
-    SparseADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}())
+    SparseADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false, aviary_input_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_output_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_meta_data=Dict{String,Any}())
 
 Create a `SparseADExplicitComp` from a user-defined function and output and input `ComponentVector`s.
 
@@ -118,13 +119,12 @@ Create a `SparseADExplicitComp` from a user-defined function and output and inpu
 * `tags_dict`: `Dict` mapping variable names (as `Symbol`s) to `Vector`s of OpenMDAO tags
 * `shape_by_conn_dict`: `Dict` mapping variable names (as `Symbol`s) to `Bool`s indicating if the variable's shape (size) will be set dynamically by a connection
 * `copy_shape_dict`: `Dict` mapping variable names to other variable names indicating the "key" symbol should take its size from the "value" symbol
-* `aviary_input_names::Dict{Symbol,String}`: mapping of input variable names to Aviary names.
-* `aviary_output_names::Dict{Symbol,String}`: mapping of output variable names to Aviary names.
+* `force_skip_prep`: if true, defer creating internal arrays and other structs until the user calls `update_prep!`
+* `aviary_input_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of input variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary input variables.
+* `aviary_output_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of output variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary output variables.
 * `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
 """
-function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_names=Dict{Symbol,String}(), aviary_output_names=Dict{Symbol,String}(), aviary_meta_data=Dict{String,Any}()) where {TAD<:ADTypes.AutoSparse}
-
-    _check_aviary_names(aviary_input_names, aviary_output_names)
+function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false, aviary_input_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_output_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_meta_data=Dict{String,Any}()) where {TAD<:ADTypes.AutoSparse}
 
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
@@ -134,14 +134,16 @@ function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=
         end
     end
 
-    # # Process the Aviary metadata for the inputs.
-    X_ca_full, units_dict_tmp = _process_aviary_metadata(X_ca, units_dict, aviary_input_names, aviary_meta_data)
+    # Process the Aviary metadata for the inputs.
+    X_ca_full, units_dict_tmp, aviary_input_names = _process_aviary_metadata(X_ca, units_dict, aviary_input_vars, aviary_meta_data)
     # Process the Aviary metadata for the outputs.
     Y_ca = compute_adable(X_ca_full)
-    Y_ca_full, units_dict_full = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_names, aviary_meta_data)
+    Y_ca_full, units_dict_full, aviary_output_names = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_vars, aviary_meta_data)
+
+    _check_aviary_names(aviary_input_names, aviary_output_names)
 
     # Get the prep-related stuff.
-    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0) && (!force_skip_prep)
         prep, J_ca_sparse, rcdict, X_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, X_ca_full)
     else
         # No point in getting a "good" prep when we don't know all the shapes.
@@ -278,8 +280,8 @@ function get_partials_data(self::SparseADExplicitComp)
         output_idx_py = _get_py_indices(size(Y_ca[output_name]))
 
         # Translate the Julia-ordered, 1-based rows and cols to Python-ordered, 0-based rows and cols.
-        rows0based = getindex.(Ref(input_idx_py), rows)
-        cols0based = getindex.(Ref(output_idx_py), cols)
+        cols0based = getindex.(Ref(input_idx_py), cols)
+        rows0based = getindex.(Ref(output_idx_py), rows)
 
         push!(partials_data, OpenMDAOCore.PartialsData(get_aviary_output_name(self, output_name), get_aviary_input_name(self, input_name); rows=rows0based, cols=cols0based))
     end
@@ -290,10 +292,10 @@ end
 function setup_partials(self::SparseADExplicitComp, input_sizes, output_sizes)
 
     input_av_name_to_ca_name = Dict(get_aviary_input_name(self, k)=>k for k in keys(get_input_ca(self)))
-    input_sizes_ca = Dict(input_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in input_sizes)
+    input_sizes_ca = Dict{Symbol,Any}(input_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in input_sizes)
 
     output_av_name_to_ca_name = Dict(get_aviary_output_name(self, k)=>k for k in keys(get_output_ca(self)))
-    output_sizes_ca = Dict(output_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in output_sizes)
+    output_sizes_ca = Dict{Symbol,Any}(output_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in output_sizes)
 
     update_prep!(self, input_sizes_ca, output_sizes_ca)
 
