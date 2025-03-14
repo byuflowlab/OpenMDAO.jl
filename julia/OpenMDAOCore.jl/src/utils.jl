@@ -643,12 +643,12 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
 
         if !(ca_name in keys(X_ca))
             if shape === nothing
-                val = meta["default_value"]
+                val = get(meta, "default_value", nothing)
                 if val === nothing
                     val = zero(eltype(X_ca))
                 end
             else
-                val = meta["default_value"]
+                val = get(meta, "default_value", nothing)
                 if val === nothing
                     val = zeros(eltype(X_ca), shape)
                 else
