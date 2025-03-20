@@ -197,10 +197,10 @@ Tweaked version of [`DenseSparsityDetector`](https://gdalle.github.io/Differenti
 Specifically, input vector `x` will be perturbed via
 
 ```julia
-    x_perturb = (1 .+ rel_x_perturb.*perturb).*x
+    x_perturb = (1 .+ rel_x_perturb.*perturb1).*x .+ perturb2.*abs_x_perturb
 ```
 
-where `perturb` is a random `Vector` of numbers ranging from `-0.5` to `0.5`, and `rel_x_perturb` is a relative perturbation magnitude specified by the user.
+where `perturb1` and `perturb2` are random `Vector`s of numbers ranging from `-0.5` to `0.5`, and `rel_x_perturb` and `abs_x_perturb` are relative and absolute perturbation magnitudes specified by the user.
 
 All of the caveats associated with the performance of `DenseSparsityDetector` apply to `PerturbedDenseSparsityDetector`, since it essentially does the same thing as `DenseSparsityDetector` multiple times.
 The nonzeros in a Jacobian or Hessian are detected by computing the relevant matrix with _dense_ AD, and thresholding the entries with a given tolerance (which can be numerically inaccurate).
@@ -219,7 +219,7 @@ This process can be very slow, and should only be used if its output can be expl
 
 # Constructor
 
-    PerturbedDenseSparsityDetector(backend; atol, method=:iterative, nevals=3, rel_x_perturb=0.001)
+    PerturbedDenseSparsityDetector(backend; atol, method=:iterative, nevals=3, rel_x_perturb=0.001, abs_x_perturb=0.0001)
 
 The keyword argument `method::Symbol` can be either:
 
@@ -229,11 +229,12 @@ The keyword argument `method::Symbol` can be either:
 Note that the constructor is type-unstable because `method` ends up being a type parameter of the `PerturbedDenseSparsityDetector` object (this is not part of the API and might change).
 
 """
-struct PerturbedDenseSparsityDetector{method,B,TRelXPerturb} <: ADTypes.AbstractSparsityDetector
+struct PerturbedDenseSparsityDetector{method,B,TRelXPerturb,TAbsXPerturb} <: ADTypes.AbstractSparsityDetector
     backend::B
     atol::Float64
     nevals::Int
     rel_x_perturb::TRelXPerturb
+    abs_x_perturb::TAbsXPerturb
 end
 
 function Base.show(io::IO, detector::PerturbedDenseSparsityDetector{method}) where {method}
@@ -245,13 +246,13 @@ function Base.show(io::IO, detector::PerturbedDenseSparsityDetector{method}) whe
         repr(backend; context=io),
         "; atol=$atol, method=",
         repr(method; context=io),
-        "nevals=$nevals, rel_x_perturb=$rel_x_perturb",
+        "nevals=$nevals, rel_x_perturb=$rel_x_perturb", "abs_x_perturb=$abs_x_perturb",
         ")",
     )
 end
 
 function PerturbedDenseSparsityDetector(
-    backend::ADTypes.AbstractADType; atol::Float64, method::Symbol=:iterative, nevals=3, rel_x_perturb=0.001
+    backend::ADTypes.AbstractADType; atol::Float64, method::Symbol=:iterative, nevals=3, rel_x_perturb=0.001, abs_x_perturb=0.0001
 )
     if !(method in (:iterative, :direct))
         throw(
@@ -265,24 +266,27 @@ function PerturbedDenseSparsityDetector(
         )
     end
 
-    return PerturbedDenseSparsityDetector{method,typeof(backend),typeof(rel_x_perturb)}(backend, atol, nevals, rel_x_perturb)
+    return PerturbedDenseSparsityDetector{method,typeof(backend),typeof(rel_x_perturb),typeof(abs_x_perturb)}(backend, atol, nevals, rel_x_perturb, abs_x_perturb)
 end
 
 ## Direct
 
 function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:direct})
-    (; backend, atol, nevals, rel_x_perturb) = detector
+    (; backend, atol, nevals, rel_x_perturb, abs_x_perturb) = detector
 
     x_perturb = similar(x)
-    perturb = similar(x)
+    perturb1 = similar(x)
+    perturb2 = similar(x)
 
-    rand!(perturb)
-    x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+    rand!(perturb1)
+    rand!(perturb2)
+    x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
     Jabs = abs.(DifferentiationInterface.jacobian(f, backend, x_perturb))
 
     for i in 1:nevals-1
-        rand!(perturb)
-        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        rand!(perturb1)
+        rand!(perturb2)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
         Jabs .+= abs.(DifferentiationInterface.jacobian(f, backend, x_perturb))
     end
 
@@ -290,37 +294,69 @@ function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetecto
 end
 
 function ADTypes.jacobian_sparsity(f!, y, x, detector::PerturbedDenseSparsityDetector{:direct})
-    (; backend, atol, nevals, rel_x_perturb) = detector
+    (; backend, atol, nevals, rel_x_perturb, abs_x_perturb) = detector
 
     x_perturb = similar(x)
-    perturb = similar(x)
+    perturb1 = similar(x)
+    perturb2 = similar(x)
 
-    rand!(perturb)
-    x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+    rand!(perturb1)
+    rand!(perturb2)
+    x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
     Jabs = abs.(DifferentiationInterface.jacobian(f!, y, backend, x_perturb))
 
+    # println("i = 0, Jabs =\n$(Jabs)")
     for i in 1:nevals-1
-        rand!(perturb)
-        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        rand!(perturb1)
+        rand!(perturb2)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
         Jabs .+= abs.(DifferentiationInterface.jacobian(f!, y, backend, x_perturb))
+        # println("i = $i, Jabs =\n$(Jabs)")
     end
 
     return sparse(Jabs .> atol)
 end
 
-function ADTypes.hessian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:direct})
-    (; backend, atol, nevals, rel_x_perturb) = detector
+function jacobian_sparsity!(Jabs, f!, y, x, detector::PerturbedDenseSparsityDetector{:direct})
+    (; backend, atol, nevals, rel_x_perturb, abs_x_perturb) = detector
 
     x_perturb = similar(x)
-    perturb = similar(x)
+    perturb1 = similar(x)
+    perturb2 = similar(x)
 
-    rand!(perturb)
-    x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+    rand!(perturb1)
+    rand!(perturb2)
+    x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
+    Jabs .= abs.(DifferentiationInterface.jacobian(f!, y, backend, x_perturb))
+
+    for i in 1:nevals-1
+        rand!(perturb1)
+        rand!(perturb2)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
+        foo = abs.(DifferentiationInterface.jacobian(f!, y, backend, x_perturb))
+        Jabs .+= foo
+    end
+
+    # return sparse(Jabs .> atol)
+    return nothing
+end
+
+function ADTypes.hessian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:direct})
+    (; backend, atol, nevals, rel_x_perturb, abs_x_perturb) = detector
+
+    x_perturb = similar(x)
+    perturb1 = similar(x)
+    perturb2 = similar(x)
+
+    rand!(perturb1)
+    rand!(perturb2)
+    x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
     Habs = abs.(DifferentiationInterface.hessian(f, backend, x_perturb))
 
     for i in 1:nevals-1
-        rand!(perturb)
-        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        rand!(perturb1)
+        rand!(perturb2)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
         Habs .+= abs.(DifferentiationInterface.hessian(f, backend, x_perturb))
     end
 
@@ -328,11 +364,12 @@ function ADTypes.hessian_sparsity(f, x, detector::PerturbedDenseSparsityDetector
 end
 
 function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:iterative})
-    (; backend, atol, nevals, rel_x_perturb) = detector
+    (; backend, atol, nevals, rel_x_perturb, abs_x_perturb) = detector
     y = f(x)
 
     x_perturb = similar(x)
-    perturb = similar(x)
+    perturb1 = similar(x)
+    perturb2 = similar(x)
 
     n, m = length(x), length(y)
     IJ = Vector{Tuple{Int,Int}}()
@@ -341,8 +378,9 @@ function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetecto
     # I guess the only way to do that is just to check.
     # It would be cool if I could skip adding non-zero entries for rows/columns that I've already identified as all non-sparse.
     for _ in 1:nevals
-        rand!(perturb)
-        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        rand!(perturb1)
+        rand!(perturb2)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
 
         if DifferentiationInterface.pushforward_performance(backend) isa DifferentiationInterface.PushforwardFast
             p = similar(y)
@@ -387,17 +425,19 @@ function ADTypes.jacobian_sparsity(f, x, detector::PerturbedDenseSparsityDetecto
 end
 
 function ADTypes.jacobian_sparsity(f!, y, x, detector::PerturbedDenseSparsityDetector{:iterative})
-    (; backend, atol, nevals, rel_x_perturb) = detector
+    (; backend, atol, nevals, rel_x_perturb, abs_x_perturb) = detector
 
     x_perturb = similar(x)
-    perturb = similar(x)
+    perturb1 = similar(x)
+    perturb2 = similar(x)
 
     n, m = length(x), length(y)
     IJ = Vector{Tuple{Int,Int}}()
 
     for _ in 1:nevals
-        rand!(perturb)
-        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        rand!(perturb1)
+        rand!(perturb2)
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
 
         if DifferentiationInterface.pushforward_performance(backend) isa DifferentiationInterface.PushforwardFast
             p = similar(y)
@@ -442,17 +482,18 @@ function ADTypes.jacobian_sparsity(f!, y, x, detector::PerturbedDenseSparsityDet
 end
 
 function ADTypes.hessian_sparsity(f, x, detector::PerturbedDenseSparsityDetector{:iterative})
-    (; backend, atol, nevals, rel_x_perturb) = detector
+    (; backend, atol, nevals, rel_x_perturb, abs_x_perturb) = detector
 
     x_perturb = similar(x)
-    perturb = similar(x)
+    perturb1 = similar(x)
+    perturb2 = similar(x)
     p = similar(x)
 
     n = length(x)
     IJ = Vector{Tuple{Int,Int}}()
     for _ in 1:nevals
         rand!(perturb)
-        x_perturb .= (1 .+ rel_x_perturb.*(perturb .- 0.5)).*x
+        x_perturb .= (1 .+ rel_x_perturb.*(perturb1 .- 0.5)).*x .+ (perturb2 .- 0.5).*abs_x_perturb
 
         # prep = DifferentiationInterface.prepare_hvp_same_point(f, backend, x_perturb, (DifferentiationInterface.basis(backend, x_perturb, first(eachindex(x_perturb))),))
         prep = DifferentiationInterface.prepare_hvp_same_point(f, backend, x_perturb, (DifferentiationInterface.basis(x_perturb, first(eachindex(x_perturb))),))
@@ -577,6 +618,12 @@ end
 
 #     return X_ca, units_dict_full
 # end
+#
+function _convert_val(T, val, target_units, source_units)
+    tu = uparse(_unitfulify_units(target_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
+    su = uparse(_unitfulify_units(source_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
+    return val * ustrip(uconvert(tu, one(T)*su))
+end
 
 function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_vars::AbstractDict{Symbol,<:AbstractDict{String,<:Any}}, aviary_meta_data::AbstractDict)
     # So, the goal here is to do what Aviary does for `add_aviary_input` and `add_aviary_output`, which is all this:
@@ -626,44 +673,150 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
 
     units_dict_full = deepcopy(units_dict)
     aviary_names = Dict{Symbol,String}()
+
     for (ca_name, aviary_data) in aviary_vars
         aviary_name = aviary_names[ca_name] = aviary_data["name"]
         meta = aviary_meta_data[aviary_name]
-        shape = get(aviary_data, "shape", nothing)
 
-        default_units = meta["units"]
-        # Check if user specified units.
-        if ca_name in keys(units_dict_full)
-            input_units = units_dict_full[ca_name]
-        else
-            # No units specified by user, so use the default units.
-            input_units = default_units
-            units_dict_full[ca_name] = default_units
-        end
-
-        if !(ca_name in keys(X_ca))
-            if shape === nothing
-                val = get(meta, "default_value", nothing)
-                if val === nothing
-                    val = zero(eltype(X_ca))
-                end
+        if ca_name in keys(X_ca)
+            if ca_name in keys(units_dict)
+                target_units = units_dict[ca_name]
+            elseif "units" in keys(aviary_data)
+                target_units = aviary_data["units"]
+            elseif "units" in keys(meta)
+                target_units = meta["units"]
             else
-                val = get(meta, "default_value", nothing)
-                if val === nothing
-                    val = zeros(eltype(X_ca), shape)
-                else
-                    val = ones(eltype(X_ca), shape) * val
-                end
+                target_units = nothing
             end
 
-            if input_units != default_units
-                # Convert default value from default units to requested units.
-                iu = uparse(_unitfulify_units(input_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
-                du = uparse(_unitfulify_units(default_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
-                val_convert = val * ustrip(uconvert(iu, one(eltype(X_ca))*du))
+            if target_units !== nothing
+                units_dict_full[ca_name] = target_units
+            end
+
+            # Don't do anything with the shape---if the user specified a value in the ComponentVector, then that's assumed to be correct.
+
+        elseif "val" in keys(aviary_data)
+
+            val = aviary_data["val"]
+
+            if ca_name in keys(units_dict)
+                target_units = units_dict[ca_name]
+            elseif "units" in keys(aviary_data)
+                target_units = aviary_data["units"]
+            elseif "units" in keys(meta)
+                target_units = meta["units"]
             else
-                # No change in units, so no conversion necessary.
+                target_units = nothing
+            end
+
+            if "units" in keys(aviary_data)
+                source_units = aviary_data["units"]
+            elseif "units" in keys(meta)
+                source_units = meta["units"]
+            else
+                source_units = nothing
+            end
+
+            if (target_units != source_units) && (source_units != nothing)
+                val_convert = _convert_val(eltype(X_ca), val, target_units, source_units)
+            else
                 val_convert = val
+            end
+
+            if target_units !== nothing
+                units_dict_full[ca_name] = target_units
+            end
+
+            # Reshape if shape was provided in the input data.
+            if "shape" in keys(aviary_data)
+                shape = aviary_data["shape"]
+                val_convert = val_convert * ones(shape)
+            end
+
+            # Finally, need to add the new value to `X_ca`.
+            # Hmm... but I don't think it's possible to extend ComponentVectors.
+            # So I'll need to vcat I think.
+            # val_ca = ComponentVector(Dict(ca_name=>val_convert))
+            # X_ca = vcat(X_ca, val_ca)
+            # Lame, `vcat` flattens components with ndims > 1.
+            # Does this need to be an OrderedDict?
+            # I don't think so, since this is called before any of the prep stuff is created, etc.
+            # Also when insert new variables into the component vector, it seems reasonable that the user can't rely on what order things show up in the component vector.
+            # On the other hand, it might make more sense to add them at the end, which would be done if I switch to the OrderedDict.
+            d = OrderedDict{Symbol,Any}(k=>X_ca[k] for k in keys(X_ca))
+            d[ca_name] = val_convert
+            X_ca = ComponentVector(d)
+
+        elseif "default_value" in keys(meta)
+            val = meta["default_value"]
+
+            if ca_name in keys(units_dict)
+                target_units = units_dict[ca_name]
+            elseif "units" in keys(aviary_data)
+                target_units = aviary_data["units"]
+            elseif "units" in keys(meta)
+                target_units = meta["units"]
+            else
+                target_units = nothing
+            end
+
+            if "units" in keys(meta)
+                source_units = meta["units"]
+            else
+                source_units = nothing
+            end
+
+            if target_units != source_units && (source_units !== nothing)
+                val_convert = _convert_val(eltype(X_ca), val, target_units, source_units)
+            else
+                val_convert = val
+            end
+
+            if target_units !== nothing
+                units_dict_full[ca_name] = target_units
+            end
+            
+            if "shape" in keys(aviary_data)
+                shape = aviary_data["shape"]
+                val_convert = val_convert * ones(shape)
+            end
+
+            # Finally, need to add the new value to `X_ca`.
+            # Hmm... but I don't think it's possible to extend ComponentVectors.
+            # So I'll need to vcat I think.
+            # val_ca = ComponentVector(Dict(ca_name=>val_convert))
+            # X_ca = vcat(X_ca, val_ca)
+            # Lame, `vcat` flattens components with ndims > 1.
+            # Does this need to be an OrderedDict?
+            # I don't think so, since this is called before any of the prep stuff is created, etc.
+            # Also when insert new variables into the component vector, it seems reasonable that the user can't rely on what order things show up in the component vector.
+            # On the other hand, it might make more sense to add them at the end, which would be done if I switch to the OrderedDict.
+            d = OrderedDict{Symbol,Any}(k=>X_ca[k] for k in keys(X_ca))
+            d[ca_name] = val_convert
+            X_ca = ComponentVector(d)
+
+        else
+
+            # No value at all, so just zero.
+            val_convert = zero(eltype(X_ca))
+
+            if ca_name in keys(units_dict)
+                target_units = units_dict[ca_name]
+            elseif "units" in keys(aviary_data)
+                target_units = aviary_data["units"]
+            elseif "units" in keys(meta)
+                target_units = meta["units"]
+            else
+                target_units = nothing
+            end
+
+            if target_units !== nothing
+                units_dict_full[ca_name] = target_units
+            end
+
+            if "shape" in keys(aviary_data)
+                shape = aviary_data["shape"]
+                val_convert = val_convert * ones(shape)
             end
 
             # Finally, need to add the new value to `X_ca`.
@@ -680,6 +833,7 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
             d[ca_name] = val_convert
             X_ca = ComponentVector(d)
         end
+
     end
 
     return X_ca, units_dict_full, aviary_names
