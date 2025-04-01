@@ -521,7 +521,9 @@ function _unitfulify_units(unit::String)
                    r"\bmin\b"=>"minute",
                    r"\bdeg\b"=>"°",
                    r"\brev\b"=>"turn",
-                   r"\blbm\b"=>"lb")
+                   r"\blbm\b"=>"lb",
+                   r"\bh\b"=>"hr",
+                  )
 end
 
 # function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_names::Dict{Symbol,String}, aviary_meta_data::AbstractDict)
@@ -619,11 +621,13 @@ end
 #     return X_ca, units_dict_full
 # end
 #
-function _convert_val(T, val, target_units, source_units)
+function _convert_val(T, target_units, val, source_units)
     tu = uparse(_unitfulify_units(target_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
     su = uparse(_unitfulify_units(source_units); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
     return val * ustrip(uconvert(tu, one(T)*su))
 end
+_convert_val(target_units, val::AbstractArray, source_units) = _convert_val(eltype(val), target_units, val, source_units)
+_convert_val(target_units, val, source_units) = _convert_val(typeof(val), target_units, val, source_units)
 
 function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol,String}, aviary_vars::AbstractDict{Symbol,<:AbstractDict{String,<:Any}}, aviary_meta_data::AbstractDict)
     # So, the goal here is to do what Aviary does for `add_aviary_input` and `add_aviary_output`, which is all this:
@@ -718,7 +722,7 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
             end
 
             if (target_units != source_units) && (source_units != nothing)
-                val_convert = _convert_val(eltype(X_ca), val, target_units, source_units)
+                val_convert = _convert_val(eltype(X_ca), target_units, val, source_units)
             else
                 val_convert = val
             end
@@ -767,7 +771,7 @@ function _process_aviary_metadata(X_ca::ComponentVector, units_dict::Dict{Symbol
             end
 
             if target_units != source_units && (source_units !== nothing)
-                val_convert = _convert_val(eltype(X_ca), val, target_units, source_units)
+                val_convert = _convert_val(eltype(X_ca), target_units, val, source_units)
             else
                 val_convert = val
             end

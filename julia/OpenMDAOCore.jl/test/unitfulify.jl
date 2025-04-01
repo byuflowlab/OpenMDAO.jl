@@ -1,15 +1,13 @@
-using OpenMDAOCore: OpenMDAOCore, _unitfulify_units
+using OpenMDAOCore: OpenMDAOCore, _convert_val
 using Unitful: Unitful, uparse, ustrip, uconvert
-using UnitfulAngles: UnitfulAngles  # needed for converting an OpenMDAO `rev` to a UnitfulAngles `turn`
 
-iu = uparse(_unitfulify_units("rad/s"); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
-du = uparse(_unitfulify_units("rev/min"); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
-val = 2000.0
-val_convert = val * ustrip(uconvert(iu, one(Float64)*du))
-@test val_convert ≈ val*2*pi/60
+val = 2143.0
 
-iu = uparse(_unitfulify_units("hp"); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
-du = uparse(_unitfulify_units("W"); unit_context=[Unitful, UnitfulAngles, OpenMDAOCore])
-val = 2000.0
-val_convert = val * ustrip(uconvert(iu, one(Float64)*du))
-@test val_convert ≈ 2000.0/745.7
+@test _convert_val("rad/s", val, "rev/min") ≈ val*2*pi/60
+@test all(_convert_val("rad/s", fill(val, 2, 3, 4), "rev/min") .≈ val*2*pi/60)
+
+@test _convert_val("W", val, "hp") ≈ val*745.7
+@test all(_convert_val("W", fill(val, 2, 3, 4), "hp") .≈ val*745.7)
+
+@test _convert_val("mi/h", val, "m/s") ≈ val/0.0254/12/3/1760*3600
+@test all(_convert_val("mi/h", fill(val, 2, 3, 4), "m/s") .≈ val/0.0254/12/3/1760*3600)
