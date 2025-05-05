@@ -84,12 +84,12 @@ function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::C
     if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
         prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs = _get_matrix_free_prep_stuff_in_place(ad_backend, compute_adable, Y_ca_full, X_ca_full, force_mode, disable_prep)
     else
-        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep!`.
-        prep = DifferentiationInterface.NoPushforwardPrep()
         dX_ca = ComponentVector{eltype(X_ca_full)}()
         dY_ca = ComponentVector{eltype(Y_ca_full)}()
         X_ca_cs = ComponentVector{ComplexF64}()
         Y_ca_cs = ComponentVector{ComplexF64}()
+        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep!`.
+        prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, Y_ca_full, ad_backend, X_ca_full, (dX_ca,); strict=Val{true}()))
     end
 
     return MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca_full, Y_ca_full, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict_full, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
@@ -141,11 +141,11 @@ function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=n
     if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
         prep, dX_ca, dY_ca, X_ca_cs = _get_matrix_free_prep_stuff_out_of_place(ad_backend, compute_adable, Y_ca_full, X_ca_full, force_mode, disable_prep)
     else
-        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep!`.
-        prep = DifferentiationInterface.NoPushforwardPrep()
         dX_ca = ComponentVector{eltype(X_ca_full)}()
         dY_ca = ComponentVector{eltype(Y_ca_full)}()
         X_ca_cs = ComponentVector{ComplexF64}()
+        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep!`.
+        prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca_full, (dX_ca,); strict=Val{true}()))
     end
 
     return MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca_full, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict_full, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
@@ -160,26 +160,26 @@ function _get_matrix_free_prep_stuff_in_place(ad_backend, compute_adable, Y_ca, 
     if force_mode == ""
         if DifferentiationInterface.pushforward_performance(ad_backend) isa DifferentiationInterface.PushforwardFast
             if disable_prep
-                prep = DifferentiationInterface.NoPushforwardPrep()
+                prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,); strict=Val{true}()))
             else
                 prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,))
             end
         else
             if disable_prep
-                prep = DifferentiationInterface.NoPullbackPrep()
+                prep = DifferentiationInterface.NoPullbackPrep(DifferentiationInterface.signature(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,); strict=Val{true}()))
             else
                 prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,))
             end
         end
     elseif force_mode == "fwd"
         if disable_prep
-            prep = DifferentiationInterface.NoPushforwardPrep()
+            prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,); strict=Val{true}()))
         else
             prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,))
         end
     elseif force_mode == "rev"
         if disable_prep
-            prep = DifferentiationInterface.NoPullbackPrep()
+            prep = DifferentiationInterface.NoPullbackPrep(DifferentiationInterface.signature(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,); strict=Val{true}()))
         else
             prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,))
         end
@@ -205,26 +205,26 @@ function _get_matrix_free_prep_stuff_out_of_place(ad_backend, compute_adable, Y_
     if force_mode == ""
         if DifferentiationInterface.pushforward_performance(ad_backend) isa DifferentiationInterface.PushforwardFast
             if disable_prep
-                prep = DifferentiationInterface.NoPushforwardPrep()
+                prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca, (dX_ca,); strict=Val{true}()))
             else
                 prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca, (dX_ca,))
             end
         else
             if disable_prep
-                prep = DifferentiationInterface.NoPullbackPrep()
+                prep = DifferentiationInterface.NoPullbackPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca, (dY_ca,); strict=Val{true}()))
             else
                 prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca, (dY_ca,))
             end
         end
     elseif force_mode == "fwd"
         if disable_prep
-            prep = DifferentiationInterface.NoPushforwardPrep()
+            prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca, (dX_ca,); strict=Val{true}()))
         else
             prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca, (dX_ca,))
         end
     elseif force_mode == "rev"
         if disable_prep
-            prep = DifferentiationInterface.NoPullbackPrep()
+            prep = DifferentiationInterface.NoPullbackPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca, (dY_ca,); strict=Val{true}()))
         else
             prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca, (dY_ca,))
         end
@@ -497,14 +497,12 @@ function OpenMDAOCore.compute_jacvec_product!(self::MatrixFreeADExplicitComp, in
         if prep isa DifferentiationInterface.PushforwardPrep
             _compute_pushforward!(self, inputs, d_inputs, d_outputs)
         else
-            # throw(ArgumentError("mode = \"fwd\" not supported for AD backend $(backend), preparation $(prep)"))
             @warn "mode = \"fwd\" not supported for AD backend $(backend), preparation $(prep), derivatives for $(self) will be incorrect"
         end
     elseif mode == "rev"
         if prep isa DifferentiationInterface.PullbackPrep
             _compute_pullback!(self, inputs, d_inputs, d_outputs)
         else
-            # throw(ArgumentError("mode = \"rev\" not supported for AD backend $(backend), preparation $(prep)"))
             @warn "mode = \"rev\" not supported for AD backend $(backend), preparation $(prep), derivatives for $(self) will be incorrect"
         end
     else

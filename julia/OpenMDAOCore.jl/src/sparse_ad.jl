@@ -93,7 +93,7 @@ function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::
         prep, J_ca_sparse, rcdict, X_ca_cs, Y_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, Y_ca_full, X_ca_full)
     else
         # No point in getting a "good" prep when we don't know all the shapes.
-        prep = DifferentiationInterface.NoJacobianPrep()
+        prep = DifferentiationInterface.NoJacobianPrep(DifferentiationInterface.signature(compute_adable, Y_ca_full, ad_backend, X_ca_full; strict=Val{true}()))
         J_ca_sparse = ComponentMatrix{eltype(X_ca_full)}()
         rcdict = Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}()
         X_ca_cs = ComponentVector{ComplexF64}()
@@ -147,7 +147,7 @@ function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=
         prep, J_ca_sparse, rcdict, X_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, X_ca_full)
     else
         # No point in getting a "good" prep when we don't know all the shapes.
-        prep = DifferentiationInterface.NoJacobianPrep()
+        prep = DifferentiationInterface.NoJacobianPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca_full; strict=Val{true}()))
         J_ca_sparse = ComponentMatrix{eltype(X_ca_full)}()
         rcdict = Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}()
         X_ca_cs = ComponentVector{ComplexF64}()
