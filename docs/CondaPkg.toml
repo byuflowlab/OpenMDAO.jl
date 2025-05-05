@@ -2,4 +2,7 @@
 [pip.deps]
 matplotlib = ""
 dymos = ""
-omjlcomps = ""
+
+    [pip.deps.omjlcomps]
+    editable = true
+    version = "@../python"
