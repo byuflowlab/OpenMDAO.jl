@@ -290,7 +290,7 @@ function doit_forward_shape_by_conn(; ad_type, disable_prep)
 
     input_sizes = Dict(:b=>N, :d=>(M, N))
     output_sizes = Dict(:e=>N, :f=>(M, N), :g=>(N, M))
-    OpenMDAOCore.update_prep!(comp, input_sizes, output_sizes)
+    comp = OpenMDAOCore.update_prep(comp, input_sizes, output_sizes)
 
     @test get_input_ca(comp).a ≈ 2.0
     @test all(get_input_ca(comp).b .≈ 3.0)
@@ -711,7 +711,7 @@ function doit_reverse_shape_by_conn(; ad_type, disable_prep)
 
     input_sizes = Dict(:c=>(M,), :d=>(M, N))
     output_sizes = Dict(:f=>(M, N), :g=>(N, M))
-    OpenMDAOCore.update_prep!(comp, input_sizes, output_sizes)
+    comp = OpenMDAOCore.update_prep(comp, input_sizes, output_sizes)
 
     inputs_dict = ca2strdict(get_input_ca(comp))
     inputs_dict["a"] .= 2.0

@@ -536,7 +536,7 @@ function doit_in_place_shape_by_conn(; sparse_detect_method, ad_type)
     # Now set the size of b to the correct thing.
     input_sizes = Dict(:b=>N, :d=>(M, N))
     output_sizes = Dict(:e=>N, :f=>(M, N), :g=>(N, M))
-    OpenMDAOCore.update_prep!(comp, input_sizes, output_sizes)
+    comp = OpenMDAOCore.update_prep(comp, input_sizes, output_sizes)
 
     # Need to make sure the units are what I expect them to be.
     @test get_units(comp, :a) == "m"
@@ -1363,7 +1363,7 @@ function doit_out_of_place_shape_by_conn(; ad_type, sparse_detect_method)
     # Now set the size of b to the correct thing.
     input_sizes = Dict(:c=>M, :d=>(M, N))
     output_sizes = Dict(:f=>(M, N), :g=>(N, M))
-    OpenMDAOCore.update_prep!(comp, input_sizes, output_sizes)
+    comp = OpenMDAOCore.update_prep(comp, input_sizes, output_sizes)
 
     # Need to make sure the units are what I expect them to be.
     @test get_units(comp, :a) == "m"

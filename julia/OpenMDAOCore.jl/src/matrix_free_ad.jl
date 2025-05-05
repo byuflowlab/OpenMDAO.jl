@@ -1,34 +1,33 @@
-mutable struct MatrixFreeADExplicitComp{InPlace,TAD,TCompute} <: AbstractADExplicitComp{InPlace}
-    const ad_backend::TAD
-    const compute_adable::TCompute
-    X_ca::ComponentVector
-    Y_ca::ComponentVector
-    dX_ca::ComponentVector
-    dY_ca::ComponentVector
-    const force_mode::String
-    const disable_prep::Bool
-    prep::DifferentiationInterface.Prep
-    const units_dict::Dict{Symbol,String}
-    const tags_dict::Dict{Symbol,Vector{String}}
-    const shape_by_conn_dict::Dict{Symbol,Bool}
-    const copy_shape_dict::Dict{Symbol,Symbol}
-    X_ca_cs::ComponentVector
-    Y_ca_cs::ComponentVector
-    const aviary_input_names::Dict{Symbol,String}
-    const aviary_output_names::Dict{Symbol,String}
-    const aviary_meta_data::Dict{String,Any}
+struct MatrixFreeADExplicitComp{InPlace,TAD,TCompute,TX,TY,TdX,TdY,TPrep,TXCS,TYCS,TAMD} <: AbstractADExplicitComp{InPlace}
+    ad_backend::TAD
+    compute_adable::TCompute
+    X_ca::TX
+    Y_ca::TY
+    dX_ca::TdX
+    dY_ca::TdY
+    force_mode::String
+    disable_prep::Bool
+    prep::TPrep
+    units_dict::Dict{Symbol,String}
+    tags_dict::Dict{Symbol,Vector{String}}
+    shape_by_conn_dict::Dict{Symbol,Bool}
+    copy_shape_dict::Dict{Symbol,Symbol}
+    X_ca_cs::TXCS
+    Y_ca_cs::TYCS
+    aviary_input_names::Dict{Symbol,String}
+    aviary_output_names::Dict{Symbol,String}
+    aviary_meta_data::TAMD
 
-    function MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-        return new{true,typeof(ad_backend),typeof(compute_adable)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-    end
-
-    function MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-        Y_ca = ComponentVector{eltype(X_ca)}()
-        Y_ca_cs = ComponentVector{eltype(X_ca_cs)}()
-        return new{false,typeof(ad_backend),typeof(compute_adable)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+    function MatrixFreeADExplicitComp{InPlace}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data) where {InPlace}
+        return new{InPlace,typeof(ad_backend), typeof(compute_adable), typeof(X_ca), typeof(Y_ca), typeof(dX_ca), typeof(dY_ca), typeof(prep), typeof(X_ca_cs), typeof(Y_ca_cs), typeof(aviary_meta_data)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
     end
 end
 
+function MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+    Y_ca = nothing
+    Y_ca_cs = nothing
+    return MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+end
 get_dinput_ca(comp::MatrixFreeADExplicitComp) = comp.dX_ca
 get_doutput_ca(comp::MatrixFreeADExplicitComp) = comp.dY_ca
 get_force_mode(comp::MatrixFreeADExplicitComp) = comp.force_mode
@@ -64,7 +63,7 @@ Create a `MatrixFreeADExplicitComp` from a user-defined function and output and 
 * `aviary_output_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of output variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary output variables.
 * `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
 """
-function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_output_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_meta_data=Dict{String,Any}())
+function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_vars=Dict{Symbol,Dict{String,Nothing}}(), aviary_output_vars=Dict{Symbol,Dict{String,Nothing}}(), aviary_meta_data=Dict{String,Nothing}())
 
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
@@ -88,7 +87,7 @@ function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::C
         dY_ca = ComponentVector{eltype(Y_ca_full)}()
         X_ca_cs = ComponentVector{ComplexF64}()
         Y_ca_cs = ComponentVector{ComplexF64}()
-        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep!`.
+        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep`.
         prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, Y_ca_full, ad_backend, X_ca_full, (dX_ca,); strict=Val{true}()))
     end
 
@@ -120,7 +119,7 @@ Create a `MatrixFreeADExplicitComp` from a user-defined function and output and 
 * `aviary_output_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of output variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary output variables.
 * `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
 """
-function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_output_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_meta_data=Dict{String,Any}())
+function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_vars=Dict{Symbol,Dict{String,Nothing}}(), aviary_output_vars=Dict{Symbol,Dict{String,Nothing}}(), aviary_meta_data=Dict{String,Nothing}())
 
     # Create a new user-defined function that captures the `params` argument.
     # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
@@ -144,7 +143,7 @@ function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=n
         dX_ca = ComponentVector{eltype(X_ca_full)}()
         dY_ca = ComponentVector{eltype(Y_ca_full)}()
         X_ca_cs = ComponentVector{ComplexF64}()
-        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep!`.
+        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep`.
         prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca_full, (dX_ca,); strict=Val{true}()))
     end
 
@@ -238,7 +237,32 @@ function _get_matrix_free_prep_stuff_out_of_place(ad_backend, compute_adable, Y_
     return prep, dX_ca, dY_ca, X_ca_cs
 end
 
-function update_prep!(self::MatrixFreeADExplicitComp{true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+# function update_prep!(self::MatrixFreeADExplicitComp{true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+#     if (length(input_sizes) > 0) || (length(output_sizes) > 0)
+#         X_ca_old = get_input_ca(self)
+#         Y_ca_old = get_output_ca(self)
+#
+#         # Create a new versions of `X_ca_old` and `Y_ca_old` that have the correct sizes and default values.
+#         X_ca = _resize_component_vector(X_ca_old, input_sizes)
+#         Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
+#
+#         # Get the new prep stuff.
+#         prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs = _get_matrix_free_prep_stuff_in_place(get_backend(self), get_callback(self), Y_ca, X_ca, get_force_mode(self), get_disable_prep(self))
+#
+#         # Save everything in this struct.
+#         self.X_ca = X_ca
+#         self.Y_ca = Y_ca
+#         self.dX_ca = dX_ca
+#         self.dY_ca = dY_ca
+#         self.prep = prep
+#         self.X_ca_cs = X_ca_cs
+#         self.Y_ca_cs = Y_ca_cs
+#     end
+#
+#     return nothing
+# end
+
+function update_prep(self::MatrixFreeADExplicitComp{true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
     if (length(input_sizes) > 0) || (length(output_sizes) > 0)
         X_ca_old = get_input_ca(self)
         Y_ca_old = get_output_ca(self)
@@ -248,22 +272,51 @@ function update_prep!(self::MatrixFreeADExplicitComp{true}, input_sizes::Abstrac
         Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
 
         # Get the new prep stuff.
-        prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs = _get_matrix_free_prep_stuff_in_place(get_backend(self), get_callback(self), Y_ca, X_ca, get_force_mode(self), get_disable_prep(self))
+        ad_backend = get_backend(self)
+        f! = get_callback(self)
+        force_mode = get_force_mode(self)
+        disable_prep = get_disable_prep(self)
+        prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs = _get_matrix_free_prep_stuff_in_place(ad_backend, f!, Y_ca, X_ca, get_force_mode(self), get_disable_prep(self))
 
-        # Save everything in this struct.
-        self.X_ca = X_ca
-        self.Y_ca = Y_ca
-        self.dX_ca = dX_ca
-        self.dY_ca = dY_ca
-        self.prep = prep
-        self.X_ca_cs = X_ca_cs
-        self.Y_ca_cs = Y_ca_cs
+        # Copy things over.
+        units_dict = self.units_dict
+        tags_dict = self.tags_dict
+        shape_by_conn_dict = self.shape_by_conn_dict
+        copy_shape_dict = self.copy_shape_dict
+        aviary_input_names = self.aviary_input_names
+        aviary_output_names = self.aviary_output_names
+        aviary_meta_data = self.aviary_meta_data
+        self = MatrixFreeADExplicitComp{true}(ad_backend, f!, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
     end
 
-    return nothing
+    return self
 end
 
-function update_prep!(self::MatrixFreeADExplicitComp{false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+# function update_prep!(self::MatrixFreeADExplicitComp{false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+#     if (length(input_sizes) > 0) || (length(output_sizes) > 0)
+#         X_ca_old = get_input_ca(self)
+#         Y_ca_old = get_output_ca(self)
+#
+#         # Create a new versions of `X_ca_old` and `Y_ca_old` that have the correct sizes and default values.
+#         X_ca = _resize_component_vector(X_ca_old, input_sizes)
+#         Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
+#
+#         # Get the new prep stuff.
+#         prep, dX_ca, dY_ca, X_ca_cs = _get_matrix_free_prep_stuff_out_of_place(get_backend(self), get_callback(self), Y_ca, X_ca, get_force_mode(self), get_disable_prep(self))
+#
+#         # Save everything in this struct.
+#         self.X_ca = X_ca
+#         self.Y_ca = Y_ca
+#         self.dX_ca = dX_ca
+#         self.dY_ca = dY_ca
+#         self.prep = prep
+#         self.X_ca_cs = X_ca_cs
+#     end
+#
+#     return nothing
+# end
+
+function update_prep(self::MatrixFreeADExplicitComp{false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
     if (length(input_sizes) > 0) || (length(output_sizes) > 0)
         X_ca_old = get_input_ca(self)
         Y_ca_old = get_output_ca(self)
@@ -273,18 +326,24 @@ function update_prep!(self::MatrixFreeADExplicitComp{false}, input_sizes::Abstra
         Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
 
         # Get the new prep stuff.
-        prep, dX_ca, dY_ca, X_ca_cs = _get_matrix_free_prep_stuff_out_of_place(get_backend(self), get_callback(self), Y_ca, X_ca, get_force_mode(self), get_disable_prep(self))
+        ad_backend = get_backend(self)
+        f = get_callback(self)
+        force_mode = get_force_mode(self)
+        disable_prep = get_disable_prep(self)
+        prep, dX_ca, dY_ca, X_ca_cs = _get_matrix_free_prep_stuff_out_of_place(ad_backend, f, Y_ca, X_ca, force_mode, disable_prep)
 
-        # Save everything in this struct.
-        self.X_ca = X_ca
-        self.Y_ca = Y_ca
-        self.dX_ca = dX_ca
-        self.dY_ca = dY_ca
-        self.prep = prep
-        self.X_ca_cs = X_ca_cs
+        # Copy things over.
+        units_dict = self.units_dict
+        tags_dict = self.tags_dict
+        shape_by_conn_dict = self.shape_by_conn_dict
+        copy_shape_dict = self.copy_shape_dict
+        aviary_input_names = self.aviary_input_names
+        aviary_output_names = self.aviary_output_names
+        aviary_meta_data = self.aviary_meta_data
+        self = MatrixFreeADExplicitComp{false}(ad_backend, f, X_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
     end
 
-    return nothing
+    return self
 end
 
 function setup_partials(self::MatrixFreeADExplicitComp, input_sizes, output_sizes)
@@ -294,10 +353,10 @@ function setup_partials(self::MatrixFreeADExplicitComp, input_sizes, output_size
     output_av_name_to_ca_name = Dict(get_aviary_output_name(self, k)=>k for k in keys(get_output_ca(self)))
     output_sizes_ca = Dict{Symbol,Any}(output_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in output_sizes)
 
-    update_prep!(self, input_sizes_ca, output_sizes_ca)
+    self_new = update_prep(self, input_sizes_ca, output_sizes_ca)
 
     # Now finally get the partials data.
-    return get_partials_data(self)
+    return self_new, get_partials_data(self_new)
 end
 
 function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_inputs, d_outputs)
