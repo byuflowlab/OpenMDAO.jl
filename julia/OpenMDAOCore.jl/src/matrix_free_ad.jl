@@ -406,7 +406,11 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_i
     # Now copy the output derivatives to `d_outputs`:
     for oname in keys(dY_ca)
         oname_aviary = get_aviary_output_name(self, oname)
-        d_outputs[oname_aviary] .= @view(dY_ca[oname])
+        if typeof(d_outputs[oname_aviary]) <: AbstractArray
+            d_outputs[oname_aviary] .= @view(dY_ca[oname])
+        else
+            d_outputs[oname_aviary] = only(dY_ca[oname])
+        end
     end
 
     return nothing
@@ -456,7 +460,11 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{false}, inputs, d_
     # Now copy the output derivatives to `d_outputs`:
     for oname in keys(dY_ca)
         oname_aviary = get_aviary_output_name(self, oname)
-        d_outputs[oname_aviary] .= @view(dY_ca[oname])
+        if typeof(d_outputs[oname_aviary]) <: AbstractArray
+            d_outputs[oname_aviary] .= @view(dY_ca[oname])
+        else
+            d_outputs[oname_aviary] = only(dY_ca[oname])
+        end
     end
 
     return nothing
@@ -501,7 +509,11 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{true}, inputs, d_inpu
     # Now copy the input derivatives to `d_inputs`:
     for iname in keys(dX_ca)
         iname_aviary = get_aviary_input_name(self, iname)
-        d_inputs[iname_aviary] .= @view(dX_ca[iname])
+        if typeof(d_inputs[iname_aviary]) <: AbstractArray
+            d_inputs[iname_aviary] .= @view(dX_ca[iname])
+        else
+            d_inputs[iname_aviary] = only(dX_ca[iname])
+        end
     end
 
     return nothing
@@ -543,7 +555,11 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{false}, inputs, d_inp
     # Now copy the input derivatives to `d_inputs`:
     for iname in keys(dX_ca)
         iname_aviary = get_aviary_input_name(self, iname)
-        d_inputs[iname_aviary] .= @view(dX_ca[iname])
+        if typeof(d_inputs[iname_aviary]) <: AbstractArray
+            d_inputs[iname_aviary] .= @view(dX_ca[iname])
+        else
+            d_inputs[iname_aviary] = only(dX_ca[iname])
+        end
     end
 
     return nothing

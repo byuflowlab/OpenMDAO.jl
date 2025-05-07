@@ -116,7 +116,6 @@ function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::
     # Process the Aviary metadata.
     X_ca_full, units_dict_tmp, aviary_input_names = _process_aviary_metadata(X_ca, units_dict, aviary_input_vars, aviary_meta_data)
     Y_ca_full, units_dict_full, aviary_output_names = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_vars, aviary_meta_data)
-    # @show typeof(aviary_input_names) typeof(aviary_output_names) typeof(units_dict_full) typeof(tags_dict) typeof(copy_shape_dict) typeof(shape_by_conn_dict)
 
     _check_aviary_names(aviary_input_names, aviary_output_names)
 

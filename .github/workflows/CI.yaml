@@ -51,7 +51,7 @@ jobs:
           Pkg.develop(path="./julia/OpenMDAOCore.jl")
           Pkg.instantiate()
           using CondaPkg
-          CondaPkg.add_pip("omjlcomps"; version="@./../../python")
+          CondaPkg.add_pip("omjlcomps"; version="@./python")
           Pkg.update()
           Pkg.test()
         env:
@@ -91,16 +91,23 @@ jobs:
         run: |
           echo "PWD = $PWD"
           python -m pip install --upgrade pip
-          pip install -e ./python[test]
+          pip install --config-settings editable_mode=compat -e ./python
           python -c "import juliapkg; juliapkg.resolve()"
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
       - name: omjlcomps tests
         run: |
-          cd ./python/omjlcomps/test
-          python test_julia_explicit_comp.py
-          python test_julia_implicit_comp.py
-          python test_aviary_support.py
-          python test_explicit_ad_shape_by_conn.py
+          echo "PWD = $PWD"
+          python ./python/omjlcomps/test/test_julia_explicit_comp.py
+          python ./python/omjlcomps/test/test_julia_implicit_comp.py
+          python ./python/omjlcomps/test/test_aviary_support.py
+          python ./python/omjlcomps/test/test_explicit_ad_shape_by_conn.py
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
+      - name: test examples
+        run: |
+          echo "PWD = $PWD"
+          cd ./examples/example_python_package_openmdao_jl
+          pip install --config-settings editable_mode=compat -e .
+          python ./scripts/run_paraboloid.py
+          python ./example_python_package_openmdao_jl/test/test_paraboloid_example.py

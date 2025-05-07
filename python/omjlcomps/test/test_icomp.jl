@@ -196,14 +196,15 @@ function OpenMDAOCore.setup(self::MatrixFreeImplicit)
 
     rows = 0:n-1
     cols = 0:n-1
-    partials = [
-        PartialsData("z1", "x"; rows=rows, cols=cols),
-        PartialsData("z1", "y"; rows, cols),
-        PartialsData("z1", "z1"; rows, cols),
-        PartialsData("z2", "x"; rows, cols),
-        PartialsData("z2", "y"; rows, cols),          
-        PartialsData("z2", "z2"; rows, cols)
-    ]
+    # partials = [
+    #     PartialsData("z1", "x"; rows=rows, cols=cols),
+    #     PartialsData("z1", "y"; rows, cols),
+    #     PartialsData("z1", "z1"; rows, cols),
+    #     PartialsData("z2", "x"; rows, cols),
+    #     PartialsData("z2", "y"; rows, cols),          
+    #     PartialsData("z2", "z2"; rows, cols)
+    # ]
+    partials = Vector{PartialsData}()
 
     return inputs, outputs, partials
 end
@@ -533,7 +534,7 @@ function OpenMDAOCore.setup_partials(self::ImplicitShapeByConn, input_sizes, out
         PartialsData("z2", "z2"; rows, cols)
     ]
 
-    return partials
+    return self, partials
 end
 
 function OpenMDAOCore.apply_nonlinear!(self::ImplicitShapeByConn, inputs, outputs, residuals)

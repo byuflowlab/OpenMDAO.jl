@@ -235,7 +235,7 @@ function OpenMDAOCore.setup_partials(self::ECompShapeByConn, input_sizes, output
     rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=Dict(:i=>m, :j=>n), of_ss=[:i, :j], wrt_ss=[:i, :j])
     partials_data = [PartialsData("y", "x"; rows=rows, cols=cols)]
 
-    return partials_data
+    return self, partials_data
 end
 
 function OpenMDAOCore.compute!(self::ECompShapeByConn, inputs, outputs)

@@ -6,6 +6,6 @@ import juliacall; jl = juliacall.newmodule("ParaboloidComponentsStub")
 # Get the directory this file is in, then include the `paraboloid.jl` Julia source code.
 d = os.path.dirname(os.path.abspath(__file__))
 jl.include(os.path.join(d, "paraboloid.jl"))
-# Now we have access to everything in `paraboloid.jl`
+# Now we have access to everything in `paraboloid.jl` in the `jl` object.
 
 get_parabaloid_comp = jl.get_parabaloid_comp

@@ -238,7 +238,7 @@ struct PerturbedDenseSparsityDetector{method,B,TRelXPerturb,TAbsXPerturb} <: ADT
 end
 
 function Base.show(io::IO, detector::PerturbedDenseSparsityDetector{method}) where {method}
-    (; backend, atol, nevals, rel_x_perturb) = detector
+    (; backend, atol, nevals, rel_x_perturb, abs_x_perturb) = detector
     return print(
         io,
         PerturbedDenseSparsityDetector,

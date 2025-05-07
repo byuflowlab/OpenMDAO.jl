@@ -5,13 +5,9 @@ from example_python_package_openmdao_jl.paraboloid import get_parabaloid_comp
 
 prob = om.Problem()
 
-model = om.Group()
-
 jlcomp = get_parabaloid_comp()
 parab_comp = JuliaExplicitComp(jlcomp=jlcomp)
-model.add_subsystem("parab_comp", parab_comp)
-
-prob = om.Problem(model)
+prob.model.add_subsystem("parab_comp", parab_comp)
 
 prob.driver = om.ScipyOptimizeDriver()
 prob.driver.options["optimizer"] = "SLSQP"
@@ -39,4 +35,4 @@ prob.check_partials(method="cs")
 prob.run_driver()
 print(f"f_xy = {prob.get_val('parab_comp.f_xy')} (should be -27.333333)")
 print(f"x = {prob.get_val('parab_comp.x')} (should be 6.666666)")
-print(f"y = {prob.get_val('parab_comp.y')} (should be 7.333333)")
+print(f"y = {prob.get_val('parab_comp.y')} (should be -7.333333)")

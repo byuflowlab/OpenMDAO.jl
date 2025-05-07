@@ -92,7 +92,11 @@ function OpenMDAOCore.compute!(self::AbstractADExplicitComp{true}, inputs, outpu
     for oname in keys(Y_ca)
         oname_aviary = get_aviary_output_name(self, oname)
         # This requires that each output is at least a vector.
-        outputs[oname_aviary] .= @view(Y_ca[oname])
+        if typeof(outputs[oname_aviary]) <: AbstractArray
+            outputs[oname_aviary] .= @view(Y_ca[oname])
+        else
+            outputs[oname_aviary] = only(Y_ca[oname])
+        end
     end
 
     return nothing
@@ -115,7 +119,11 @@ function OpenMDAOCore.compute!(self::AbstractADExplicitComp{false}, inputs, outp
     for oname in keys(Y_ca)
         oname_aviary = get_aviary_output_name(self, oname)
         # This requires that each output is at least a vector.
-        outputs[oname_aviary] .= @view(Y_ca[oname])
+        if typeof(outputs[oname_aviary]) <: AbstractArray
+            outputs[oname_aviary] .= @view(Y_ca[oname])
+        else
+            outputs[oname_aviary] = only(Y_ca[oname])
+        end
     end
 
     return nothing
