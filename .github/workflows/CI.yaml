@@ -87,10 +87,14 @@ jobs:
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
+      - name: Install juliapkg and add latest version of OpenMDAOCore.jl
+        run: |
+          python -m pip install --upgrade pip
+          pip install juliapkg
+          python -c "import juliapkg; juliapkg.add('OpenMDAOCore', '24d19c10-6eee-420f-95df-4537264b2753', dev=True, path='./julia/OpenMDAOCore.jl')"
       - name: omjlcomps install
         run: |
           echo "PWD = $PWD"
-          python -m pip install --upgrade pip
           pip install --config-settings editable_mode=compat -e ./python
           python -c "import juliapkg; juliapkg.resolve()"
         env:
