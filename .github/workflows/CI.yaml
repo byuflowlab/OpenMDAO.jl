@@ -10,7 +10,7 @@ on:
     tags: '*'
 
 jobs:
-  OpenMDAOCore.jl:
+  OpenMDAOCore_jl:
     name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -44,7 +44,7 @@ jobs:
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
 
-  OpenMDAO.jl:
+  OpenMDAO_jl:
     name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
