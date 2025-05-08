@@ -405,6 +405,7 @@ For some reason, `omjlcomps` isn't able to find the OpenMDAOCore.jl that is inst
 So, the `Pkg.add("OpenMDAOCore")` call does this for us automatically.
 It will install the latest stable version of OpenMDAOCore.jl that's compatible with your environment.
 If you require a specific version of OpenMDAOCore.jl (eg you want to `dev` it while working on it), you'll need to install that in your environment in the usual way with Julia's package manager.
+(See also https://github.com/JuliaPy/CondaPkg.jl/issues/95)
 
 ## Finding `juliapkg.json` files in editable Python packages
 [`juliapkg`](https://github.com/JuliaPy/pyjuliapkg) is the Python package that allows us to declare Julia dependencies in Python packages.
