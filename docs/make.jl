@@ -2,7 +2,7 @@ module OpenMDAODocs
 
 using Documenter, OpenMDAOCore, OpenMDAO
 
-function main()
+function doit()
     makedocs(
              sitename="OpenMDAO.jl",
              modules = [OpenMDAOCore, OpenMDAO],
@@ -13,6 +13,8 @@ function main()
                       "A More Complicated Example"=>"nonlinear_circuit.md",
                       "Variable Shapes at Runtime"=>"shape_by_conn.md",
                       "A Simple Dymos Example"=>"brachistochrone.md",
+                      "Auto-Sparse Examples"=>"auto_sparse_ad.md",
+                      "Auto-Matrix-Free Examples"=>"matrix_free_ad.md",
                       "API Reference"=>"reference.md",
                       "Limitations"=>"limitations.md",
                       "Developer Docs"=>"dev_docs.md"])
@@ -22,7 +24,7 @@ function main()
 end
 
 if !isinteractive()
-    main()
+    doit()
 end
 
 end # module

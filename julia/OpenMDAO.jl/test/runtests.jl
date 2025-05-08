@@ -290,7 +290,7 @@ using SafeTestsets: @safetestset
             rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=Dict(:i=>m, :j=>n), of_ss=[:i, :j], wrt_ss=[:i, :j])
             partials_data = [OpenMDAOCore.PartialsData("y", "x"; rows=rows, cols=cols)]
 
-            return partials_data
+            return self, partials_data
         end
 
         function OpenMDAOCore.compute!(self::ECompShapeByConn, inputs, outputs)
@@ -475,7 +475,13 @@ end
                 wrt = pyconvert(Any, pywrt)
                 cpd_comp = pyconvert(PyDict{Tuple{String, String}}, cpd[comp])
                 cpd_comp_var_wrt = pyconvert(PyDict{String}, cpd_comp[var, wrt])
-                @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+                if (var == "z1") && (wrt == "z2")
+                    @test_throws KeyError cpd_comp_var_wrt["J_fwd"]
+                elseif (var == "z2") && (wrt == "z1")
+                    @test_throws KeyError cpd_comp_var_wrt["J_fwd"]
+                else
+                    @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+                end
             end
         end
 
@@ -616,7 +622,13 @@ end
                 wrt = pyconvert(Any, pywrt)
                 cpd_comp = pyconvert(PyDict{Tuple{String, String}}, cpd[comp])
                 cpd_comp_var_wrt = pyconvert(PyDict{String}, cpd_comp[var, wrt])
-                @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+                if (var == "z1") && (wrt == "z2")
+                    @test_throws KeyError cpd_comp_var_wrt["J_fwd"]
+                elseif (var == "z2") && (wrt == "z1")
+                    @test_throws KeyError cpd_comp_var_wrt["J_fwd"]
+                else
+                    @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+                end
             end
         end
 
@@ -645,15 +657,8 @@ end
                 OpenMDAOCore.VarData("z1"; shape=(n,), val=fill(2.0, n)),
                 OpenMDAOCore.VarData("z2"; shape=n, val=3.0)]
 
-            rows = 0:n-1
-            cols = 0:n-1
-            partials = [
-                OpenMDAOCore.PartialsData("z1", "x"; rows=rows, cols=cols),
-                OpenMDAOCore.PartialsData("z1", "y"; rows, cols),
-                OpenMDAOCore.PartialsData("z1", "z1"; rows, cols),
-                OpenMDAOCore.PartialsData("z2", "x"; rows, cols),
-                OpenMDAOCore.PartialsData("z2", "y"; rows, cols),          
-                OpenMDAOCore.PartialsData("z2", "z2"; rows, cols)]
+            # Don't declare partials with matrix-free components.
+            partials = Vector{OpenMDAOCore.PartialsData}()
 
             return inputs, outputs, partials
         end
@@ -1035,7 +1040,13 @@ end
                     wrt = pyconvert(Any, pywrt)
                     cpd_comp = pyconvert(PyDict{Tuple{String, String}}, cpd[comp])
                     cpd_comp_var_wrt = pyconvert(PyDict{String}, cpd_comp[var, wrt])
-                    @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+                    if (var == "z1") && (wrt == "z2")
+                        @test_throws KeyError cpd_comp_var_wrt["J_fwd"]
+                    elseif (var == "z2") && (wrt == "z1")
+                        @test_throws KeyError cpd_comp_var_wrt["J_fwd"]
+                    else
+                        @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+                    end
                 end
             end
 
@@ -1242,7 +1253,7 @@ end
                 OpenMDAOCore.PartialsData("z2", "z2"; rows, cols)
             ]
 
-            return partials
+            return self, partials
         end
 
         function OpenMDAOCore.apply_nonlinear!(self::ImplicitShapeByConn, inputs, outputs, residuals)
@@ -1344,79 +1355,14 @@ end
                 wrt = pyconvert(Any, pywrt)
                 cpd_comp = pyconvert(PyDict{Tuple{String, String}}, cpd[comp])
                 cpd_comp_var_wrt = pyconvert(PyDict{String}, cpd_comp[var, wrt])
-                @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+                if (var == "z1") && (wrt == "z2")
+                    @test_throws KeyError cpd_comp_var_wrt["J_fwd"]
+                elseif (var == "z2") && (wrt == "z1")
+                    @test_throws KeyError cpd_comp_var_wrt["J_fwd"]
+                else
+                    @test PyArray(cpd_comp_var_wrt["J_fwd"]) ≈ PyArray(cpd_comp_var_wrt["J_fd"])
+                end
             end
         end
-    end
-end
-
-@safetestset "DymosifiedCompWrapper" begin
-
-    @safetestset "normal operation" begin
-        using OpenMDAO: DymosifiedCompWrapper
-        using OpenMDAOCore: OpenMDAOCore
-        using PythonCall
-        using Test
-        
-        struct FooODE <: OpenMDAOCore.AbstractExplicitComp
-            num_nodes::Int
-            arg1::Bool
-            arg2::Float64
-        end
-
-        FooODE(; num_nodes, arg1, arg2) = FooODE(num_nodes, arg1, arg2)
-
-        arg1 = false
-        arg2 = 3.0
-        dcw = DymosifiedCompWrapper(FooODE; arg1, arg2)
-        @test length(dcw) == 1
-
-        nn = 8
-        comp = dcw(num_nodes=nn)
-        jlcomp = pyconvert(FooODE, comp.options["jlcomp"])
-        @test jlcomp.num_nodes == nn
-        @test jlcomp.arg1 == arg1
-        @test jlcomp.arg2 == arg2
-    end
-
-    @safetestset "require OpenMDAOCore.AbstractComp" begin
-        using OpenMDAO: DymosifiedCompWrapper
-        using OpenMDAOCore: OpenMDAOCore
-
-        struct FooNonODE
-            num_nodes::Int
-            arg1::Bool
-            arg2::Float64
-        end
-
-        FooNonODE(; num_nodes, arg1, arg2) = FooNonODE(num_nodes, arg1, arg2)
-
-        arg1 = false
-        arg2 = 3.0
-        # This shouldn't because FooNonODE is not an OpenMDAOCore.AbstractComp
-        @test_throws MethodError DymosifiedCompWrapper(FooNonODE; arg1, arg2)
-    end
-
-    @safetestset "require num_nodes" begin
-        using OpenMDAO: DymosifiedCompWrapper
-        using OpenMDAOCore: OpenMDAOCore
-        using PythonCall
-        using Test
-        
-        struct FooNoNumNodesODE <: OpenMDAOCore.AbstractExplicitComp
-            arg1::Bool
-            arg2::Float64
-        end
-
-        FooNoNumNodesODE(; arg1, arg2) = FooNoNumNodesODE(arg1, arg2)
-
-        arg1 = false
-        arg2 = 3.0
-        dcw = DymosifiedCompWrapper(FooNoNumNodesODE; arg1, arg2)
-        @test length(dcw) == 1
-
-        nn = 8
-        # this will fail because FooNoNumNodesODE doesn't have a num_nodes keyword argument
-        @test_throws MethodError dcw(num_nodes=nn)
     end
 end

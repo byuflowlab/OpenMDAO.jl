@@ -1,10 +1,16 @@
-using OpenMDAOCore
-using Test
-using Documenter
+using Test: @testset
+using SafeTestsets: @safetestset
 
-doctest(OpenMDAOCore, manual=false)
+@safetestset "doctests" begin
+    using OpenMDAOCore
+    using Documenter
+    doctest(OpenMDAOCore, manual=false)
+end
 
-@testset "VarData" begin
+@safetestset "VarData" begin
+    using OpenMDAOCore
+    using Test
+
     vd = VarData("x", 1.0, (1,), nothing, nothing, nothing, nothing)
     @test vd.name == "x"
     @test vd.val ≈ 1.0
@@ -111,7 +117,10 @@ doctest(OpenMDAOCore, manual=false)
     @test_throws ArgumentError VarData("x"; val=[3.0, 4.0], shape=(2,), units="m", lower=[-1.0, -2.0], upper=[2.0, 3.0, 10.0])
 end
 
-@testset "PartialsData" begin
+@safetestset "PartialsData" begin
+    using OpenMDAOCore
+    using Test
+
     pd = PartialsData("y", "x")
     @test pd.of == "y"
     @test pd.wrt == "x"
@@ -196,7 +205,10 @@ end
                                                                                       3.0 4.0])
 end
 
-@testset "Finding ExplicitComponent methods" begin
+@safetestset "Finding ExplicitComponent methods" begin
+    using OpenMDAOCore
+    using Test
+
     struct FooComp1 <: AbstractExplicitComp end
     comp = FooComp1()
     @test !has_compute_partials(comp)
@@ -225,7 +237,10 @@ end
     @test has_setup_partials(comp)
 end
 
-@testset "Finding ImplicitComponent methods" begin
+@safetestset "Finding ImplicitComponent methods" begin
+    using OpenMDAOCore
+    using Test
+
     struct BarComp1 <: AbstractImplicitComp end
     comp = BarComp1()
     @test !has_setup_partials(comp)
@@ -314,42 +329,45 @@ end
     @test !has_guess_nonlinear(comp)
 end
 
-@testset "get_rows_cols" begin
+@safetestset "get_rows_cols" begin
+    using OpenMDAOCore
+    using Test
+
     ss_sizes = Dict(:i=>2, :j=>3, :k=>4)
 
     of_ss = [:i]
     wrt_ss = [:i]
-    rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
+    rows, cols = get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
     @test all(rows .== [0, 1])
     @test all(cols .== [0, 1])
 
     of_ss = [:i]
     wrt_ss = [:j]
-    rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
+    rows, cols = get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
     @test all(rows .== [0, 0, 0, 1, 1, 1])
     @test all(cols .== [0, 1, 2, 0, 1, 2])
 
     of_ss = [:i, :j]
     wrt_ss = [:i]
-    rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
+    rows, cols = get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
     @test all(rows .== [0, 1, 2, 3, 4, 5])
     @test all(cols .== [0, 0, 0, 1, 1, 1])
 
     of_ss = [:i, :j]
     wrt_ss = [:j]
-    rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
+    rows, cols = get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
     @test all(rows .== [0, 1, 2, 3, 4, 5])
     @test all(cols .== [0, 1, 2, 0, 1, 2])
 
     of_ss = [:i, :j]
     wrt_ss = [:j, :i]
-    rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
+    rows, cols = get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
     @test all(rows .== [0, 1, 2, 3, 4, 5])
     @test all(cols .== [0, 2, 4, 1, 3, 5])
 
     of_ss = [:i, :j]
     wrt_ss = [:j, :k]
-    rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
+    rows, cols = get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
     @test all(rows .== [0, 0, 0, 0, 1, 1, 1, 1, 2, 2,  2,  2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5,  5,  5])
     @test all(cols .== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
 
@@ -357,7 +375,328 @@ end
 
     of_ss = [:k, :i]
     wrt_ss = [:i, :j]
-    rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
+    rows, cols = get_rows_cols(ss_sizes=ss_sizes, of_ss=of_ss, wrt_ss=wrt_ss)
     @test all(rows .== [0, 0, 0, 0, 1, 1, 1, 1, 2, 2,  2,  2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5,  5,  5])
     @test all(cols .== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
 end
+
+@safetestset "get_rows_cols_dict_from_sparsity" begin
+
+    @safetestset "0d, 1d, 2d" begin
+        using OpenMDAOCore
+        using Test
+        using ComponentArrays: ComponentVector, ComponentMatrix, getaxes
+        using SparseArrays: sparse
+
+        N, M = 3, 4
+        X_ca = ComponentVector(a=0.0, b=zeros(Float64, N), c=zeros(Float64, N, M), crev=zeros(Float64, M, N))
+        Y_ca = ComponentVector(d=zeros(Float64, N), e=zeros(Float64, M), f=zeros(Float64, N, M), g=0.0, frev=zeros(Float64, M, N), h=0.0)
+        J_ca = Y_ca .* X_ca'
+
+        # Define the sparsity.
+        J_ca .= 0.0
+        for i = 1:N
+            @view(J_ca[:d, :a])[i] = 1.0
+            @view(J_ca[:d, :b])[i, i] = 1.0
+            for j in 1:M
+                @view(J_ca[:d, :c])[i, i, j] = 1.0
+                @view(J_ca[:d, :crev])[i, j, i] = 1.0
+                @view(J_ca[:f, :a])[i, j] = 1.0
+                @view(J_ca[:f, :b])[i, j, i] = 1.0
+                @view(J_ca[:f, :c])[i, j, i, j] = 1.0
+                @view(J_ca[:f, :crev])[i, j, j, i] = 1.0
+                @view(J_ca[:frev, :a])[j, i] = 1.0
+                @view(J_ca[:frev, :b])[j, i, i] = 1.0
+                @view(J_ca[:frev, :c])[j, i, i, j] = 1.0
+                @view(J_ca[:frev, :crev])[j, i, j, i] = 1.0
+                @view(J_ca[:g, :c])[i, j] = 1.0
+                @view(J_ca[:g, :crev])[j, i] = 1.0
+            end
+            @view(J_ca[:g, :b])[i] = 1.0
+        end
+
+        for j in 1:M
+            @view(J_ca[:e, :a])[j] = 1.0
+            for i = 1:N
+                @view(J_ca[:e, :b])[j, i] = 1.0
+                @view(J_ca[:e, :c])[j, i, j] = 1.0
+                @view(J_ca[:e, :crev])[j, j, i] = 1.0
+            end
+        end
+
+        @view(J_ca[:g, :a])[1] = 1.0
+
+        # Create a sparse version of J_ca.
+        J_ca_sparse = ComponentMatrix(sparse(J_ca), getaxes(J_ca))
+
+        # Get the rows and cols dict.
+        rcdict = get_rows_cols_dict_from_sparsity(J_ca_sparse)
+
+        # Shouldn't make a difference if the Jacobian is sparse or not.
+        rcdict_not_sparse_J_ca = get_rows_cols_dict_from_sparsity(J_ca)
+        @test rcdict == rcdict_not_sparse_J_ca
+
+        # Short function that puts the rows and cols in a standard order for comparison purposes.
+        function rows_cols_normalize(rows, cols)
+            out = sortslices(hcat(rows, cols); dims=1)
+            return out[:, 1], out[:, 2]
+        end
+
+        ss_sizes = Dict(:i=>N, :j=>M, :s=>1)
+
+        rows, cols = rows_cols_normalize(rcdict[:d, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i], wrt_ss=[:s], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:d, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:d, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:d, :crev]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i], wrt_ss=[:j, :i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:e, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j], wrt_ss=[:s], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:e, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:e, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:e, :crev]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j], wrt_ss=[:j, :i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:f, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i, :j], wrt_ss=[:s], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:f, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i, :j], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:f, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i, :j], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:f, :crev]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i, :j], wrt_ss=[:j, :i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:frev, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j, :i], wrt_ss=[:s], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:frev, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j, :i], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:frev, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j, :i], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:frev, :crev]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j, :i], wrt_ss=[:j, :i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:g, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:s], wrt_ss=[:s], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:g, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:s], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:g, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:s], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:g, :crev]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:s], wrt_ss=[:j, :i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rcdict[:h, :a]
+        @test rows == Vector{Int}()
+        @test cols == Vector{Int}()
+    end
+
+    @safetestset "3d" begin
+        using OpenMDAOCore
+        using Test
+        using ComponentArrays: ComponentVector, ComponentMatrix, getaxes
+        using SparseArrays: sparse
+
+        I, J, K = 3, 4, 5
+        X_ca = ComponentVector(a=zeros(Float64, I), b=zeros(Float64, I, J), c=zeros(Float64, J, I, K))
+        Y_ca = ComponentVector(d=zeros(Float64, I), e=zeros(Float64, J), f=zeros(Float64, I, J), g=zeros(Float64, K, J, I))
+        J_ca = Y_ca .* X_ca'
+
+        # Define the sparsity.
+        J_ca .= 0.0
+        for i = 1:I
+            @view(J_ca[:d, :a])[i, i] = 1.0
+            for j in 1:J
+                @view(J_ca[:d, :b])[i, i, j] = 1.0
+
+                @view(J_ca[:e, :a])[j, i] = 1.0
+                @view(J_ca[:e, :b])[j, i, j] = 1.0
+
+                @view(J_ca[:f, :a])[i, j, i] = 1.0
+                @view(J_ca[:f, :b])[i, j, i, j] = 1.0
+
+                for k in 1:K
+                    @view(J_ca[:d, :c])[i, j, i, k] = 1.0
+                    @view(J_ca[:e, :c])[j, j, i, k] = 1.0
+                    @view(J_ca[:f, :c])[i, j, j, i, k] = 1.0
+
+                    @view(J_ca[:g, :a])[k, j, i, i] = 1.0
+                    @view(J_ca[:g, :b])[k, j, i, i, j] = 1.0
+                    @view(J_ca[:g, :c])[k, j, i, j, i, k] = 1.0
+                end
+            end
+        end
+
+        # Create a sparse version of J_ca.
+        J_ca_sparse = ComponentMatrix(sparse(J_ca), getaxes(J_ca))
+
+        # Get the rows and cols dict.
+        rcdict = get_rows_cols_dict_from_sparsity(J_ca_sparse)
+
+        rcdict_not_sparse_J_ca = get_rows_cols_dict_from_sparsity(J_ca)
+        @test rcdict == rcdict_not_sparse_J_ca
+
+        # Short function that puts the rows and cols in a standard order for comparison purposes.
+        function rows_cols_normalize(rows, cols)
+            out = sortslices(hcat(rows, cols); dims=1)
+            return out[:, 1], out[:, 2]
+        end
+
+        ss_sizes = Dict(:i=>I, :j=>J, :k=>K)
+
+        rows, cols = rows_cols_normalize(rcdict[:d, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:d, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:d, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i], wrt_ss=[:j, :i, :k], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:e, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:e, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:e, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:j], wrt_ss=[:j, :i, :k], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:f, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i, :j], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:f, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i, :j], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:f, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:i, :j], wrt_ss=[:j, :i, :k], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:g, :a]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:k, :j, :i], wrt_ss=[:i], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:g, :b]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:k, :j, :i], wrt_ss=[:i, :j], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+
+        rows, cols = rows_cols_normalize(rcdict[:g, :c]...)
+        rows_check, cols_check = rows_cols_normalize(get_rows_cols(; ss_sizes=ss_sizes, of_ss=[:k, :j, :i], wrt_ss=[:j, :i, :k], column_major=false, zero_based_indexing=false)...)
+        @test all(rows .== rows_check)
+        @test all(cols .== cols_check)
+    end
+
+end
+
+@safetestset "unitfulify" begin
+    include("unitfulify.jl")
+end
+
+@safetestset "Aviary utils" begin
+    include("aviary_utils.jl")
+end
+
+@testset "SparseADExplicitComp" begin
+    @safetestset "manual sparsity" begin
+        include("autosparse_manual.jl")
+    end
+    @safetestset "automatic sparsity" begin
+        include("autosparse_automatic.jl")
+    end
+    @safetestset "automatic sparsity, with Aviary metadata" begin
+        include("autosparse_automatic_aviary.jl")
+    end
+end
+
+@testset "MatrixFreeADExplicitComp" begin
+    @safetestset "in-place" begin
+        include("auto_matrix_free_in_place.jl")
+    end
+    @safetestset "in-place, with Aviary metadata" begin
+        include("auto_matrix_free_in_place_aviary.jl")
+    end
+    @safetestset "out-of-place" begin
+        include("auto_matrix_free_out_of_place.jl")
+    end
+    @safetestset "out-of-place, with Aviary metadata" begin
+        include("auto_matrix_free_out_of_place_aviary.jl")
+    end
+end
+

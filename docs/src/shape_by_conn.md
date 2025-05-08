@@ -48,7 +48,7 @@ function OpenMDAOCore.setup_partials(self::ECompShapeByConn, input_sizes, output
     rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=Dict(:i=>m, :j=>n), of_ss=[:i, :j], wrt_ss=[:i, :j])
     partials_data = [OpenMDAOCore.PartialsData("y", "x"; rows=rows, cols=cols)]
 
-    return partials_data
+    return self, partials_data
 end
 ```
 
@@ -56,7 +56,12 @@ The `OpenMDAOCore.setup_partials` method will always take an instance of the `Op
 The keys indicate the name of an input or output variable, and the `NTuple{Int, N}` values are the shapes of each variable.
 The first `Dict` holds all the input shapes, and the second `Dict` has all the output shapes.
 
-Now, the job of `setup_partials` is to return a `Vector` of `PartialsData` `structs`.
+Now, the job of `setup_partials` is to return two things:
+
+  * an `<:AbstractComp` that will be used with the OpenMDAO `Component
+  * a `Vector` of `PartialsData` `structs` that describes the sparsity of each sub-Jacobian
+
+(The `setup_partials` function needs to return an `<:AbstractComp` to support cases where the internals of the `<:AbstractComp` need to be updated base in the input and output variable sizes.)
 We'd like to include the `rows` and `cols` arguments to the `PartialsData` `struct` for the derivative of `y` with respect to `x`, but it's a bit tricky, since `x` and `y` are two-dimensional.
 Luckily, there is a small utility function provided by OpenMDAOCore.jl called `get_rows_cols` that can help us.
 

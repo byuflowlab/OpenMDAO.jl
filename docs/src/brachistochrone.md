@@ -150,9 +150,9 @@ And then the rest of the script will be pretty much identical to the Python vers
 We'll put it in a function that allows us to try out `static_gravity=false` and `static_gravity=true`.
 
 ```@example brachistochrone
-using OpenMDAO: om, make_component, DymosifiedCompWrapper
+using OpenMDAO: om, make_component  #, DymosifiedCompWrapper
 
-function main(; static_gravity)
+function doit(; static_gravity)
   #
   # Initialize the Problem and the optimization driver
   #
@@ -165,13 +165,9 @@ function main(; static_gravity)
   traj = p.model.add_subsystem("traj", dm.Trajectory())
 
   # `Trajectory.add_phase` expects a class that it can instantiate with the number of nodes used for the phase.
-  # That's easy enough to create with an anonymous function, but unfortunatly it won't work with Dymos (because of the way JuliaCall implements truthiness/falsiness of Julia callables).
-  # So, as a workaround, OpenMDAO.jl has a small wrapper `struct` that will fix this for us called `DymosifiedCompWrapper`.
-  # The way this works: we give DymosifiedCompWrapper the ODE type (not a type instance, the type itself), and the keyword arguments we need to instantiate the type, other than `num_nodes`.
-  # Check out the docstring for an example.
-  dcw = DymosifiedCompWrapper(BrachistochroneODE; static_gravity=static_gravity)
+  # That's easy enough to create with an anonymous function, where we create a function that takes the single keyword argument `num_nodes`, use that to create a `BrachistochroneODE` with the appropriate value for `static_gravity`, and then pass that to the `make_component` function that returns an OpenMDAO `Component`.
   phase = traj.add_phase("phase0",
-                         dm.Phase(ode_class = dcw,
+                         dm.Phase(ode_class = (; num_nodes)->make_component(BrachistochroneODE(; num_nodes=num_nodes, static_gravity=static_gravity)),
                                   transcription = dm.GaussLobatto(num_segments=10)))
 
   #
@@ -221,8 +217,8 @@ function main(; static_gravity)
   println("static_gravity = $static_gravity, elapsed time = $(p.get_val("traj.phase0.timeseries.time")[-1]) (should be 1.80164719)")
 end
 
-main(; static_gravity=false)
-main(; static_gravity=true)
+doit(; static_gravity=false)
+doit(; static_gravity=true)
 ```
 
 At the end we see we got pretty much the same answer for the elapsed time as the Python example in the Dymos docs.

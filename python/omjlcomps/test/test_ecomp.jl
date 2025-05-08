@@ -235,7 +235,7 @@ function OpenMDAOCore.setup_partials(self::ECompShapeByConn, input_sizes, output
     rows, cols = OpenMDAOCore.get_rows_cols(ss_sizes=Dict(:i=>m, :j=>n), of_ss=[:i, :j], wrt_ss=[:i, :j])
     partials_data = [PartialsData("y", "x"; rows=rows, cols=cols)]
 
-    return partials_data
+    return self, partials_data
 end
 
 function OpenMDAOCore.compute!(self::ECompShapeByConn, inputs, outputs)
@@ -253,6 +253,34 @@ function OpenMDAOCore.compute_partials!(self::ECompShapeByConn, inputs, partials
     # that to work, I'll need to do this:
     dydx = PermutedDimsArray(reshape(partials["y", "x"], n, m), (2, 1))
     dydx .= 4 .* x
+    return nothing
+end
+
+struct ECompDomainError <: OpenMDAOCore.AbstractExplicitComp end
+
+function OpenMDAOCore.setup(self::ECompDomainError)
+    input_data = [VarData("x")]
+    output_data = [VarData("y")]
+    partials_data = [PartialsData("y", "x")]
+
+    return input_data, output_data, partials_data
+end
+
+function OpenMDAOCore.compute!(self::ECompDomainError, inputs, outputs)
+    if real(inputs["x"][1]) < 0
+        throw(DomainError(real(inputs["x"][1]), "x must be >= 0"))
+    else
+        outputs["y"][1] = 2*inputs["x"][1]^2 + 1
+    end
+    return nothing
+end
+
+function OpenMDAOCore.compute_partials!(self::ECompDomainError, inputs, partials)
+    if inputs["x"][1] < 0
+        throw(DomainError(x, "x must be >= 0"))
+    else
+        partials["y", "x"][1] = 4*inputs["x"][1]
+    end
     return nothing
 end
 
