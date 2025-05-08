@@ -68,28 +68,28 @@ jobs:
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
-      - name: Use MicroMamba not Pixie with CondaPkg.jl
-        shell: julia --project=. --color=yes {0}
-        run: |
-          using Pkg
-          Pkg.add("PreferenceTools")
-          using PreferenceTools
-          PreferenceTools.add("CondaPkg", backend="MicroMamba")
-          Pkg.activate("./julia/OpenMDAO.jl")
-          PreferenceTools.add("CondaPkg", backend="MicroMamba")
-          Pkg.activate("./julia/OpenMDAO.jl/test")
-          PreferenceTools.add("CondaPkg", backend="MicroMamba")
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
+      # - name: Use MicroMamba not Pixie with CondaPkg.jl
+      #   shell: julia --project=. --color=yes {0}
+      #   run: |
+      #     using Pkg
+      #     Pkg.add("PreferenceTools")
+      #     using PreferenceTools
+      #     PreferenceTools.add("CondaPkg", backend="MicroMamba")
+      #     Pkg.activate("./julia/OpenMDAO.jl")
+      #     PreferenceTools.add("CondaPkg", backend="MicroMamba")
+      #     Pkg.activate("./julia/OpenMDAO.jl/test")
+      #     PreferenceTools.add("CondaPkg", backend="MicroMamba")
+      #   env:
+      #         JULIA_PKG_USE_CLI_GIT: 'true'
       - name: OpenMDAO.jl Tests
         shell: julia --project=. --color=yes {0}
         run: |
           using Pkg
           # Pkg.activate("./julia/OpenMDAO.jl")
           Pkg.develop(path="./julia/OpenMDAOCore.jl")
-          Pkg.add("CondaPkg")
+          Pkg.add(url="https://github.com/dingraha/CondaPkg.jl#pip_editable")
           using CondaPkg
-          CondaPkg.add_pip("omjlcomps"; version="@./python")
+          CondaPkg.add_pip("omjlcomps"; version="@./python", editable=true)
           Pkg.develop(path="./julia/OpenMDAO.jl")
           Pkg.instantiate()
           Pkg.update()
