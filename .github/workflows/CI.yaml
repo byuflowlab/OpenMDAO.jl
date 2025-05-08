@@ -72,9 +72,10 @@ jobs:
         shell: julia --project=. --color=yes {0}
         run: |
           using Pkg
-          # Pkg.activate("./julia/OpenMDAO.jl")
           Pkg.add("PreferenceTools")
           using PreferenceTools
+          PreferenceTools.add("CondaPkg", backend="MicroMamba")
+          Pkg.activate("./julia/OpenMDAO.jl")
           PreferenceTools.add("CondaPkg", backend="MicroMamba")
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
