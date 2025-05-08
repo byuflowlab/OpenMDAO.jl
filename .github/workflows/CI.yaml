@@ -74,6 +74,9 @@ jobs:
           using Pkg
           Pkg.activate("./julia/OpenMDAO.jl")
           Pkg.develop(path="./julia/OpenMDAOCore.jl")
+          Pkg.add("PreferenceTools")
+          using PreferenceTools
+          PreferenceTools.add("CondaPkg", backend="MicroMamba")
           Pkg.instantiate()
           using CondaPkg
           CondaPkg.add_pip("omjlcomps"; version="@./../../python")
