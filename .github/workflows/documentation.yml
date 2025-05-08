@@ -37,7 +37,7 @@ jobs:
           Pkg.develop(PackageSpec(path="./julia/OpenMDAO.jl"))
           Pkg.instantiate()
           using CondaPkg
-          CondaPkg.add_pip("omjlcomps"; version="@./../python")
+          CondaPkg.add_pip("omjlcomps"; version="@./python")
           Pkg.update()
 
       - name: Build and deploy
