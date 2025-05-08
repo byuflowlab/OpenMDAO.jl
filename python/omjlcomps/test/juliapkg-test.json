@@ -4,7 +4,7 @@
         "version": "1.13.0"},
     "ForwardDiff": {
         "uuid": "f6369f11-7733-5829-9624-2563aa707210",
-        "version": "0.10.38"},
+        "version": "0.10.38, 1.0.0"},
     "SparseMatrixColorings": {
         "uuid": "0a514795-09f3-496d-8182-132a7b665d35",
         "version": "0.4.13"},
