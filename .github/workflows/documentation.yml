@@ -36,10 +36,11 @@ jobs:
           Pkg.status()
           # Need to remove OpenMDAO.jl since the latest OpenMDAO.jl in the General registry might not be compatible with the local OpenMDAOCore.jl
           Pkg.rm("OpenMDAO")
-          Pkg.develop(PackageSpec(path="./julia/OpenMDAOCore.jl"))
+          Pkg.develop(path="./julia/OpenMDAOCore.jl")
           Pkg.status()
-          # Pkg.develop(PackageSpec(path="./julia/OpenMDAO.jl"))
+          # Pkg.develop(path="./julia/OpenMDAO.jl")
           Pkg.status()
+          Pkg.add(url="https://github.com/dingraha/CondaPkg.jl", rev="pip_editable")
           using CondaPkg
           # This path in the version argument is relative to the location of the CondaPkg.toml file (aka OpenMDAO.jl/docs), not the working directory.
           CondaPkg.add_pip("omjlcomps"; version="@./../python")
@@ -47,7 +48,7 @@ jobs:
           Pkg.status()
           Pkg.update()
           Pkg.status()
-          Pkg.develop(PackageSpec(path="./julia/OpenMDAO.jl"))
+          Pkg.develop(path="./julia/OpenMDAO.jl")
           Pkg.instantiate()
           Pkg.status()
           Pkg.update()
