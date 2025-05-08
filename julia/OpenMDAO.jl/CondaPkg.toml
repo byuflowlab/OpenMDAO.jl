@@ -2,7 +2,4 @@
 [pip.deps]
 juliapkg = "~=0.1.10"
 openmdao = "~=3.36"
-
-    [pip.deps.omjlcomps]
-    editable = true
-    version = "@./../../python"
+omjlcomps = "~=0.3.0"
