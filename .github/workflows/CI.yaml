@@ -77,6 +77,8 @@ jobs:
           PreferenceTools.add("CondaPkg", backend="MicroMamba")
           Pkg.activate("./julia/OpenMDAO.jl")
           PreferenceTools.add("CondaPkg", backend="MicroMamba")
+          Pkg.activate("./julia/OpenMDAO.jl/test")
+          PreferenceTools.add("CondaPkg", backend="MicroMamba")
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
       - name: OpenMDAO.jl Tests
