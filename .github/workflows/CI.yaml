@@ -72,11 +72,11 @@ jobs:
         shell: julia --color=yes {0}
         run: |
           using Pkg
-          Pkg.activate("./julia/OpenMDAO.jl")
-          Pkg.develop(path="./julia/OpenMDAOCore.jl")
           Pkg.add("PreferenceTools")
           using PreferenceTools
           PreferenceTools.add("CondaPkg", backend="MicroMamba")
+          Pkg.activate("./julia/OpenMDAO.jl")
+          Pkg.develop(path="./julia/OpenMDAOCore.jl")
           Pkg.instantiate()
           using CondaPkg
           CondaPkg.add_pip("omjlcomps"; version="@./../../python")
