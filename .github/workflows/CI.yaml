@@ -130,11 +130,10 @@ jobs:
       - name: Install juliapkg and add latest version of OpenMDAOCore.jl
         run: |
           echo "PWD = $PWD"
-          # Get the json test dependencies file in the correct place.
-          cp $PWD/python/omjlcomps/test/juliapkg-dev.json $PWD/python/omjlcomps/test/juliapkg.json
+          # Get the json file with all the test dependencies, and that will install the local version of OpenMDAOCore.jl.
+          cp $PWD/python/omjlcomps/test/juliapkg-test.json $PWD/python/omjlcomps/juliapkg.json
           python -m pip install --upgrade pip
           pip install juliapkg
-          # python -c "import juliapkg; juliapkg.add('OpenMDAOCore', '24d19c10-6eee-420f-95df-4537264b2753', dev=True, path='$PWD/julia/OpenMDAOCore.jl')"
           pip install aviary
       - name: omjlcomps install
         run: |
