@@ -2,4 +2,4 @@
 [pip.deps]
 matplotlib = ""
 dymos = ""
-omjlcomps = "~=0.3.0"
+omjlcomps = ""

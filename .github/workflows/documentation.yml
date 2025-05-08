@@ -25,10 +25,6 @@ jobs:
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
-      - name: Hack OpenMDAO.jl's CondaPkg.toml to allow local version of omjlcomps
-        run: |
-          sed --in-place -e '/^omjlcomps/s/=.*$/= ""/' ./julia/OpenMDAO.jl/CondaPkg.toml
-          cat ./julia/OpenMDAO.jl/CondaPkg.toml
       - name: Install dependencies
         shell: julia --project=docs/ --color=yes {0}
         run: |
@@ -37,7 +33,8 @@ jobs:
           Pkg.develop(PackageSpec(path="./julia/OpenMDAO.jl"))
           Pkg.instantiate()
           using CondaPkg
-          CondaPkg.add_pip("omjlcomps"; version="@./python")
+          # This path in the version argument is relative to the location of the CondaPkg.toml file (aka OpenMDAO.jl/docs), not the working directory.
+          CondaPkg.add_pip("omjlcomps"; version="@./../python")
           Pkg.update()
 
       - name: Build and deploy
