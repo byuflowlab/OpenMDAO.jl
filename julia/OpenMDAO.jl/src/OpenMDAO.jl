@@ -12,7 +12,11 @@ const omjlcomps = PythonCall.pynew()
 
 function __init__()
     PythonCall.pycopy!(om, PythonCall.pyimport("openmdao.api"))
-    Pkg.add("OpenMDAOCore")
+    openmdao_core_uuid = Base.UUID("24d19c10-6eee-420f-95df-4537264b2753")
+    openmdao_core_pkg_info = Pkg.dependencies()[openmdao_core_uuid]
+    if ! openmdao_core_pkg_info.is_direct_dep
+        Pkg.add("OpenMDAOCore")
+    end
     PythonCall.pycopy!(omjlcomps, PythonCall.pyimport("omjlcomps"))
 end
 
