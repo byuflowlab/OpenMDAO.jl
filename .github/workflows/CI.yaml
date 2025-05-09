@@ -19,6 +19,7 @@ jobs:
           - '1' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
         os:
           - ubuntu-latest
+          - macOS-latest
         arch:
           - x64
     steps:
@@ -53,6 +54,7 @@ jobs:
           - '1' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
         os:
           - ubuntu-latest
+          - macOS-latest
         arch:
           - x64
     steps:
@@ -68,19 +70,6 @@ jobs:
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
-      # - name: Use MicroMamba not Pixie with CondaPkg.jl
-      #   shell: julia --project=. --color=yes {0}
-      #   run: |
-      #     using Pkg
-      #     Pkg.add("PreferenceTools")
-      #     using PreferenceTools
-      #     PreferenceTools.add("CondaPkg", backend="MicroMamba")
-      #     Pkg.activate("./julia/OpenMDAO.jl")
-      #     PreferenceTools.add("CondaPkg", backend="MicroMamba")
-      #     Pkg.activate("./julia/OpenMDAO.jl/test")
-      #     PreferenceTools.add("CondaPkg", backend="MicroMamba")
-      #   env:
-      #         JULIA_PKG_USE_CLI_GIT: 'true'
       - name: OpenMDAO.jl Tests
         shell: julia --color=yes {0}
         run: |
@@ -98,7 +87,7 @@ jobs:
               JULIA_PKG_USE_CLI_GIT: 'true'
 
   omjlcomps:
-    name: Python ${{ matrix.python-version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Python ${{ matrix.python-version }} - ${{ matrix.os }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -107,15 +96,13 @@ jobs:
           - '1' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
         os:
           - ubuntu-latest
-        arch:
-          - x64
+          - macOS-latest
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia-version }}
-          arch: ${{ matrix.arch }}
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -134,11 +121,10 @@ jobs:
           cp $PWD/python/omjlcomps/test/juliapkg-test.json $PWD/python/omjlcomps/juliapkg.json
           python -m pip install --upgrade pip
           pip install juliapkg
-          pip install aviary
       - name: omjlcomps install
         run: |
           echo "PWD = $PWD"
-          pip install --config-settings editable_mode=compat -e ./python
+          pip install --config-settings editable_mode=compat -e ./python[test]
           python -c "import juliapkg; juliapkg.resolve()"
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'

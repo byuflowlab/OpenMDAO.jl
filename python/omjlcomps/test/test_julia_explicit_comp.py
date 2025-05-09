@@ -3,6 +3,7 @@ Unit tests for JuliaExplicitComp
 """
 import juliacall; jl = juliacall.newmodule("OpenMDAOJuliaExplicitCompTest")
 import os
+import sys
 import time
 import unittest
 
@@ -244,7 +245,10 @@ class TestJuliaExplicitCompWithLargeOption(unittest.TestCase):
 
         if os.getenv("GITHUB_ACTIONS") == "true":
             # n_big = 1_000_000_000 is too big for GitHub Actions---it appears to consume all the virtual machine's memory and kills the job, giving me a big sad.
-            n_big = self.n_big = 100_000_000
+            if sys.platform == "darwin":
+                n_big = self.n_big = 20_000_000
+            else:
+                n_big = self.n_big = 100_000_000
         else:
             n_big = self.n_big = 500_000_000
         p_big = self.p_big = om.Problem()

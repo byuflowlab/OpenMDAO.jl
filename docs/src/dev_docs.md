@@ -45,7 +45,7 @@ $
 ```
 
 For `omjlcomps`, registration is done by manually running the "Register to PyPI" workflow from the GitHub Actions tab (basically copied from [PythonCall.jl](https://github.com/cjdoris/PythonCall.jl)).
-Be sure to adjust the version in the `python/setup.py` file before registering a new version.
+Be sure to adjust the version in the `python/pyproject.toml` file before registering a new version.
 After clicking on the Actions tab on https://github.com/byuflowlab/OpenMDAO.jl, you'll see "Register to PyPI" listed under "All workflows" on the left-hand side.
 Click on that, then click on the "Run workflow" dropdown button on the right-hand side of the screen.
 Run it from the master branch, then wait for the workflow to finish.
