@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Limitations · OpenMDAO.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">OpenMDAO.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../simple_paraboloid/">A Simple Example</a></li><li><a class="tocitem" href="../nonlinear_circuit/">A More Complicated Example</a></li><li><a class="tocitem" href="../shape_by_conn/">Variable Shapes at Runtime</a></li><li><a class="tocitem" href="../brachistochrone/">A Simple Dymos Example</a></li><li><a class="tocitem" href="../reference/">API Reference</a></li><li class="is-active"><a class="tocitem" href>Limitations</a><ul class="internal"><li><a class="tocitem" href="#Import-juliacall-first-from-Python...-sometimes"><span>Import <code>juliacall</code> first from Python... sometimes</span></a></li><li><a class="tocitem" href="#Dymos-ODEs-and-the-truthiness-of-Julia-callables-in-Python"><span>Dymos ODEs and the truthiness of Julia callables in Python</span></a></li></ul></li><li><a class="tocitem" href="../dev_docs/">Developer Docs</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Limitations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Limitations</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/byuflowlab/OpenMDAO.jl/blob/master/docs/src/limitations.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Limitations"><a class="docs-heading-anchor" href="#Limitations">Limitations</a><a id="Limitations-1"></a><a class="docs-heading-anchor-permalink" href="#Limitations" title="Permalink"></a></h1><h2 id="Import-juliacall-first-from-Python...-sometimes"><a class="docs-heading-anchor" href="#Import-juliacall-first-from-Python...-sometimes">Import <code>juliacall</code> first from Python... sometimes</a><a id="Import-juliacall-first-from-Python...-sometimes-1"></a><a class="docs-heading-anchor-permalink" href="#Import-juliacall-first-from-Python...-sometimes" title="Permalink"></a></h2><p>When using the <code>omjlcomps</code> Python library, it is sometimes necessary to import <code>juliacall</code> before other Python libraries (at least <code>matplotlib</code>, maybe others too) to avoid an error that looks like this:</p><pre><code class="nohighlight hljs">$ cat test.py
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Limitations · OpenMDAO.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">OpenMDAO.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../simple_paraboloid/">A Simple Example</a></li><li><a class="tocitem" href="../nonlinear_circuit/">A More Complicated Example</a></li><li><a class="tocitem" href="../shape_by_conn/">Variable Shapes at Runtime</a></li><li><a class="tocitem" href="../brachistochrone/">A Simple Dymos Example</a></li><li><a class="tocitem" href="../auto_sparse_ad/">Auto-Sparse Examples</a></li><li><a class="tocitem" href="../matrix_free_ad/">Auto-Matrix-Free Examples</a></li><li><a class="tocitem" href="../reference/">API Reference</a></li><li class="is-active"><a class="tocitem" href>Limitations</a><ul class="internal"><li><a class="tocitem" href="#Import-juliacall-first-from-Python...-sometimes"><span>Import <code>juliacall</code> first from Python... sometimes</span></a></li><li><a class="tocitem" href="#OpenMDAOCore.jl-must-be-explicitly-installed-in-Julia-projects/environments-that-use-OpenMDAO.jl"><span>OpenMDAOCore.jl must be explicitly installed in Julia projects/environments that use OpenMDAO.jl</span></a></li><li><a class="tocitem" href="#Finding-juliapkg.json-files-in-editable-Python-packages"><span>Finding <code>juliapkg.json</code> files in editable Python packages</span></a></li><li><a class="tocitem" href="#Distributing-Julia-files-in-a-Python-package"><span>Distributing Julia files in a Python package</span></a></li></ul></li><li><a class="tocitem" href="../dev_docs/">Developer Docs</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Limitations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Limitations</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/byuflowlab/OpenMDAO.jl/blob/master/docs/src/limitations.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Limitations"><a class="docs-heading-anchor" href="#Limitations">Limitations</a><a id="Limitations-1"></a><a class="docs-heading-anchor-permalink" href="#Limitations" title="Permalink"></a></h1><h2 id="Import-juliacall-first-from-Python...-sometimes"><a class="docs-heading-anchor" href="#Import-juliacall-first-from-Python...-sometimes">Import <code>juliacall</code> first from Python... sometimes</a><a id="Import-juliacall-first-from-Python...-sometimes-1"></a><a class="docs-heading-anchor-permalink" href="#Import-juliacall-first-from-Python...-sometimes" title="Permalink"></a></h2><p>When using the <code>omjlcomps</code> Python library, it is sometimes necessary to import <code>juliacall</code> before other Python libraries (at least <code>matplotlib</code>, maybe others too) to avoid an error that looks like this:</p><pre><code class="nohighlight hljs">$ cat test.py
 import matplotlib
 import juliacall
 $ python test.py
@@ -11,62 +11,348 @@ ERROR: `ccall` requires the compilerTraceback (most recent call last):
   File &quot;/home/dingraha/desk/pythoncall_wtf/venv-mybuild-with-libc-enable-shared-without-lto-without-optimizations-computed-gotos-no-dtrace-no-ssl/lib/python3.9/site-packages/juliacall/__init__.py&quot;, line 214, in init
     raise Exception(&#39;PythonCall.jl did not start properly&#39;)
 Exception: PythonCall.jl did not start properly
-$</code></pre><p>This only occurs when using the <strong>system Python</strong> on certain Linux distributions (e.g., Python 3.9.7 on Red Hat Enterprise Linux 8.6). I&#39;ve found three workarounds:</p><ul><li>import the <code>juliacall</code> module first in your run script, before anything else, or</li><li>don&#39;t use the system Python: set up a Conda environment instead, or</li><li>don&#39;t use RHEL (the system Python on e.g. Arch Linux doesn&#39;t appear to suffer from this bug).</li></ul><p>See <a href="https://github.com/cjdoris/PythonCall.jl/issues/255">this PythonCall issue</a> for a few more details.</p><h2 id="Dymos-ODEs-and-the-truthiness-of-Julia-callables-in-Python"><a class="docs-heading-anchor" href="#Dymos-ODEs-and-the-truthiness-of-Julia-callables-in-Python">Dymos ODEs and the truthiness of Julia callables in Python</a><a id="Dymos-ODEs-and-the-truthiness-of-Julia-callables-in-Python-1"></a><a class="docs-heading-anchor-permalink" href="#Dymos-ODEs-and-the-truthiness-of-Julia-callables-in-Python" title="Permalink"></a></h2><p>To create a Dymos phase, the Dymos library requires the user to pass either a function or OpenMDAO <code>System</code> subclass that takes a <code>num_nodes</code> argument and return an OpenMDAO <code>System</code> that implements the ODE associated with the Dymos <code>Phase</code>. How do we do that with OpenMDAO.jl? It&#39;s easy enough to create, say, an <code>AbstractExplicitComp</code> that takes a <code>num_nodes</code> argument:</p><pre><code class="language-julia hljs">using OpenMDAOCore: OpenMDAOCore
-struct FooODE &lt;: OpenMDAOCore.AbstractExplicitComp
-    num_nodes::Int
-    # made-up options:
-    a::Float64
-    b::Bool
-end</code></pre><p>and then use <code>make_component</code> and a function to create a callable Julia function that fulfills Dymos&#39; requirements:</p><pre><code class="language-julia hljs">using OpenMDAO: om, make_component
-a = 8.0
-b = true
-make_ode(num_nodes) = make_component(FooODE(num_nodes, a, b))
-println(&quot;make_ode = $(make_ode), typeof(make_ode) = $(typeof(make_ode))&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">make_ode = make_ode, typeof(make_ode) = typeof(Main.make_ode)</code></pre><p>But can we use that to construct a Dymos <code>Phase</code>?</p><pre><code class="language-julia hljs">using PythonCall: pyimport
-dm = pyimport(&quot;dymos&quot;)
-#
-# Initialize the Problem and the optimization driver
-#
-p = om.Problem(model=om.Group())
-p.driver = om.ScipyOptimizeDriver()
-p.driver.declare_coloring()
-#
-# Create a trajectory and add a phase to it
-#
-traj = p.model.add_subsystem(&quot;traj&quot;, dm.Trajectory())
-phase = traj.add_phase(&quot;phase0&quot;,
-                       dm.Phase(ode_class = make_ode,
-                                transcription = dm.GaussLobatto(num_segments=10)))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Python: &lt;dymos.phase.phase.Phase object at 0x7f058efae720&gt;</code></pre><p>Yes! So we should be able to it in a trajectory optimization, right?</p><pre><code class="language-julia hljs">#
-# Set the variables
-#
-phase.set_time_options(fix_initial=true, duration_bounds=(.5, 10))
+$</code></pre><p>This only occurs when using the <strong>system Python</strong> on certain Linux distributions (e.g., Python 3.9.7 on Red Hat Enterprise Linux 8.6). I&#39;ve found three workarounds:</p><ul><li>import the <code>juliacall</code> module first in your run script, before anything else, or</li><li>don&#39;t use the system Python: set up a Conda environment instead, or</li><li>don&#39;t use RHEL (the system Python on e.g. Arch Linux doesn&#39;t appear to suffer from this bug).</li></ul><p>See <a href="https://github.com/cjdoris/PythonCall.jl/issues/255">this PythonCall issue</a> for a few more details.</p><h2 id="OpenMDAOCore.jl-must-be-explicitly-installed-in-Julia-projects/environments-that-use-OpenMDAO.jl"><a class="docs-heading-anchor" href="#OpenMDAOCore.jl-must-be-explicitly-installed-in-Julia-projects/environments-that-use-OpenMDAO.jl">OpenMDAOCore.jl must be explicitly installed in Julia projects/environments that use OpenMDAO.jl</a><a id="OpenMDAOCore.jl-must-be-explicitly-installed-in-Julia-projects/environments-that-use-OpenMDAO.jl-1"></a><a class="docs-heading-anchor-permalink" href="#OpenMDAOCore.jl-must-be-explicitly-installed-in-Julia-projects/environments-that-use-OpenMDAO.jl" title="Permalink"></a></h2><p>OpenMDAO.jl does something strange in its <code>__init__</code>: it calls <code>Pkg.add(&quot;OpenMDAOCore&quot;)</code>, which has the effect of explicitly installing OpenMDAOCore.jl in the current Julia project/environment. Why? Well, let&#39;s remove that call, install OpenMDAO.jl in a fresh environment, and see what happens.</p><pre><code class="nohighlight hljs">shell&gt; mkdir MyNewEnvironment
 
-phase.add_state(&quot;x&quot;, fix_initial=true, fix_final=true)
+shell&gt; cd MyNewEnvironment/
+/home/dingraha/Desktop/MyNewEnvironment
 
-phase.add_state(&quot;y&quot;, fix_initial=true, fix_final=true)
+(blah) pkg&gt; activate .
+  Activating new project at `~/Desktop/MyNewEnvironment`
 
-phase.add_state(&quot;v&quot;, fix_initial=true, fix_final=false)
+(MyNewEnvironment) pkg&gt; status
+Status `~/Desktop/MyNewEnvironment/Project.toml` (empty project)
 
-phase.add_control(&quot;theta&quot;, continuity=true, rate_continuity=true,
-                  units=&quot;deg&quot;, lower=0.01, upper=179.9)
+(MyNewEnvironment) pkg&gt; dev --local OpenMDAO
+     Cloning git-repo `https://github.com/byuflowlab/OpenMDAO.jl.git`
+   Resolving package versions...
+    Updating `~/Desktop/MyNewEnvironment/Project.toml`
+  [2d3f9b48] + OpenMDAO v0.4.1 `dev/OpenMDAO/julia/OpenMDAO.jl`
+    Updating `~/Desktop/MyNewEnvironment/Manifest.toml`
+  [992eb4ea] + CondaPkg v0.2.28
+  [9a962f9c] + DataAPI v1.16.0
+  [e2d170a0] + DataValueInterfaces v1.0.0
+  [82899510] + IteratorInterfaceExtensions v1.0.0
+  [692b3bcd] + JLLWrappers v1.7.0
+  [0f8b85d8] + JSON3 v1.14.2
+  [1914dd2f] + MacroTools v0.5.16
+  [0b3b1443] + MicroMamba v0.1.14
+  [2d3f9b48] + OpenMDAO v0.4.1 `dev/OpenMDAO/julia/OpenMDAO.jl`
+  [24d19c10] + OpenMDAOCore v0.3.1
+  [bac558e1] + OrderedCollections v1.8.0
+  [69de0a69] + Parsers v2.8.3
+  [fa939f87] + Pidfile v1.3.0
+⌅ [aea7be01] + PrecompileTools v1.2.1
+  [21216c6a] + Preferences v1.4.3
+  [6099a3de] + PythonCall v0.9.24
+  [ae029012] + Requires v1.3.1
+  [6c6a2e73] + Scratch v1.2.1
+  [856f2bd8] + StructTypes v1.11.0
+  [3783bdb8] + TableTraits v1.0.1
+  [bd369af6] + Tables v1.12.0
+  [e17b2a0c] + UnsafePointers v1.0.0
+  [f8abcde7] + micromamba_jll v1.5.8+0
+  [4d7b5844] + pixi_jll v0.41.3+0
+  [0dad84c5] + ArgTools v1.1.2
+  [56f22d72] + Artifacts v1.11.0
+  [2a0f44e3] + Base64 v1.11.0
+  [ade2ca70] + Dates v1.11.0
+  [f43a241f] + Downloads v1.6.0
+  [7b1f6079] + FileWatching v1.11.0
+  [b77e0a4c] + InteractiveUtils v1.11.0
+  [4af54fe1] + LazyArtifacts v1.11.0
+  [b27032c2] + LibCURL v0.6.4
+  [76f85450] + LibGit2 v1.11.0
+  [8f399da3] + Libdl v1.11.0
+  [56ddb016] + Logging v1.11.0
+  [d6f4376e] + Markdown v1.11.0
+  [a63ad114] + Mmap v1.11.0
+  [ca575930] + NetworkOptions v1.2.0
+  [44cfe95a] + Pkg v1.11.0
+  [de0858da] + Printf v1.11.0
+  [9a3f8284] + Random v1.11.0
+  [ea8e919c] + SHA v0.7.0
+  [9e88b42a] + Serialization v1.11.0
+  [fa267f1f] + TOML v1.0.3
+  [a4e569a6] + Tar v1.10.0
+  [8dfed614] + Test v1.11.0
+  [cf7118a7] + UUIDs v1.11.0
+  [4ec0a83e] + Unicode v1.11.0
+  [deac9b47] + LibCURL_jll v8.6.0+0
+  [e37daf67] + LibGit2_jll v1.7.2+0
+  [29816b5a] + LibSSH2_jll v1.11.0+1
+  [c8ffd9c3] + MbedTLS_jll v2.28.6+0
+  [14a3606d] + MozillaCACerts_jll v2023.12.12
+  [83775a58] + Zlib_jll v1.2.13+1
+  [8e850ede] + nghttp2_jll v1.59.0+0
+  [3f19e933] + p7zip_jll v17.4.0+2
+        Info Packages marked with ⌅ have new versions available but compatibility constraints restrict them from upgrading. To see why use `s
+tatus --outdated -m`
 
-phase.add_parameter(&quot;g&quot;, units=&quot;m/s**2&quot;, val=9.80665)
+shell&gt; nvr ./dev/OpenMDAO/julia/OpenMDAO.jl/src/OpenMDAO.jl # edit OpenMDAO.jl, removing `Pkg.add(&quot;OpenMDAOCore&quot;)`
 
-#
-# Minimize time at the end of the phase
-#
-phase.add_objective(&quot;time&quot;, loc=&quot;final&quot;, scaler=10)
-#
-p.model.linear_solver = om.DirectSolver()
-#
-# Setup the Problem
-#
-# p.setup() # Commented out to avoid error.
-# This will throw something like:
-#
-# │   value =
-# │    Python: TypeError: Julia: MethodError: no method matching length(::typeof(Main.__atexample__named__dymos_callable.make_ode))
-# │    Closest candidates are:
-# │      length(!Matched::Union{Base.KeySet, Base.ValueIterator}) at abstractdict.jl:58
-# │      length(!Matched::Union{LinearAlgebra.Adjoint{T, S}, LinearAlgebra.Transpose{T, S}} where {T, S}) at ~/local/julia/1.8.5/share/julia/stdlib/v1.8/LinearAlgebra/src/adjtrans.jl:172
-# │      length(!Matched::Union{Tables.AbstractColumns, Tables.AbstractRow}) at ~/.julia/packages/Tables/T7rHm/src/Tables.jl:180
-# │      ...</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Python: &lt;openmdao.solvers.linear.direct.DirectSolver object at 0x7f058efaf3e0&gt;</code></pre><p>Nope, sad: the <code>Problem.setup()</code> call on the last line of that example throws an error. What&#39;s going wrong? I am not 100% clear on all the details, but what I think is happening is this:</p><ul><li><p>During the <code>Phase.setup</code> method, Dymos checks for the truthiness of the <code>ode_class</code> <code>Phase</code> <code>option</code>.</p></li><li><p>What is the truthiness of a class in Python? It depends:</p><ul><li>If the <code>__bool__</code> method is defined for the class, that result of calling that is used,</li><li>If <code>__bool__</code> isn&#39;t defined, then if <code>__len__</code> is defined, the result of calling that is used, with <code>0</code> considered <code>False</code> and any other value <code>True</code>,</li><li>If neither <code>__bool__</code> nor <code>__len__</code> are defined, then the class is considered <code>True</code>.</li></ul></li><li><p>The Julia function <code>make_ode</code> that we pass to the <code>Phase</code> constructor is converted to an <code>AnyValue</code> on the Python side by the Julia package PythonCall. The <code>AnyValue</code> class doesn&#39;t implement <code>__bool__</code>, but it <strong>does</strong> implement <code>__len__</code>, which calls the Julia function <code>length</code> on the Julia object.</p></li><li><p>But <code>length</code> doesn&#39;t have a method for plain old Julia functions, hence the error above.</p></li></ul><p>The workaround is to create a small <code>struct</code> called <a href="../reference/#OpenMDAO.DymosifiedCompWrapper"><code>DymosifiedCompWrapper</code></a> that takes an <code>OpenMDAOCore.AbstractComp</code> type (not instance) and all the non-<code>num_nodes</code> arguments, and implement a <code>Base.length</code> method for <code>DymosifiedCompWrapper</code> that always returns <code>1</code>, a truthy value in Python.</p><p>See the <a href="https://github.com/cjdoris/PythonCall.jl/issues/323">PythonCall issue on this topic</a> for news related to this topic.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../reference/">« API Reference</a><a class="docs-footer-nextpage" href="../dev_docs/">Developer Docs »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Tuesday 20 February 2024 19:59">Tuesday 20 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+(MyNewEnvironment) pkg&gt; status
+Status `~/Desktop/MyNewEnvironment/Project.toml`
+  [2d3f9b48] OpenMDAO v0.4.1 `dev/OpenMDAO/julia/OpenMDAO.jl`
+
+julia&gt; using OpenMDAO
+Precompiling OpenMDAO...
+Info Given OpenMDAO was explicitly requested, output will be shown live 
+    CondaPkg Found dependencies: /home/dingraha/.julia/packages/PythonCall/WMWY0/CondaPkg.toml
+    CondaPkg Found dependencies: /home/dingraha/Desktop/MyNewEnvironment/dev/OpenMDAO/julia/OpenMDAO.jl/CondaPkg.toml
+    CondaPkg Resolving changes
+             + juliapkg (pip)
+             + libstdcxx-ng
+             + omjlcomps (pip)
+             + openmdao
+             + python
+             + uv
+    CondaPkg Initialising pixi
+             │ /home/dingraha/.julia/artifacts/cefba4912c2b400756d043a2563ef77a0088866b/bin/pixi
+             │ init
+             │ --format pixi
+             └ /home/dingraha/Desktop/MyNewEnvironment/.CondaPkg
+✔ Created /home/dingraha/Desktop/MyNewEnvironment/.CondaPkg/pixi.toml
+    CondaPkg Wrote /home/dingraha/Desktop/MyNewEnvironment/.CondaPkg/pixi.toml
+             │ [dependencies]
+             │ uv = &quot;&gt;=0.4&quot;
+             │ libstdcxx-ng = &quot;&gt;=3.4,&lt;13.0&quot;
+             │ openmdao = &quot;&gt;=3.26.0,&lt;4&quot;
+             │ 
+             │     [dependencies.python]
+             │     channel = &quot;conda-forge&quot;
+             │     build = &quot;*cpython*&quot;
+             │     version = &quot;&gt;=3.8,&lt;4&quot;
+             │ 
+             │ [project]
+             │ name = &quot;.CondaPkg&quot;
+             │ platforms = [&quot;linux-64&quot;]
+             │ channels = [&quot;conda-forge&quot;]
+             │ channel-priority = &quot;strict&quot;
+             │ description = &quot;automatically generated by CondaPkg.jl&quot;
+             │ 
+             │ [pypi-dependencies]
+             │ juliapkg = &quot;~=0.1.10&quot;
+             └ omjlcomps = &quot;~=0.2.0&quot;
+    CondaPkg Installing packages
+             │ /home/dingraha/.julia/artifacts/cefba4912c2b400756d043a2563ef77a0088866b/bin/pixi
+             │ install
+             └ --manifest-path /home/dingraha/Desktop/MyNewEnvironment/.CondaPkg/pixi.toml
+✔ The default environment has been installed.
+  4 dependencies successfully precompiled in 24 seconds. 48 already precompiled.
+  1 dependency had output during precompilation:
+┌ OpenMDAO
+│  [Output was shown above]
+└  
+ERROR: InitError: Python: Julia: ArgumentError: Package OpenMDAOCore not found in current path.
+- Run `import Pkg; Pkg.add(&quot;OpenMDAOCore&quot;)` to install the OpenMDAOCore package.
+Stacktrace:
+  [1] macro expansion
+    @ ./loading.jl:2296 [inlined]
+  [2] macro expansion
+    @ ./lock.jl:273 [inlined]
+  [3] __require(into::Module, mod::Symbol)
+    @ Base ./loading.jl:2271
+  [4] #invoke_in_world#3
+    @ ./essentials.jl:1089 [inlined]
+  [5] invoke_in_world
+    @ ./essentials.jl:1086 [inlined]
+  [6] require(into::Module, mod::Symbol)
+    @ Base ./loading.jl:2260
+  [7] eval
+    @ ./boot.jl:430 [inlined]
+  [8] eval
+    @ ./Base.jl:130 [inlined]
+  [9] pyjlmodule_seval(self::Module, expr::PythonCall.Core.Py)
+    @ PythonCall.JlWrap ~/.julia/packages/PythonCall/WMWY0/src/JlWrap/module.jl:13
+ [10] _pyjl_callmethod(f::Any, self_::Ptr{PythonCall.C.PyObject}, args_::Ptr{PythonCall.C.PyObject}, nargs::Int64)
+    @ PythonCall.JlWrap ~/.julia/packages/PythonCall/WMWY0/src/JlWrap/base.jl:67
+ [11] _pyjl_callmethod(o::Ptr{PythonCall.C.PyObject}, args::Ptr{PythonCall.C.PyObject})
+    @ PythonCall.JlWrap.Cjl ~/.julia/packages/PythonCall/WMWY0/src/JlWrap/C.jl:63
+ [12] PyImport_Import
+    @ ~/.julia/packages/PythonCall/WMWY0/src/C/pointers.jl:303 [inlined]
+ [13] macro expansion
+    @ ~/.julia/packages/PythonCall/WMWY0/src/Core/Py.jl:132 [inlined]
+ [14] pyimport(m::String)
+    @ PythonCall.Core ~/.julia/packages/PythonCall/WMWY0/src/Core/builtins.jl:1561
+ [15] __init__()
+    @ OpenMDAO ~/Desktop/MyNewEnvironment/dev/OpenMDAO/julia/OpenMDAO.jl/src/OpenMDAO.jl:16
+ [16] run_module_init(mod::Module, i::Int64)
+    @ Base ./loading.jl:1378
+ [17] register_restored_modules(sv::Core.SimpleVector, pkg::Base.PkgId, path::String)
+    @ Base ./loading.jl:1366
+ [18] _include_from_serialized(pkg::Base.PkgId, path::String, ocachepath::String, depmods::Vector{Any}, ignore_native::Nothing; register::Boo
+l)
+    @ Base ./loading.jl:1254
+ [19] _include_from_serialized (repeats 2 times)
+    @ ./loading.jl:1210 [inlined]
+ [20] _require_search_from_serialized(pkg::Base.PkgId, sourcepath::String, build_id::UInt128, stalecheck::Bool; reasons::Dict{…}, DEPOT_PATH:
+:Vector{…})
+    @ Base ./loading.jl:2057
+ [21] _require(pkg::Base.PkgId, env::String)
+    @ Base ./loading.jl:2527
+ [22] __require_prelocked(uuidkey::Base.PkgId, env::String)
+    @ Base ./loading.jl:2388
+ [23] #invoke_in_world#3
+    @ ./essentials.jl:1089 [inlined]
+ [24] invoke_in_world
+    @ ./essentials.jl:1086 [inlined]
+ [25] _require_prelocked(uuidkey::Base.PkgId, env::String)
+    @ Base ./loading.jl:2375
+ [26] macro expansion
+    @ ./loading.jl:2314 [inlined]
+ [27] macro expansion
+    @ ./lock.jl:273 [inlined]
+ [28] __require(into::Module, mod::Symbol)
+    @ Base ./loading.jl:2271
+ [29] #invoke_in_world#3
+    @ ./essentials.jl:1089 [inlined]
+ [30] invoke_in_world
+    @ ./essentials.jl:1086 [inlined]
+ [31] require(into::Module, mod::Symbol)
+    @ Base ./loading.jl:2260
+ [32] eval
+    @ ./boot.jl:430 [inlined]
+ [33] eval_user_input(ast::Any, backend::REPL.REPLBackend, mod::Module)
+    @ REPL ~/local/julia/1.11.5/share/julia/stdlib/v1.11/REPL/src/REPL.jl:261
+ [34] repl_backend_loop(backend::REPL.REPLBackend, get_module::Function)
+    @ REPL ~/local/julia/1.11.5/share/julia/stdlib/v1.11/REPL/src/REPL.jl:368
+ [35] start_repl_backend(backend::REPL.REPLBackend, consumer::Any; get_module::Function)
+    @ REPL ~/local/julia/1.11.5/share/julia/stdlib/v1.11/REPL/src/REPL.jl:343
+ [36] run_repl(repl::REPL.AbstractREPL, consumer::Any; backend_on_current_task::Bool, backend::Any)
+    @ REPL ~/local/julia/1.11.5/share/julia/stdlib/v1.11/REPL/src/REPL.jl:500
+ [37] run_repl(repl::REPL.AbstractREPL, consumer::Any)
+    @ REPL ~/local/julia/1.11.5/share/julia/stdlib/v1.11/REPL/src/REPL.jl:486
+ [38] (::Base.var&quot;#1150#1152&quot;{Bool, Symbol, Bool})(REPL::Module)
+    @ Base ./client.jl:446
+ [39] #invokelatest#2
+    @ ./essentials.jl:1055 [inlined]
+ [40] invokelatest
+    @ ./essentials.jl:1052 [inlined]
+ [41] run_main_repl(interactive::Bool, quiet::Bool, banner::Symbol, history_file::Bool, color_set::Bool)
+    @ Base ./client.jl:430
+ [42] repl_main
+    @ ./client.jl:567 [inlined]
+ [43] _start()
+    @ Base ./client.jl:541
+Python stacktrace:
+ [1] seval
+   @ ~/.julia/packages/PythonCall/WMWY0/src/JlWrap/module.jl:27
+ [2] &lt;module&gt;
+   @ ~/Desktop/MyNewEnvironment/.CondaPkg/.pixi/envs/default/lib/python3.12/site-packages/omjlcomps/__init__.py:9
+Stacktrace:
+  [1] pythrow()
+    @ PythonCall.Core ~/.julia/packages/PythonCall/WMWY0/src/Core/err.jl:92
+  [2] errcheck
+    @ ~/.julia/packages/PythonCall/WMWY0/src/Core/err.jl:10 [inlined]
+  [3] pyimport(m::String)
+    @ PythonCall.Core ~/.julia/packages/PythonCall/WMWY0/src/Core/builtins.jl:1561
+  [4] __init__()
+    @ OpenMDAO ~/Desktop/MyNewEnvironment/dev/OpenMDAO/julia/OpenMDAO.jl/src/OpenMDAO.jl:16
+  [5] run_module_init(mod::Module, i::Int64)
+    @ Base ./loading.jl:1378
+  [6] register_restored_modules(sv::Core.SimpleVector, pkg::Base.PkgId, path::String)
+    @ Base ./loading.jl:1366
+  [7] _include_from_serialized(pkg::Base.PkgId, path::String, ocachepath::String, depmods::Vector{Any}, ignore_native::Nothing; register::Boo
+l)
+    @ Base ./loading.jl:1254
+  [8] _include_from_serialized (repeats 2 times)
+    @ ./loading.jl:1210 [inlined]
+  [9] _require_search_from_serialized(pkg::Base.PkgId, sourcepath::String, build_id::UInt128, stalecheck::Bool; reasons::Dict{…}, DEPOT_PATH:
+:Vector{…})
+    @ Base ./loading.jl:2057
+ [10] _require(pkg::Base.PkgId, env::String)
+    @ Base ./loading.jl:2527
+ [11] __require_prelocked(uuidkey::Base.PkgId, env::String)
+    @ Base ./loading.jl:2388
+ [12] #invoke_in_world#3
+    @ ./essentials.jl:1089 [inlined]
+ [13] invoke_in_world
+    @ ./essentials.jl:1086 [inlined]
+ [14] _require_prelocked(uuidkey::Base.PkgId, env::String)
+    @ Base ./loading.jl:2375
+ [15] macro expansion
+    @ ./loading.jl:2314 [inlined]
+ [16] macro expansion
+    @ ./lock.jl:273 [inlined]
+ [17] __require(into::Module, mod::Symbol)
+    @ Base ./loading.jl:2271
+ [18] #invoke_in_world#3
+    @ ./essentials.jl:1089 [inlined]
+ [19] invoke_in_world
+    @ ./essentials.jl:1086 [inlined]
+ [20] require(into::Module, mod::Symbol)
+    @ Base ./loading.jl:2260
+during initialization of module OpenMDAO
+Some type information was truncated. Use `show(err)` to see complete types.
+
+julia&gt; </code></pre><p>What happened there? We see from the output when installing <code>OpenMDAO.jl</code> that <code>OpenMDAOCore.jl</code> was installed, and when doing <code>using OpenMDAO</code> the Python environment was set up nicely for us, and did install the &quot;real&quot; Python OpenMDAO and <code>omjlcomps</code> packages for us. But then <code>omjlcomps</code> complains about not being able to find OpenMDAOCore, despite it being in the <code>MyNewEnvironment</code> <code>Manifest.toml</code>:</p><pre><code class="nohighlight hljs">(MyNewEnvironment) pkg&gt; status --manifest
+Status `~/Desktop/MyNewEnvironment/Manifest.toml`
+  [992eb4ea] CondaPkg v0.2.28
+  [9a962f9c] DataAPI v1.16.0
+  [e2d170a0] DataValueInterfaces v1.0.0
+  [82899510] IteratorInterfaceExtensions v1.0.0
+  [692b3bcd] JLLWrappers v1.7.0
+  [0f8b85d8] JSON3 v1.14.2
+  [1914dd2f] MacroTools v0.5.16
+  [0b3b1443] MicroMamba v0.1.14
+  [2d3f9b48] OpenMDAO v0.4.1 `dev/OpenMDAO/julia/OpenMDAO.jl`
+  [24d19c10] OpenMDAOCore v0.3.1
+  [bac558e1] OrderedCollections v1.8.0
+  [69de0a69] Parsers v2.8.3
+  [fa939f87] Pidfile v1.3.0
+⌅ [aea7be01] PrecompileTools v1.2.1
+  [21216c6a] Preferences v1.4.3
+  [6099a3de] PythonCall v0.9.24
+  [ae029012] Requires v1.3.1
+  [6c6a2e73] Scratch v1.2.1
+  [856f2bd8] StructTypes v1.11.0
+  [3783bdb8] TableTraits v1.0.1
+  [bd369af6] Tables v1.12.0
+  [e17b2a0c] UnsafePointers v1.0.0
+  [f8abcde7] micromamba_jll v1.5.8+0
+  [4d7b5844] pixi_jll v0.41.3+0
+  [0dad84c5] ArgTools v1.1.2
+  [56f22d72] Artifacts v1.11.0
+  [2a0f44e3] Base64 v1.11.0
+  [ade2ca70] Dates v1.11.0
+  [f43a241f] Downloads v1.6.0
+  [7b1f6079] FileWatching v1.11.0
+  [b77e0a4c] InteractiveUtils v1.11.0
+  [4af54fe1] LazyArtifacts v1.11.0
+  [b27032c2] LibCURL v0.6.4
+  [76f85450] LibGit2 v1.11.0
+  [8f399da3] Libdl v1.11.0
+  [56ddb016] Logging v1.11.0
+  [d6f4376e] Markdown v1.11.0
+  [a63ad114] Mmap v1.11.0
+  [ca575930] NetworkOptions v1.2.0
+  [44cfe95a] Pkg v1.11.0
+  [de0858da] Printf v1.11.0
+  [9a3f8284] Random v1.11.0
+  [ea8e919c] SHA v0.7.0
+  [9e88b42a] Serialization v1.11.0
+  [fa267f1f] TOML v1.0.3
+  [a4e569a6] Tar v1.10.0
+  [8dfed614] Test v1.11.0
+  [cf7118a7] UUIDs v1.11.0
+  [4ec0a83e] Unicode v1.11.0
+  [deac9b47] LibCURL_jll v8.6.0+0
+  [e37daf67] LibGit2_jll v1.7.2+0
+  [29816b5a] LibSSH2_jll v1.11.0+1
+  [c8ffd9c3] MbedTLS_jll v2.28.6+0
+  [14a3606d] MozillaCACerts_jll v2023.12.12
+  [83775a58] Zlib_jll v1.2.13+1
+  [8e850ede] nghttp2_jll v1.59.0+0
+  [3f19e933] p7zip_jll v17.4.0+2
+Info Packages marked with ⌅ have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --
+outdated -m`
+
+(MyNewEnvironment) pkg&gt; </code></pre><p>But, now, let&#39;s explicitly install <code>OpenMDAOCore.jl</code>:</p><pre><code class="nohighlight hljs">(MyNewEnvironment) pkg&gt; add OpenMDAOCore
+   Resolving package versions...
+    Updating `~/Desktop/MyNewEnvironment/Project.toml`
+  [24d19c10] + OpenMDAOCore v0.3.1
+  No Changes to `~/Desktop/MyNewEnvironment/Manifest.toml`
+
+julia&gt; using OpenMDAO
+
+julia&gt; </code></pre><p>Now things seem to work! What&#39;s going on? I&#39;m not entirely sure. For some reason, <code>omjlcomps</code> isn&#39;t able to find the OpenMDAOCore.jl that is installed by OpenMDAO.jl &quot;behind the scenes&quot; when it&#39;s a plain dependency, but can when it&#39;s explicitly installed. So, the <code>Pkg.add(&quot;OpenMDAOCore&quot;)</code> call does this for us automatically. It will install the latest stable version of OpenMDAOCore.jl that&#39;s compatible with your environment. If you require a specific version of OpenMDAOCore.jl (eg you want to <code>dev</code> it while working on it), you&#39;ll need to install that in your environment in the usual way with Julia&#39;s package manager. (See also https://github.com/JuliaPy/CondaPkg.jl/issues/95)</p><h2 id="Finding-juliapkg.json-files-in-editable-Python-packages"><a class="docs-heading-anchor" href="#Finding-juliapkg.json-files-in-editable-Python-packages">Finding <code>juliapkg.json</code> files in editable Python packages</a><a id="Finding-juliapkg.json-files-in-editable-Python-packages-1"></a><a class="docs-heading-anchor-permalink" href="#Finding-juliapkg.json-files-in-editable-Python-packages" title="Permalink"></a></h2><p><a href="https://github.com/JuliaPy/pyjuliapkg"><code>juliapkg</code></a> is the Python package that allows us to declare Julia dependencies in Python packages. We do this by including <code>juliapkg.json</code> files in our Python packages that describe the Julia dependencies. <code>juliapkg</code> will then look for these JSON files in, among other locations, &quot;every directory and direct sub-directory in <code>sys.path</code>. When installing Python packages in &quot;editable&quot; mode with <code>pip install --editable</code> or <code>pip install -e</code>, though, the package is generally <strong>not</strong> added to <code>sys.path</code>, and so <code>juliapkg</code> will not find <code>juliapkg.json</code> will not find the JSON file, not install the required Julia dependencies, and finally you&#39;ll expect to see errors where Julia complains that it can&#39;t find the Julia packages your code requires. A fix for this has been included in <a href="https://github.com/JuliaPy/pyjuliapkg/pull/52">this PR</a>, but in the meantime, the solution appears to be to install the editable Python package with <code>pip install --config-settings editable_mode=compat -e &lt;path to package&gt;</code>.</p><h2 id="Distributing-Julia-files-in-a-Python-package"><a class="docs-heading-anchor" href="#Distributing-Julia-files-in-a-Python-package">Distributing Julia files in a Python package</a><a id="Distributing-Julia-files-in-a-Python-package-1"></a><a class="docs-heading-anchor-permalink" href="#Distributing-Julia-files-in-a-Python-package" title="Permalink"></a></h2><p>When creating a source distribution for a Python package, <code>setuptools</code> will only include <a href="https://setuptools.pypa.io/en/latest/userguide/miscellaneous.html">certain files</a>, and, perhaps not surprisingly, will ignore Julia files. The solution is to add a <code>MANIFEST.in</code> to the top-level of the Python package that includes all the Julia files you need. See the example package in <code>examples</code> for an... example of how to do this.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../reference/">« API Reference</a><a class="docs-footer-nextpage" href="../dev_docs/">Developer Docs »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Friday 9 May 2025 14:56">Friday 9 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
