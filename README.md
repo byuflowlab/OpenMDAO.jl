@@ -45,7 +45,7 @@ OpenMDAOCore.jl is a fairly small package without any Python dependencies, but O
 OpenMDAO.jl's Python dependencies are managed by [`CondaPkg`](https://github.com/cjdoris/CondaPkg.jl), and should be automatically installed into a separate Conda environment specific to your current Julia environment.
 
 ## Next Steps
-Check out the [documentation](https://dingraha.github.io/OpenMDAO.jl/dev) for usage, examples, etc..
+Check out the [documentation](https://byuflowlab.github.io/OpenMDAO.jl/dev) for usage, examples, etc..
 
 ## Acknowledgements
 * An early version of OpenMDAO.jl was written by Daniel Ingraham, Justin Gray, and Andrew Ning while visiting Prof. Ning at Brigham Young University.
