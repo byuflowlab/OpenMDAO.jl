@@ -12,7 +12,7 @@ PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 
 [compat]
 CondaPkg = "0.2.17"
-OpenMDAOCore = "0.4.0"
+OpenMDAOCore = "0.4.0, 0.3"
 Pkg = "1.11.0"
 PreferenceTools = "0.1.2"
 PythonCall = "0.9.12"
