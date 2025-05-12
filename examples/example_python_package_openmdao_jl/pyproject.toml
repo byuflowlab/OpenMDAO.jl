@@ -7,5 +7,5 @@ dependencies = [
     "openmdao~=3.26",
     "juliapkg~=0.1.10",
     "juliacall~=0.9.13",
-    "omjlcomps>=0.3.0",
+    "omjlcomps>=0.2.5",
 ]
