@@ -297,7 +297,12 @@ class TestJuliaExplicitCompWithLargeOption(unittest.TestCase):
             time_avg.append(tavg)
 
         # Compare the average timings.
-        np.testing.assert_almost_equal(time_avg[1]/time_avg[0], 1.0, decimal=1)
+        if (os.getenv("GITHUB_ACTIONS") == "true") and (sys.platform == "darwin"):
+            # The MacOS runners on GH Actions seem very flaky.
+            atol = 0.5
+        else:
+            atol = 0.1
+        np.testing.assert_allclose(time_avg[1]/time_avg[0], 1.0, atol=atol)
 
 
 class TestJuliaMatrixFreeExplicitComp(unittest.TestCase):
