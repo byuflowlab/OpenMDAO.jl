@@ -299,7 +299,7 @@ class TestJuliaExplicitCompWithLargeOption(unittest.TestCase):
         # Compare the average timings.
         if (os.getenv("GITHUB_ACTIONS") == "true") and (sys.platform == "darwin"):
             # The MacOS runners on GH Actions seem very flaky.
-            atol = 0.5
+            atol = 1.0
         else:
             atol = 0.1
         np.testing.assert_allclose(time_avg[1]/time_avg[0], 1.0, atol=atol)
