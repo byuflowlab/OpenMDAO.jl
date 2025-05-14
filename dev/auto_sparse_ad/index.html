@@ -906,9 +906,9 @@ Total colors vs. total size: 5 vs 21  (76.19% improvement)
 
 Sparsity computed using tolerance: 1e-25.
 Dense total jacobian for Problem &#39;problem2&#39; was computed 3 times.
-Time to compute sparsity:   0.0183 sec
-Time to compute coloring:   0.0021 sec
-Coloring created on: 2025-05-14 12:40:00
+Time to compute sparsity:   0.0184 sec
+Time to compute coloring:   0.0022 sec
+Coloring created on: 2025-05-14 13:52:41
 circle.area = 3.141592653589793 (should be about equal to π ≈ 3.141592653589793)</code></pre><p>We got the right answer! Yay!</p><h2 id="The-Brachistochrone-with-SparseADExplicitComp"><a class="docs-heading-anchor" href="#The-Brachistochrone-with-SparseADExplicitComp">The Brachistochrone with <code>SparseADExplicitComp</code></a><a id="The-Brachistochrone-with-SparseADExplicitComp-1"></a><a class="docs-heading-anchor-permalink" href="#The-Brachistochrone-with-SparseADExplicitComp" title="Permalink"></a></h2><p>Finally, let&#39;s implement the Brachistochrone problem from <a href="../brachistochrone/#A-Simple-Dymos-Example">A Simple Dymos Example</a> using <code>SparseADExplicitComp</code>. This will demonstrate how to add units and tags to variables used in a <code>SparseADExplicitComp</code> component.</p><p>First, let&#39;s start a new Julia script, and import Dymos:</p><pre><code class="language-julia hljs">using ADTypes: ADTypes
 using ComponentArrays: ComponentVector
 using OpenMDAOCore: OpenMDAOCore
@@ -1036,9 +1036,9 @@ Total colors vs. total size: 8 vs 50  (84.00% improvement)
 
 Sparsity computed using tolerance: 1e-25.
 Dense total jacobian for Problem &#39;problem3&#39; was computed 3 times.
-Time to compute sparsity:   1.5863 sec
-Time to compute coloring:   0.0386 sec
-Coloring created on: 2025-05-14 12:40:12
+Time to compute sparsity:   1.5573 sec
+Time to compute coloring:   0.0393 sec
+Coloring created on: 2025-05-14 13:52:54
 static_gravity = true, elapsed time = [1.80161673] (should be 1.80164719)</code></pre><p>Got the right answer!</p><p>And now, <code>static_gravity=false</code>:</p><pre><code class="language-julia hljs">doit(; static_gravity=false)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Optimization terminated successfully    (Exit mode 0)
             Current function value: 18.016167304638337
             Iterations: 24
@@ -1053,9 +1053,9 @@ Total colors vs. total size: 8 vs 50  (84.00% improvement)
 
 Sparsity computed using tolerance: 1e-25.
 Dense total jacobian for Problem &#39;problem4&#39; was computed 3 times.
-Time to compute sparsity:   1.1768 sec
-Time to compute coloring:   0.0382 sec
-Coloring created on: 2025-05-14 12:40:22
+Time to compute sparsity:   1.3733 sec
+Time to compute coloring:   0.0388 sec
+Coloring created on: 2025-05-14 13:53:03
 static_gravity = false, elapsed time = [1.80161673] (should be 1.80164719)</code></pre><p>Also looks good!</p><h2 id="The-Brachistochrone-with-SparseADExplicitComp-and-User-Defined-Sparsity"><a class="docs-heading-anchor" href="#The-Brachistochrone-with-SparseADExplicitComp-and-User-Defined-Sparsity">The Brachistochrone with <code>SparseADExplicitComp</code> and User-Defined Sparsity</a><a id="The-Brachistochrone-with-SparseADExplicitComp-and-User-Defined-Sparsity-1"></a><a class="docs-heading-anchor-permalink" href="#The-Brachistochrone-with-SparseADExplicitComp-and-User-Defined-Sparsity" title="Permalink"></a></h2><p>Having OpenMDAOCore.jl determine the sparsity pattern of your component is quite convent, but involves evaluating the full Jacobian multiple times, which may be expensive depending on the complexity of your component. Often it&#39;s quite easy to figure out the sparsity pattern yourself, and DifferentiationInterface.jl supports a user-defined sparsity pattern. So let&#39;s learn how to do that with the previous Brachistochrone example.</p><p>We&#39;ll start fresh again:</p><pre><code class="language-julia hljs">using ADTypes: ADTypes
 using ComponentArrays: ComponentVector, ComponentMatrix, getdata, getaxes
 using OpenMDAOCore: OpenMDAOCore
@@ -2573,6 +2573,6 @@ Total colors vs. total size: 8 vs 50  (84.00% improvement)
 Sparsity computed using tolerance: 1e-25.
 Dense total jacobian for Problem &#39;problem5&#39; was computed 3 times.
 Time to compute sparsity:   0.0227 sec
-Time to compute coloring:   0.0386 sec
-Coloring created on: 2025-05-14 12:40:31
-elapsed time = [1.80161673] (should be 1.80164719)</code></pre><p>Again, looks good!</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../brachistochrone/">« A Simple Dymos Example</a><a class="docs-footer-nextpage" href="../matrix_free_ad/">Auto-Matrix-Free Examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Wednesday 14 May 2025 12:41">Wednesday 14 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Time to compute coloring:   0.0391 sec
+Coloring created on: 2025-05-14 13:53:12
+elapsed time = [1.80161673] (should be 1.80164719)</code></pre><p>Again, looks good!</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../brachistochrone/">« A Simple Dymos Example</a><a class="docs-footer-nextpage" href="../matrix_free_ad/">Auto-Matrix-Free Examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Wednesday 14 May 2025 13:53">Wednesday 14 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
