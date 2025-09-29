@@ -15,6 +15,7 @@ function doit()
                       "A Simple Dymos Example"=>"brachistochrone.md",
                       "Auto-Sparse Examples"=>"auto_sparse_ad.md",
                       "Auto-Matrix-Free Examples"=>"matrix_free_ad.md",
+                      "Creating Python Packages That Use OpenMDAOCore.jl"=>"creating_python_packages.md",
                       "API Reference"=>"reference.md",
                       "Limitations"=>"limitations.md",
                       "Developer Docs"=>"dev_docs.md"])

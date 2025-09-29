@@ -1,4 +1,4 @@
-name = "JuliaParaboloidComponent"
+name = "JuliaExampleComponents"
 uuid = "4f289198-a466-4861-a6bd-1e7b09ed8707"
 authors = ["Daniel Ingraham <d.j.ingraham@gmail.com>"]
 version = "0.1.0"

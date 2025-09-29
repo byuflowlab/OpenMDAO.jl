@@ -1,1 +1,1 @@
-using JuliaParaboloidComponent: get_parabaloid_comp
+using JuliaExampleComponents: get_parabaloid_comp

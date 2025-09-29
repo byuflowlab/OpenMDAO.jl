@@ -1,11 +1,3 @@
-module JuliaParaboloidComponent
-
-using ADTypes: ADTypes
-using ComponentArrays: ComponentVector
-using OpenMDAOCore: OpenMDAOCore
-using ForwardDiff: ForwardDiff
-using SparseMatrixColorings: SparseMatrixColorings
-
 function f_paraboloid!(Y_ca, X_ca, params)
     # Get the inputs:
     x = @view(X_ca[:x])
@@ -49,4 +41,3 @@ function get_parabaloid_comp()
     return comp
 end
 
-end # module JuliaParaboloidComponent
