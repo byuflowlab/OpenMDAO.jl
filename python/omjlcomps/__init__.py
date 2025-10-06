@@ -1,3 +1,4 @@
+print("DJI: loading omjlcomps!!!!")
 import juliacall; jl = juliacall.newmodule("OpenMDAOJuliaComps")
 from types import MethodType
 
@@ -209,9 +210,11 @@ class JuliaImplicitComp(om.ImplicitComponent):
         _initialize_common(self)
 
     def setup(self):
+        print("DJI: in JuliaImplicitComp.setup")
         _setup_common(self)
 
         if jl.OpenMDAOCore.has_apply_nonlinear(self._jlcomp):
+            print(f"{type(self._jlcomp)} has apply_nonlinear")
             def apply_nonlinear(self, inputs, outputs, residuals):
                 inputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in inputs.items()})
                 outputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in outputs.items()})
@@ -259,7 +262,9 @@ class JuliaImplicitComp(om.ImplicitComponent):
             self._has_solve_nl = True
 
         if jl.OpenMDAOCore.has_linearize(self._jlcomp):
+            print(f"{type(self._jlcomp)} has linearize")
             def linearize(self, inputs, outputs, partials):
+                print("DJI: in linearize!!!")
                 inputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in inputs.items()})
                 outputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in outputs.items()})
 
@@ -289,6 +294,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
                         partials[of_obs, wrt_abs] = _only(partials_dict[of_rel, wrt_rel])
 
             self.linearize = MethodType(linearize, self)
+            self._has_linearize = True
 
         if jl.OpenMDAOCore.has_apply_linear(self._jlcomp):
             def apply_linear(self, inputs, outputs, d_inputs, d_outputs, d_residuals, mode):

@@ -149,3 +149,5 @@ jobs:
           pip install --config-settings editable_mode=compat -e .
           python ./scripts/run_paraboloid.py
           python ./example_python_package_openmdao_jl/test/test_paraboloid_example.py
+          python ./scripts/run_circle.py
+          python ./example_python_package_openmdao_jl/test/test_circle_example.py
