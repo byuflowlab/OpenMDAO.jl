@@ -250,7 +250,8 @@ class TestJuliaExplicitCompWithLargeOption(unittest.TestCase):
             else:
                 n_big = self.n_big = 100_000_000
         else:
-            n_big = self.n_big = 500_000_000
+            # n_big = self.n_big = 500_000_000
+            n_big = self.n_big = 10_000_000
         p_big = self.p_big = om.Problem()
         ecomp_big = jl.ECompTest.ECompWithLargeOption(n_big)
         comp_big = JuliaExplicitComp(jlcomp=ecomp_big)

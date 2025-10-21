@@ -465,10 +465,10 @@ function doit_in_place(; sparse_detect_method, ad_type)
 end
 
 for sdm in [:direct, :iterative]
-    doit_in_place(; sparse_detect_method=sdm, ad_type="forwarddiff")
-    doit_in_place(; sparse_detect_method=sdm, ad_type="reversediff")
-    doit_in_place(; sparse_detect_method=sdm, ad_type="enzymeforward")
-    doit_in_place(; sparse_detect_method=sdm, ad_type="enzymereverse")
+    for ad in ["forwarddiff", "reversediff", "enzymeforward", "enzymereverse"]
+        println("autosparse_automatic_aviary, in-place, $ad, $sdm")
+        @time doit_in_place(; sparse_detect_method=sdm, ad_type=ad)
+    end
    
     # I don't think zygote works with in-place callback functions.
     # doit_in_place(; sparse_detect_method=sdm, ad_type="zygote")
@@ -866,10 +866,10 @@ function doit_in_place_shape_by_conn(; sparse_detect_method, ad_type)
 end
 
 for sdm in [:direct, :iterative]
-    doit_in_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="forwarddiff")
-    doit_in_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="reversediff")
-    doit_in_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="enzymeforward")
-    doit_in_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="enzymereverse")
+    for ad in ["forwarddiff", "reversediff", "enzymeforward", "enzymereverse"]
+        println("autosparse_automatic_aviary, in-place shape by conn, $ad, $sdm")
+        @time doit_in_place_shape_by_conn(; sparse_detect_method=sdm, ad_type=ad)
+    end
    
     # I don't think zygote works with in-place callback functions.
     # doit_in_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="zygote")
@@ -1275,8 +1275,10 @@ function doit_out_of_place(; ad_type, sparse_detect_method)
 end
 
 for sdm in [:direct, :iterative]
-    doit_out_of_place(; sparse_detect_method=sdm, ad_type="forwarddiff")
-    doit_out_of_place(; sparse_detect_method=sdm, ad_type="reversediff")
+    for ad in ["forwarddiff", "reversediff", "zygote"]
+        println("autosparse_automatic_aviary, out-of-place, $ad, $sdm")
+        @time doit_out_of_place(; sparse_detect_method=sdm, ad_type=ad)
+    end
 
     # Got exception outside of a @test
     # LoadError: UndefRefError: access to undefined reference
@@ -1293,7 +1295,6 @@ for sdm in [:direct, :iterative]
     # Giant scary stacktrace from this one:
     # doit_out_of_place(; sparse_detect_method=sdm, ad_type="enzymereverse")
 
-    doit_out_of_place(; sparse_detect_method=sdm, ad_type="zygote")
 end
 
 function doit_out_of_place_shape_by_conn(; ad_type, sparse_detect_method)
@@ -1718,8 +1719,10 @@ function doit_out_of_place_shape_by_conn(; ad_type, sparse_detect_method)
 end
 
 for sdm in [:direct, :iterative]
-    doit_out_of_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="forwarddiff")
-    doit_out_of_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="reversediff")
+    for ad in ["forwarddiff", "reversediff", "zygote"]
+        println("autosparse_automatic_aviary, out-of-place shape by conn, $ad, $sdm")
+        @time doit_out_of_place_shape_by_conn(; sparse_detect_method=sdm, ad_type=ad)
+    end
 
     # Got exception outside of a @test
     # LoadError: UndefRefError: access to undefined reference
@@ -1735,6 +1738,4 @@ for sdm in [:direct, :iterative]
 
     # Giant scary stacktrace from this one:
     # doit_out_of_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="enzymereverse")
-
-    doit_out_of_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="zygote")
 end
