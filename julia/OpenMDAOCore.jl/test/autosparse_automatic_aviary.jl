@@ -10,61 +10,61 @@ using Zygote: Zygote
 using EnzymeCore: EnzymeCore
 using Enzyme: Enzyme
 
-function f_simple!(Y, X, params)
-    a = only(X[:a])
-    b = @view X[:b]
-    c = @view X[:c]
-    d = @view X[:d]
-    e = @view Y[:e]
-    f = @view Y[:f]
-    g = @view Y[:g]
+# function f_simple!(Y, X, params)
+#     a = only(X[:a])
+#     b = @view X[:b]
+#     c = @view X[:c]
+#     d = @view X[:d]
+#     e = @view Y[:e]
+#     f = @view Y[:f]
+#     g = @view Y[:g]
 
-    M, N = params
-    for n in 1:N
-        e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
-        for m in 1:M
-            f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
-            g[n, m] = 10*sin(b[n])*cos(d[m, n])
-        end
-    end
+#     M, N = params
+#     for n in 1:N
+#         e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
+#         for m in 1:M
+#             f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+#             g[n, m] = 10*sin(b[n])*cos(d[m, n])
+#         end
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
 
-function f_simple(X, params)
-    a = only(X[:a])
-    b = @view X[:b]
-    c = @view X[:c]
-    d = @view X[:d]
+# function f_simple(X, params)
+#     a = only(X[:a])
+#     b = @view X[:b]
+#     c = @view X[:c]
+#     d = @view X[:d]
 
-    e = (2*a^2) .+ 3.0.*b.^2.1 .+ 4.0.*sum(c.^2.2) .+ 5.0.*vec(sum(d.^2.3; dims=1))
-    f = (6*a^2.4) .+ 7.0.*reshape(b, 1, :).^2.5 .+ 8.0.*c.^2.6 .+ 9.0.*d.^2.7
-    g = 10.0.*sin.(b).*cos.(PermutedDimsArray(d, (2, 1)))
+#     e = (2*a^2) .+ 3.0.*b.^2.1 .+ 4.0.*sum(c.^2.2) .+ 5.0.*vec(sum(d.^2.3; dims=1))
+#     f = (6*a^2.4) .+ 7.0.*reshape(b, 1, :).^2.5 .+ 8.0.*c.^2.6 .+ 9.0.*d.^2.7
+#     g = 10.0.*sin.(b).*cos.(PermutedDimsArray(d, (2, 1)))
 
-    Y = ComponentVector(e=e, f=f, g=g)
-    return Y
-end
+#     Y = ComponentVector(e=e, f=f, g=g)
+#     return Y
+# end
 
-function f_simple_no_params!(Y, X, params)
-    a = only(X[:a])
-    b = @view X[:b]
-    c = @view X[:c]
-    d = @view X[:d]
-    e = @view Y[:e]
-    f = @view Y[:f]
-    g = @view Y[:g]
+# function f_simple_no_params!(Y, X, params)
+#     a = only(X[:a])
+#     b = @view X[:b]
+#     c = @view X[:c]
+#     d = @view X[:d]
+#     e = @view Y[:e]
+#     f = @view Y[:f]
+#     g = @view Y[:g]
 
-    M, N = size(f)
-    for n in 1:N
-        e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
-        for m in 1:M
-            f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
-            g[n, m] = 10*sin(b[n])*cos(d[m, n])
-        end
-    end
+#     M, N = size(f)
+#     for n in 1:N
+#         e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
+#         for m in 1:M
+#             f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+#             g[n, m] = 10*sin(b[n])*cos(d[m, n])
+#         end
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
 
 function doit_in_place(; sparse_detect_method, ad_type)
     # println("autosparse automatic in-place test with ad_type = $(ad_type), sparse_detect_method = $(sparse_detect_method)")

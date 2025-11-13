@@ -8,47 +8,47 @@ using Enzyme: Enzyme
 using EnzymeCore: EnzymeCore
 using Zygote: Zygote
 
-function f_simple!(Y, X, params)
-    a = only(X[:a])
-    b = @view X[:b]
-    c = @view X[:c]
-    d = @view X[:d]
-    e = @view Y[:e]
-    f = @view Y[:f]
-    g = @view Y[:g]
+# function f_simple!(Y, X, params)
+#     a = only(X[:a])
+#     b = @view X[:b]
+#     c = @view X[:c]
+#     d = @view X[:d]
+#     e = @view Y[:e]
+#     f = @view Y[:f]
+#     g = @view Y[:g]
 
-    M, N = params
-    for n in 1:N
-        e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
-        for m in 1:M
-            f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
-            g[n, m] = 10*sin(b[n])*cos(d[m, n])
-        end
-    end
+#     M, N = params
+#     for n in 1:N
+#         e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
+#         for m in 1:M
+#             f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+#             g[n, m] = 10*sin(b[n])*cos(d[m, n])
+#         end
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
 
-function f_simple_no_params!(Y, X, params)
-    a = only(X[:a])
-    b = @view X[:b]
-    c = @view X[:c]
-    d = @view X[:d]
-    e = @view Y[:e]
-    f = @view Y[:f]
-    g = @view Y[:g]
+# function f_simple_no_params!(Y, X, params)
+#     a = only(X[:a])
+#     b = @view X[:b]
+#     c = @view X[:c]
+#     d = @view X[:d]
+#     e = @view Y[:e]
+#     f = @view Y[:f]
+#     g = @view Y[:g]
 
-    M, N = size(f)
-    for n in 1:N
-        e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
-        for m in 1:M
-            f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
-            g[n, m] = 10*sin(b[n])*cos(d[m, n])
-        end
-    end
+#     M, N = size(f)
+#     for n in 1:N
+#         e[n] = 2*a^2 + 3*b[n]^2.1 + 4*sum(c.^2.2) + 5*sum((@view d[:, n]).^2.3)
+#         for m in 1:M
+#             f[m, n] = 6*a^2.4 + 7*b[n]^2.5 + 8*c[m]^2.6 + 9*d[m, n]^2.7
+#             g[n, m] = 10*sin(b[n])*cos(d[m, n])
+#         end
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
 
 function doit_forward(; ad_type, disable_prep)
     # `M` and `N` will be passed via the params argument.

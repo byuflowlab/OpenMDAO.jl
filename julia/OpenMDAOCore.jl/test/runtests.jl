@@ -1,4 +1,4 @@
-using Test: @testset
+using Test: @testset, @test
 using SafeTestsets: @safetestset
 
 # @safetestset "doctests" begin
@@ -673,9 +673,14 @@ using SafeTestsets: @safetestset
 #     include("aviary_utils.jl")
 # end
 
+include("ad_callback_functions.jl")
+
+@testset "DenseADExplicitComp" verbose=true showtiming=true begin
+    include("autodense.jl")
+end
+
 @testset "SparseADExplicitComp" verbose=true showtiming=true begin
-    # @safetestset "manual sparsity" begin
-    @testset "manual sparsity" verbose=true showtiming=true begin
+    @testset "SparseADExplicitComp" verbose=true showtiming=true begin
         include("autosparse_manual.jl")
     end
     # @safetestset "automatic sparsity" begin

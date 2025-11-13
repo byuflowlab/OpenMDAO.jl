@@ -8,19 +8,19 @@ using EnzymeCore: EnzymeCore
 using ReverseDiff: ReverseDiff
 using Zygote: Zygote
 
-function f_simple(X, params)
-    a = only(X[:a])
-    b = @view X[:b]
-    c = @view X[:c]
-    d = @view X[:d]
+# function f_simple(X, params)
+#     a = only(X[:a])
+#     b = @view X[:b]
+#     c = @view X[:c]
+#     d = @view X[:d]
 
-    e = (2*a^2) .+ 3.0.*b.^2.1 .+ 4.0.*sum(c.^2.2) .+ 5.0.*vec(sum(d.^2.3; dims=1))
-    f = (6*a^2.4) .+ 7.0.*reshape(b, 1, :).^2.5 .+ 8.0.*c.^2.6 .+ 9.0.*d.^2.7
-    g = 10.0.*sin.(b).*cos.(PermutedDimsArray(d, (2, 1)))
+#     e = (2*a^2) .+ 3.0.*b.^2.1 .+ 4.0.*sum(c.^2.2) .+ 5.0.*vec(sum(d.^2.3; dims=1))
+#     f = (6*a^2.4) .+ 7.0.*reshape(b, 1, :).^2.5 .+ 8.0.*c.^2.6 .+ 9.0.*d.^2.7
+#     g = 10.0.*sin.(b).*cos.(PermutedDimsArray(d, (2, 1)))
 
-    Y = ComponentVector(e=e, f=f, g=g)
-    return Y
-end
+#     Y = ComponentVector(e=e, f=f, g=g)
+#     return Y
+# end
 
 function doit_forward(; ad_type, disable_prep)
     # `M` and `N` will be passed via the params argument.

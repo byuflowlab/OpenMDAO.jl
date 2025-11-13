@@ -28,6 +28,9 @@ export PartialsData
 include("abstract_ad.jl")
 export get_callback, get_input_ca, get_output_ca, get_jacobian_ca, get_units, get_backend, get_prep, get_aviary_input_name, get_aviary_output_name
 
+include("dense_ad.jl")
+export DenseADExplicitComp
+
 include("sparse_ad.jl")
 export SparseADExplicitComp, get_rows_cols_dict
 
