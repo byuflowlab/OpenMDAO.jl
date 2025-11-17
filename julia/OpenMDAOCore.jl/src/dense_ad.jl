@@ -153,7 +153,7 @@ function DenseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=n
 
     # Get the prep-related stuff.
     if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0) && (!force_skip_prep)
-        prep, J_ca, rcdict, X_ca_cs = _get_dense_prep_stuff(ad_backend, compute_adable, X_ca_full)
+        prep, J_ca, X_ca_cs = _get_dense_prep_stuff(ad_backend, compute_adable, X_ca_full)
     else
         # No point in getting a "good" prep when we don't know all the shapes.
         prep = J_ca = X_ca_cs = nothing
@@ -161,6 +161,8 @@ function DenseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=n
 
     return DenseADExplicitComp{false}(ad_backend, compute_adable, X_ca_full, J_ca, prep, units_dict_full, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
 end
+
+get_jacobian_ca(comp::DenseADExplicitComp) = comp.J_ca
 
 function _get_dense_prep_stuff(ad_backend, f!, Y_ca, X_ca)
     # Need to "prepare" the backend.
@@ -301,17 +303,21 @@ function OpenMDAOCore.compute_partials!(self::DenseADExplicitComp{true}, inputs,
         for iname in keys(caxis)
             # Grab the subjacobian we're interested in.
             Jsub_in = @view(J_ca[oname, iname])
+            # @show oname iname size(Jsub_in)
 
-            # Now need to permute the dimensions to account for the Julia vs Python ordering.
-            Jsub_in_pd = PermutedDimsArray(Jsub_in, ndims(Jsub_in):-1:1)
+            # # Now need to permute the dimensions to account for the Julia vs Python ordering.
+            # Jsub_in_pd = PermutedDimsArray(Jsub_in, ndims(Jsub_in):-1:1)
+            # @show size(Jsub_in_pd)
 
             # This gets the underlying Array that stores the current sub-Jacobian that OpenMDAO allocates on the Python side.
             iname_aviary = get_aviary_input_name(self, iname)
             oname_aviary = get_aviary_output_name(self, oname)
             Jsub_out = partials[oname_aviary, iname_aviary]
+            # @show oname_aviary iname_aviary size(Jsub_out)
 
             # Now we should be able to write the partials to the OpenMDAO Python array.
-            Jsub_out .= Jsub_in_pd
+            # Jsub_out .= Jsub_in_pd
+            Jsub_out .= Jsub_in
         end
     end
 
@@ -342,8 +348,8 @@ function OpenMDAOCore.compute_partials!(self::DenseADExplicitComp{false}, inputs
             # Grab the subjacobian we're interested in.
             Jsub_in = @view(J_ca[oname, iname])
             
-            # Now need to permute the dimensions to account for the Julia vs Python ordering.
-            Jsub_in_pd = PermutedDimsArray(Jsub_in, ndims(Jsub_in):-1:1)
+            # # Now need to permute the dimensions to account for the Julia vs Python ordering.
+            # Jsub_in_pd = PermutedDimsArray(Jsub_in, ndims(Jsub_in):-1:1)
 
             # This gets the underlying Array that stores the nonzero entries in the current sub-Jacobian that OpenMDAO sees.
             iname_aviary = get_aviary_input_name(self, iname)
@@ -351,7 +357,8 @@ function OpenMDAOCore.compute_partials!(self::DenseADExplicitComp{false}, inputs
             Jsub_out = partials[oname_aviary, iname_aviary]
 
             # Now we should be able to write the partials to the OpenMDAO Python array.
-            Jsub_out .= Jsub_in_pd
+            # Jsub_out .= Jsub_in_pd
+            Jsub_out .= Jsub_in
         end
     end
 

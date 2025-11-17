@@ -680,15 +680,15 @@ include("ad_callback_functions.jl")
 end
 
 @testset "SparseADExplicitComp" verbose=true showtiming=true begin
-    @testset "SparseADExplicitComp" verbose=true showtiming=true begin
+    @testset "autosparse manual" verbose=true showtiming=true begin
         include("autosparse_manual.jl")
     end
-    # @safetestset "automatic sparsity" begin
-    #     include("autosparse_automatic.jl")
-    # end
-    # @safetestset "automatic sparsity, with Aviary metadata" begin
-    #     include("autosparse_automatic_aviary.jl")
-    # end
+    @testset "autosparse automatic" verbose=true showtiming=true begin
+        include("autosparse_automatic.jl")
+    end
+    @testset "autosparse automatic, with Aviary support" verbose=true showtiming=true begin
+        include("autosparse_automatic_aviary.jl")
+    end
 end
 
 # @testset "MatrixFreeADExplicitComp" begin

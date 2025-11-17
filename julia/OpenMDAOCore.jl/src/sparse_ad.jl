@@ -192,6 +192,7 @@ function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=
 end
 
 get_rows_cols_dict(comp::SparseADExplicitComp) = comp.rcdict
+get_jacobian_ca(comp::SparseADExplicitComp) = comp.J_ca_sparse
 
 function _get_sparse_prep_stuff(ad_backend, f!, Y_ca, X_ca)
     # Need to "prepare" the backend.
