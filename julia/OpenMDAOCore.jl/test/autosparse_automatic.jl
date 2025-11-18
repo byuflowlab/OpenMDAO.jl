@@ -1,15 +1,3 @@
-using OpenMDAOCore
-using Test
-using ComponentArrays: ComponentVector, ComponentMatrix, getdata, getaxes
-using SparseArrays: sparse, findnz, nnz, issparse
-using ADTypes: ADTypes
-using SparseMatrixColorings: SparseMatrixColorings
-using ForwardDiff: ForwardDiff
-using ReverseDiff: ReverseDiff
-using Zygote: Zygote
-using EnzymeCore: EnzymeCore
-using Enzyme: Enzyme
-
 struct AutosparseAutomaticTestPrep{TXCA,TYCA,TAD}
     M::Int
     N::Int

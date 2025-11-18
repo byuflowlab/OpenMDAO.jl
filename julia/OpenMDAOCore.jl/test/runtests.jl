@@ -1,5 +1,16 @@
-using Test: @testset, @test
+using OpenMDAOCore
+
+using ADTypes: ADTypes
+using ComponentArrays: ComponentVector, ComponentMatrix, getdata, getaxes
+using Enzyme: Enzyme
+using EnzymeCore: EnzymeCore
+using ForwardDiff: ForwardDiff
+using ReverseDiff: ReverseDiff
 using SafeTestsets: @safetestset
+using SparseArrays: sparse, findnz, nnz, issparse
+using SparseMatrixColorings: SparseMatrixColorings
+using Test: @testset, @test
+using Zygote: Zygote
 
 @safetestset "doctests" begin
     using OpenMDAOCore
@@ -676,7 +687,12 @@ end
 include("ad_callback_functions.jl")
 
 @testset "DenseADExplicitComp" verbose=true showtiming=true begin
-    include("autodense.jl")
+    @testset "autodense" verbose=true showtiming=true begin
+        include("autodense.jl")
+    end
+    @testset "autodense, with Aviary support" verbose=true showtiming=true begin
+        include("autodense_aviary.jl")
+    end
 end
 
 @testset "SparseADExplicitComp" verbose=true showtiming=true begin

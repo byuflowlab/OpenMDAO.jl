@@ -59,12 +59,7 @@ function do_compute_check(comp, aviary_input_vars=Dict{Symbol,Dict}(), aviary_ou
     aviary_output_names = Dict{Symbol,String}(k=>get(v, "name", string(k)) for (k, v) in aviary_output_vars)
 
     inputs_dict = ca2strdict(get_input_ca(comp), aviary_input_names)
-    # M, N = size(inputs_dict["d"])
     M, N = size(inputs_dict[get_aviary_input_name(comp, :d)])
-    # inputs_dict["a"] .= 2.0
-    # inputs_dict["b"] .= range(3.0, 4.0; length=N)
-    # inputs_dict["c"] .= range(5.0, 6.0; length=M)
-    # inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
     inputs_dict[get_aviary_input_name(comp, :a)] .= 2.0
     inputs_dict[get_aviary_input_name(comp, :b)] .= range(3.0, 4.0; length=N)
     inputs_dict[get_aviary_input_name(comp, :c)] .= range(5.0, 6.0; length=M)
@@ -72,17 +67,14 @@ function do_compute_check(comp, aviary_input_vars=Dict{Symbol,Dict}(), aviary_ou
     outputs_dict = ca2strdict(get_output_ca(comp), aviary_output_names)
 
     OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
-    # a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
     a, b, c, d = getindex.(Ref(inputs_dict), [get_aviary_input_name(comp, :a), get_aviary_input_name(comp, :b), get_aviary_input_name(comp, :c), get_aviary_input_name(comp, :d)])
     e_check = 2.0*a.^2 .+ 3 .* b.^2.1 .+ 4*sum(c.^2.2) .+ 5 .* sum(d.^2.3; dims=1)[:]
     @test all(outputs_dict[get_aviary_output_name(comp, :e)] .≈ e_check)
 
     f_check = 6.0*a.^2.4 .+ 7 .* reshape(b, 1, :).^2.5 .+ 8 .* c.^2.6 .+ 9 .* d.^2.7
-    # @test all(outputs_dict["f"] .≈ f_check)
     @test all(outputs_dict[get_aviary_output_name(comp, :f)] .≈ f_check)
 
     g_check = 10 .* sin.(b).*cos.(transpose(d))
-    # @test all(outputs_dict["g"] .≈ g_check)
     @test all(outputs_dict[get_aviary_output_name(comp, :g)] .≈ g_check)
 end
 
@@ -92,40 +84,13 @@ function do_compute_partials_check(comp, aviary_input_vars=Dict{Symbol,Dict}(), 
     aviary_input_names = Dict{Symbol,String}(k=>get(v, "name", string(k)) for (k, v) in aviary_input_vars)
     aviary_output_names = Dict{Symbol,String}(k=>get(v, "name", string(k)) for (k, v) in aviary_output_vars)
 
-    # inputs_dict = ca2strdict(get_input_ca(comp))
-    # M, N = size(inputs_dict["d"])
-    # inputs_dict["a"] .= 2.0
-    # inputs_dict["b"] .= range(3.0, 4.0; length=N)
-    # inputs_dict["c"] .= range(5.0, 6.0; length=M)
-    # inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
-    # outputs_dict = ca2strdict(get_output_ca(comp))
-
-    # inputs_dict_cs = ca2strdict(get_input_ca(ComplexF64, comp))
-    # inputs_dict_cs["a"] .= inputs_dict["a"]
-    # inputs_dict_cs["b"] .= inputs_dict["b"]
-    # inputs_dict_cs["c"] .= inputs_dict["c"]
-    # inputs_dict_cs["d"] .= inputs_dict["d"]
-    # outputs_dict_cs = ca2strdict(get_output_ca(ComplexF64, comp))
-
     inputs_dict = ca2strdict(get_input_ca(comp), aviary_input_names)
-    # M, N = size(inputs_dict["d"])
     M, N = size(inputs_dict[get_aviary_input_name(comp, :d)])
-    # inputs_dict["a"] .= 2.0
-    # inputs_dict["b"] .= range(3.0, 4.0; length=N)
-    # inputs_dict["c"] .= range(5.0, 6.0; length=M)
-    # inputs_dict["d"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
     inputs_dict[get_aviary_input_name(comp, :a)] .= 2.0
     inputs_dict[get_aviary_input_name(comp, :b)] .= range(3.0, 4.0; length=N)
     inputs_dict[get_aviary_input_name(comp, :c)] .= range(5.0, 6.0; length=M)
     inputs_dict[get_aviary_input_name(comp, :d)] .= reshape(range(7.0, 8.0; length=M*N), M, N)
     outputs_dict = ca2strdict(get_output_ca(comp), aviary_output_names)
-
-    # inputs_dict_cs = ca2strdict(get_input_ca(ComplexF64, comp))
-    # inputs_dict_cs["a"] .= inputs_dict["a"]
-    # inputs_dict_cs["b"] .= inputs_dict["b"]
-    # inputs_dict_cs["c"] .= inputs_dict["c"]
-    # inputs_dict_cs["d"] .= inputs_dict["d"]
-    # outputs_dict_cs = ca2strdict(get_output_ca(ComplexF64, comp))
 
     inputs_dict_cs = ca2strdict(get_input_ca(ComplexF64, comp), aviary_input_names)
     inputs_dict_cs[get_aviary_input_name(comp, :a)] .= inputs_dict[get_aviary_input_name(comp, :a)]
@@ -155,9 +120,7 @@ function do_compute_partials_check(comp, aviary_input_vars=Dict{Symbol,Dict}(), 
     # Actually do the compute_partials.
     OpenMDAOCore.compute_partials!(comp, inputs_dict, partials_dict)
 
-    # a, b, c, d = getindex.(Ref(inputs_dict), ["a", "b", "c", "d"])
     a, b, c, d = getindex.(Ref(inputs_dict), [get_aviary_input_name(comp, :a), get_aviary_input_name(comp, :b), get_aviary_input_name(comp, :c), get_aviary_input_name(comp, :d)])
-    # e, f, g = getindex.(Ref(outputs_dict), ["e", "f", "g"])
     e, f, g = getindex.(Ref(outputs_dict), [get_aviary_output_name(comp, :e), get_aviary_output_name(comp, :f), get_aviary_output_name(comp, :g)])
 
     vals = partials_dict[get_aviary_output_name(comp, :e), get_aviary_input_name(comp, :a)]
