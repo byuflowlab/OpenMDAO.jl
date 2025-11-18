@@ -8,7 +8,7 @@ using Enzyme: Enzyme
 using EnzymeCore: EnzymeCore
 using Zygote: Zygote
 
-struct AutoDenseTestPrep{TXCA, TYCA, TAD}
+struct AutoDenseTestPrep{TXCA,TYCA,TAD}
     M::Int
     N::Int
     X_ca::TXCA
@@ -48,14 +48,14 @@ function doit_in_place(prep::AutoDenseTestPrep)
     # `M` and `N` will be passed via the params argument.
     M = prep.M
     N = prep.N
-    params_simple = (M, N)
+    params = (M, N)
 
     X_ca = prep.X_ca
     Y_ca = prep.Y_ca
     ad_backend = prep.ad_backend
 
     # Now we can create the component.
-    comp = DenseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params=params_simple)
+    comp = DenseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params=params)
 
     # Do the checks.
     do_compute_check(comp)
@@ -70,13 +70,13 @@ for ad in ["forwarddiff", "reversediff", "enzymeforward", "enzymereverse"]
 end
 
 function doit_out_of_place(prep::AutoDenseTestPrep)
-    params_simple = nothing
+    params = nothing
 
     X_ca = prep.X_ca
     ad_backend = prep.ad_backend
 
     # Now we can create the component.
-    comp = DenseADExplicitComp(ad_backend, f_simple, X_ca; params=params_simple)
+    comp = DenseADExplicitComp(ad_backend, f_simple, X_ca; params=params)
 
     do_compute_check(comp)
     do_compute_partials_check(comp)

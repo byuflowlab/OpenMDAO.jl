@@ -10,7 +10,7 @@ using Enzyme: Enzyme
 using EnzymeCore: EnzymeCore
 using Zygote: Zygote
 
-struct AutosparseManualTestPrep{TXCA, TYCA, TJCA, TAD}
+struct AutosparseManualTestPrep{TXCA,TYCA,TJCA,TAD}
     M::Int
     N::Int
     X_ca::TXCA
@@ -73,14 +73,14 @@ function doit_in_place(prep::AutosparseManualTestPrep)
     # `M` and `N` will be passed via the params argument.
     M = prep.M
     N = prep.N
-    params_simple = (M, N)
+    params = (M, N)
 
     X_ca = prep.X_ca
     Y_ca = prep.Y_ca
     ad_backend = prep.ad_backend
 
     # Now we can create the component.
-    comp = SparseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params=params_simple)
+    comp = SparseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params=params)
 
     do_compute_check(comp)
     do_compute_partials_check(comp)
@@ -94,7 +94,7 @@ for ad in ["forwarddiff", "reversediff", "enzymeforward", "enzymereverse"]
 end
 
 function doit_out_of_place(prep::AutosparseManualTestPrep)
-    params_simple = nothing
+    params = nothing
 
     X_ca = prep.X_ca
     Y_ca = prep.Y_ca
@@ -102,7 +102,7 @@ function doit_out_of_place(prep::AutosparseManualTestPrep)
     ad_backend = prep.ad_backend
 
     # Now we can create the component.
-    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; params=params_simple)
+    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; params=params)
 
     do_compute_check(comp)
     do_compute_partials_check(comp)

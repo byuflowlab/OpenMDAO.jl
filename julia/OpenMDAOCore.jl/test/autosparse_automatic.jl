@@ -10,7 +10,7 @@ using Zygote: Zygote
 using EnzymeCore: EnzymeCore
 using Enzyme: Enzyme
 
-struct AutosparseAutomaticTestPrep{TXCA, TYCA, TAD}
+struct AutosparseAutomaticTestPrep{TXCA,TYCA,TAD}
     M::Int
     N::Int
     X_ca::TXCA
@@ -50,7 +50,7 @@ function AutosparseAutomaticTestPrep(M, N, ad_type, sparse_detect_method)
     return AutosparseAutomaticTestPrep(M, N, X_ca, Y_ca, ad_backend)
 end
 
-struct AutosparseAutomaticShapeByConnTestPrep{TXCA, TYCA, TAD}
+struct AutosparseAutomaticShapeByConnTestPrep{TXCA,TYCA,TAD}
     M::Int
     N::Int
     X_ca::TXCA
@@ -166,8 +166,8 @@ function doit_out_of_place(prep::AutosparseAutomaticTestPrep)
     ad_backend = prep.ad_backend
     comp = SparseADExplicitComp(ad_backend, f_simple, X_ca)
 
-      do_compute_check(comp)
-      do_compute_partials_check(comp)
+    do_compute_check(comp)
+    do_compute_partials_check(comp)
 end
 
 for sdm in [:direct, :iterative]
