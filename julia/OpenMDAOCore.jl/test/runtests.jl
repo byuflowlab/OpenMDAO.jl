@@ -707,17 +707,17 @@ end
     end
 end
 
-# @testset "MatrixFreeADExplicitComp" begin
-#     @safetestset "in-place" begin
-#         include("auto_matrix_free_in_place.jl")
-#     end
-#     @safetestset "in-place, with Aviary metadata" begin
-#         include("auto_matrix_free_in_place_aviary.jl")
-#     end
-#     @safetestset "out-of-place" begin
-#         include("auto_matrix_free_out_of_place.jl")
-#     end
-#     @safetestset "out-of-place, with Aviary metadata" begin
-#         include("auto_matrix_free_out_of_place_aviary.jl")
-#     end
-# end
+@testset "MatrixFreeADExplicitComp" verbose=true showtiming=true begin
+    @testset "in-place" verbose=true showtiming=true begin
+        include("auto_matrix_free_in_place.jl")
+    end
+    # @safetestset "in-place, with Aviary metadata" begin
+    #     include("auto_matrix_free_in_place_aviary.jl")
+    # end
+    # @safetestset "out-of-place" begin
+    #     include("auto_matrix_free_out_of_place.jl")
+    # end
+    # @safetestset "out-of-place, with Aviary metadata" begin
+    #     include("auto_matrix_free_out_of_place_aviary.jl")
+    # end
+end

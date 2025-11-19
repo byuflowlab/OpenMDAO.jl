@@ -76,6 +76,8 @@ function do_compute_check(comp, aviary_input_vars=Dict{Symbol,Dict}(), aviary_ou
 
     g_check = 10 .* sin.(b).*cos.(transpose(d))
     @test all(outputs_dict[get_aviary_output_name(comp, :g)] .≈ g_check)
+
+    return nothing
 end
 
 function do_compute_partials_check(comp, aviary_input_vars=Dict{Symbol,Dict}(), aviary_output_vars=Dict{Symbol,Dict}())
@@ -457,4 +459,260 @@ function do_compute_partials_check(comp, aviary_input_vars=Dict{Symbol,Dict}(), 
     for k in keys(partials_dict2)
         @test all(OpenMDAOCore._maybe_nonzeros(partials_dict2[k]) .≈ OpenMDAOCore._maybe_nonzeros(partials_dict[k]))
     end
+
+    return nothing
+end
+
+function do_compute_jacvec_product_check_forward(comp, aviary_input_vars=Dict{Symbol,Dict}(), aviary_output_vars=Dict{Symbol,Dict}())
+    aviary_input_names = Dict{Symbol,String}(k=>get(v, "name", string(k)) for (k, v) in aviary_input_vars)
+    aviary_output_names = Dict{Symbol,String}(k=>get(v, "name", string(k)) for (k, v) in aviary_output_vars)
+
+    inputs_dict = ca2strdict(get_input_ca(comp), aviary_input_names)
+    M, N = size(inputs_dict[get_aviary_input_name(comp, :d)])
+    inputs_dict[get_aviary_input_name(comp, :a)] .= 2.0
+    inputs_dict[get_aviary_input_name(comp, :b)] .= range(3.0, 4.0; length=N)
+    inputs_dict[get_aviary_input_name(comp, :c)] .= range(5.0, 6.0; length=M)
+    inputs_dict[get_aviary_input_name(comp, :d)] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+    outputs_dict = ca2strdict(get_output_ca(comp), aviary_output_names)
+
+    OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
+
+    a, b, c, d = getindex.(Ref(inputs_dict), [get_aviary_input_name(comp, :a), get_aviary_input_name(comp, :b), get_aviary_input_name(comp, :c), get_aviary_input_name(comp, :d)])
+    e, f, g = getindex.(Ref(outputs_dict), [get_aviary_output_name(comp, :e), get_aviary_output_name(comp, :f), get_aviary_output_name(comp, :g)])
+
+    # So, to call `_compute_jacvec_product!`, I need a dict of derivatives that, I think, is like the inputs.
+    dx = get_dinput_ca(comp)
+    dx .= rand(length(dx))
+    dinputs_dict = ca2strdict(dx, aviary_input_names)
+    doutputs_dict = ca2strdict(get_doutput_ca(comp), aviary_output_names)
+    OpenMDAOCore.compute_jacvec_product!(comp, inputs_dict, dinputs_dict, doutputs_dict, "fwd")
+
+    # Hmm... so how do I check this?
+    # Well, just got to do the matrix-vector product myself.
+    de_check = similar(e)
+    de_check .= 0.0
+
+    # OK, so now I can get a's contribution to the derivative of e.
+    # I need to think about deda_check having a size of (N, 1).
+    # And is a scalar, and e has size (N,).
+    # So then I need to multiply deda_check by dx[:a] and add that to de_check.
+    # For deda, the derivative is this:
+    deda_check = zeros(N, 1)
+    deda_check[:, 1] .= 4*only(a)
+    de_check .+= deda_check * dx[:a]
+
+    # Next, the derivative of e wrt b.
+    dedb_check = zeros(N, N)
+    for n in 1:N
+        dedb_check[n, n] = (3*2.1)*b[n]^1.1
+    end
+    de_check .+= dedb_check * dx[:b]
+
+    # Hmm... will this work?
+    # I think I'll flatten things to make sure.
+    # Actually don't think that's necessary.
+    dedc_check = zeros(N, M)
+    for m in 1:M
+        for n in 1:N
+            dedc_check[n, m] = (4*2.2)*c[m]^1.2
+        end
+    end
+    de_check .+= dedc_check * dx[:c]
+
+    # Hmm... will this work?
+    # I think I should reshape things.
+    dedd_check = zeros(N, M, N)
+    for n in 1:N
+        for m in 1:M
+            dedd_check[n, m, n] = (5*2.3)*d[m, n]^1.3
+        end
+    end
+    dxd_rs = reshape(dx[:d], M*N)
+    dedd_check_rs = reshape(dedd_check, N, M*N)
+    de_check .+= dedd_check_rs * dxd_rs
+
+    # Did all the inputs to `e`, so we're ready to test.
+    @test all(doutputs_dict[get_aviary_output_name(comp, :e)] .≈ de_check)
+
+    # Now do `f`.
+    df_check = similar(f)
+    df_check .= 0.0
+
+    for m in 1:M
+        for n in 1:N
+            df_check[m, n] += (6*2.4)*only(a)^1.4 * only(dx[:a])
+        end
+    end
+
+    for n in 1:N
+        for m in 1:M
+            df_check[m, n] += (7*2.5)*b[n]^1.5 * dx[:b][n]
+        end
+    end
+
+    for n in 1:N
+        for m in 1:M
+            df_check[m, n] += (8*2.6)*c[m]^1.6 * dx[:c][m]
+        end
+    end
+
+    for n in 1:N
+        for m in 1:M
+            df_check[m, n] += (9*2.7)*d[m, n]^1.7 * dx[:d][m, n]
+        end
+    end
+
+    @test all(doutputs_dict[get_aviary_output_name(comp, :f)] .≈ df_check)
+
+    # Now do `g`.
+    dg_check = similar(g)
+    dg_check .= 0.0
+
+    # g is not a function of `a`, so skip that.
+
+    # Derivative wrt b.
+    for m in 1:M
+        for n in 1:N
+            dg_check[n, m] += 10*cos(b[n])*cos(d[m, n]) * dx[:b][n]
+        end
+    end
+
+    # g is not a function of `c`, so skip that.
+
+    # Derivative wrt d.
+    for m in 1:M
+        for n in 1:N
+            dg_check[n, m] += -10*sin(b[n])*sin(d[m, n]) * dx[:d][m, n]
+        end
+    end
+
+    @test all(doutputs_dict[get_aviary_output_name(comp, :g)] .≈ dg_check)
+
+    return nothing
+end
+
+function do_compute_jacvec_product_check_reverse(comp, aviary_input_vars=Dict{Symbol,Dict}(), aviary_output_vars=Dict{Symbol,Dict}())
+    aviary_input_names = Dict{Symbol,String}(k=>get(v, "name", string(k)) for (k, v) in aviary_input_vars)
+    aviary_output_names = Dict{Symbol,String}(k=>get(v, "name", string(k)) for (k, v) in aviary_output_vars)
+
+    inputs_dict = ca2strdict(get_input_ca(comp), aviary_input_names)
+    M, N = size(inputs_dict[get_aviary_input_name(comp, :d)])
+    inputs_dict[get_aviary_input_name(comp, :a)] .= 2.0
+    inputs_dict[get_aviary_input_name(comp, :b)] .= range(3.0, 4.0; length=N)
+    inputs_dict[get_aviary_input_name(comp, :c)] .= range(5.0, 6.0; length=M)
+    inputs_dict[get_aviary_input_name(comp, :d)] .= reshape(range(7.0, 8.0; length=M*N), M, N)
+    outputs_dict = ca2strdict(get_output_ca(comp), aviary_output_names)
+
+    OpenMDAOCore.compute!(comp, inputs_dict, outputs_dict)
+
+    a, b, c, d = getindex.(Ref(inputs_dict), [get_aviary_input_name(comp, :a), get_aviary_input_name(comp, :b), get_aviary_input_name(comp, :c), get_aviary_input_name(comp, :d)])
+    e, f, g = getindex.(Ref(outputs_dict), [get_aviary_output_name(comp, :e), get_aviary_output_name(comp, :f), get_aviary_output_name(comp, :g)])
+
+    # So, to call `_compute_jacvec_product!`, I need a dict of derivatives that, I think, is like the outputs.
+    dy = get_doutput_ca(comp)
+    dy .= rand(length(dy))
+    doutputs_dict = ca2strdict(dy, aviary_output_names)
+    dinputs_dict = ca2strdict(get_dinput_ca(comp), aviary_input_names)
+    OpenMDAOCore.compute_jacvec_product!(comp, inputs_dict, dinputs_dict, doutputs_dict, "rev")
+
+    # Hmm... so how do I check this?
+    # Well, just got to do the vector-jacobian product myself.
+    da_check = similar(a)
+    da_check .= 0.0
+
+    # First, derivative of e wrt a.
+    for n in 1:N
+        da_check[1] += dy[:e][n] * 4*only(a)
+    end
+
+    # Next, derivative of f wrt a.
+    for m in 1:M
+        for n in 1:N
+            da_check[1] += dy[:f][m, n] * (6*2.4)*only(a)^1.4
+        end
+    end
+
+    # Derivative of g wrt a is zero.
+
+    # Did all the outputs with `a`, so we're ready to test.
+    @test all(dinputs_dict[get_aviary_input_name(comp, :a)] .≈ da_check)
+
+    # Next, `b`.
+    db_check = similar(b)
+    db_check .= 0.0
+
+    # First do the derivative of e wrt b.
+    for n in 1:N
+        db_check[n] += dy[:e][n] * (3*2.1)*b[n]^1.1
+    end
+
+    # Next, derivative of f wrt b.
+    for n in 1:N
+        for m in 1:M
+            db_check[n] += dy[:f][m, n] * (7*2.5)*b[n]^1.5
+        end
+    end
+
+    # Next, derivative of g wrt b.
+    for m in 1:M
+        for n in 1:N
+            db_check[n] += dy[:g][n, m] * 10*cos(b[n])*cos(d[m, n])
+        end
+    end
+
+    # That's all the outputs with `b`, so we're ready to check.
+    @test all(dinputs_dict[get_aviary_input_name(comp, :b)] .≈ db_check)
+
+    # Now derivatives wrt c.
+    dc_check = similar(c)
+    dc_check .= 0.0
+
+    # Derivative of `e` wrt c.
+    for m in 1:M
+        for n in 1:N
+            dc_check[m] += dy[:e][n] * (4*2.2)*c[m]^1.2
+        end
+    end
+
+    # Derivative of `f` wrt c.
+    for n in 1:N
+        for m in 1:M
+            dc_check[m] += dy[:f][m, n] * (8*2.6)*c[m]^1.6
+        end
+    end
+
+    # Derivative of `g` wrt c is 0.
+    
+    # Did all the outputs, so ready to check.
+    @test all(dinputs_dict[get_aviary_input_name(comp, :c)] .≈ dc_check)
+
+    # Now derivatives wrt d.
+    dd_check = similar(d)
+    dd_check .= 0.0
+
+    # Derivative of e wrt d.
+    for n in 1:N
+        for m in 1:M
+            dd_check[m, n] += dy[:e][n] * (5*2.3)*d[m, n]^1.3
+        end
+    end
+
+    # Derivative of f wrt d.
+    for n in 1:N
+        for m in 1:M
+            dd_check[m, n] += dy[:f][m, n] * (9*2.7)*d[m, n]^1.7 
+        end
+    end
+
+    # Derivative of g wrt d.
+    for m in 1:M
+        for n in 1:N
+            dd_check[m, n] += dy[:g][n, m] * (-10)*sin(b[n])*sin(d[m, n])
+        end
+    end
+
+    # Now check.
+    @test all(dinputs_dict[get_aviary_input_name(comp, :d)] .≈ dd_check)
+
+    return nothing
 end
