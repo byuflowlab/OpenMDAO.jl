@@ -277,8 +277,6 @@ function doit_out_of_place(prep::AutoDenseShapeByConnAviaryTestPrep)
 
     # Make sure the component vectors were set appropriately.
     X_ca = get_input_ca(comp)
-    N = prep.N
-    M = prep.M
     @test X_ca.a ≈ 2.0
     @test size(X_ca.b) == (N,)
     @test all(X_ca.b .≈ 3.0)
