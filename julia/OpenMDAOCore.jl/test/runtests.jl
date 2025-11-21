@@ -687,37 +687,31 @@ end
 include("ad_callback_functions.jl")
 
 @testset "DenseADExplicitComp" verbose=true showtiming=true begin
-    @testset "autodense" verbose=true showtiming=true begin
+    @testset "no Aviary metadatan" verbose=true showtiming=true begin
         include("autodense.jl")
     end
-    @testset "autodense, with Aviary support" verbose=true showtiming=true begin
+    @testset "with Aviary metadatan" verbose=true showtiming=true begin
         include("autodense_aviary.jl")
     end
 end
 
 @testset "SparseADExplicitComp" verbose=true showtiming=true begin
-    @testset "autosparse manual" verbose=true showtiming=true begin
+    @testset "manual" verbose=true showtiming=true begin
         include("autosparse_manual.jl")
     end
-    @testset "autosparse automatic" verbose=true showtiming=true begin
+    @testset "automatic" verbose=true showtiming=true begin
         include("autosparse_automatic.jl")
     end
-    @testset "autosparse automatic, with Aviary support" verbose=true showtiming=true begin
+    @testset "automatic, with Aviary metadata" verbose=true showtiming=true begin
         include("autosparse_automatic_aviary.jl")
     end
 end
 
 @testset "MatrixFreeADExplicitComp" verbose=true showtiming=true begin
     @testset "no Aviary metadata" verbose=true showtiming=true begin
-        include("auto_matrix_free_in_place.jl")
+        include("auto_matrix_free.jl")
     end
     @testset "with Aviary metadata" verbose=true showtiming=true begin
-        include("auto_matrix_free_in_place_aviary.jl")
+        include("auto_matrix_free_aviary.jl")
     end
-    # @safetestset "out-of-place" begin
-    #     include("auto_matrix_free_out_of_place.jl")
-    # end
-    # @safetestset "out-of-place, with Aviary metadata" begin
-    #     include("auto_matrix_free_out_of_place_aviary.jl")
-    # end
 end
