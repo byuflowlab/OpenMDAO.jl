@@ -41,7 +41,7 @@ What are those?
 They are objects provided by the [ComponentArrays.jl](https://github.com/SciML/ComponentArrays.jl) package that act like `Vector`s, but allow the user to define names for each part ("component") of the vector.
 For example:
 
-```@example component_vectors
+```@example component_vectors2
 using ComponentArrays: ComponentVector
 
 x1 = ComponentVector(foo=-1.0, bar=-2.0, baz=-3.0)
@@ -53,7 +53,7 @@ Notice that we can get, say, the third value of `x1` the usual way (`x1[3]`), bu
 
 Each of the components in `x1` are scalars, but they don't have to be:
 
-```@example component_vectors
+```@example component_vectors2
 x2 = ComponentVector(foo=-1.0, bar=1:4, baz=reshape(5:10, 2, 3))
 @show x2 x2[:foo] x2[:bar] x2[:baz]
 nothing # hide
@@ -62,7 +62,7 @@ nothing # hide
 In `x2`, the `foo` component is a scalar, `bar` refers to a `Vector` (aka a 1D `Array`) and `baz` refers to a `Matrix` (aka a 2D Array).
 But `x2` still "looks like" a `Vector`:
 
-```@example component_vectors
+```@example component_vectors2
 @show x2[3]  # will give the third value of `x2`, which happens to be the second value of x2[:bar]
 @show ndims(x2)  # Should be 1, since a Vector is 1-dimensional
 @show length(x2)  # length(x2) gives the total number of entries in `x2`, aka 1 + 4 + 2*3 = 11
@@ -75,7 +75,7 @@ We'll use them to define the names and sizes of all the inputs and outputs to ou
 For example, with the paraboloid component in [A Simple Example: Optimizing a Paraboloid](@ref), we created one component with two inputs `x` and `y` and one output `f_xy`, all scalars.
 So for that case, our `X_ca` would be
 
-```@example component_vectors
+```@example component_vectors2
 X_ca = ComponentVector(x=1.0, y=1.0)
 Y_ca = ComponentVector(f_xy=0.0)
 @show X_ca Y_ca
@@ -232,9 +232,9 @@ Derivatives look great, so let's go ahead and perform the optimization:
 
 ```@example simple_auto_sparse_forwarddiff_paraboloid
 prob.run_driver()
-println("f_xy = $(prob.get_val("parab_comp.f_xy"))")  # Should print `[-27.33333333]`
-println("x = $(prob.get_val("parab_comp.x"))")  # Should print `[6.66666633]`
-println("y = $(prob.get_val("parab_comp.y"))")  # Should print `[-7.33333367]`
+println("f_xy = $(prob.get_val("parab_comp.f_xy"))")  # Should print `[-27.333333]`
+println("x = $(prob.get_val("parab_comp.x"))")  # Should print `[6.666666]`
+println("y = $(prob.get_val("parab_comp.y"))")  # Should print `[-7.333333]`
 nothing # hide
 ```
 
