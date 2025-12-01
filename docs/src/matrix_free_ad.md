@@ -6,8 +6,8 @@ CurrentModule = OpenMDAODocs
 OpenMDAOCore.jl can create explicit components that are differentiated automatically by the AD packages supported by [DifferentiationInterface.jl](https://github.com/JuliaDiff/DifferentiationInterface.jl) using Jacobian-vector or vector-Jacobian products instead of assembling the complete Jacobian.
 The resulting components will use the [OpenMDAO Matrix-Free API](https://openmdao.org/newdocs/versions/latest/features/core_features/working_with_components/explicit_component.html?highlight=matrix%20free#the-matrix-free-api-providing-derivatives-as-a-matrix-vector-product).
 
-## The User-Defined Function
-The requirements for the user-defined function for the matrix-free AD functionality is identical to those for [Automatic Sparse AD](@ref), and the interface is much the same, as well.
+## The User-Defined Function for Matrix-Free AD
+The requirements for the user-defined function for the matrix-free AD functionality is identical to those for [Automatic Dense AD](@ref) and [Automatic Sparse AD](@ref), and the interface is much the same, as well.
 We'll still need to provide a function that expects a `ComponentVector` for its input, and either write its outputs to a `ComponentVector` (for the in-place form) or return a `ComponentVector` with outputs (for the out-of-place form).
 The only significant difference is that users will create a `MatrixFreeADExplicitComp` instead of a `SparseADExplicitComp`.
 
