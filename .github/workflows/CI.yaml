@@ -151,3 +151,5 @@ jobs:
           python ./example_python_package_openmdao_jl/test/test_paraboloid_example.py
           python ./scripts/run_circle.py
           python ./example_python_package_openmdao_jl/test/test_circle_example.py
+          python ./scripts/run_circuit.py
+          python ./example_python_package_openmdao_jl/test/test_circuit_example.py

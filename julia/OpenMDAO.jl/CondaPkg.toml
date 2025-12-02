@@ -1,10 +1,6 @@
-
 [pip.deps]
 juliapkg = "~=0.1.10"
-
-    [pip.deps.openmdao]
-    editable = true
-    version = "@../../../OpenMDAO"
+openmdao = ""
 
     [pip.deps.omjlcomps]
     editable = true

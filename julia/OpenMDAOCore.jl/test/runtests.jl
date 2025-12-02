@@ -687,10 +687,10 @@ end
 include("ad_callback_functions.jl")
 
 @testset "DenseADExplicitComp" verbose=true showtiming=true begin
-    @testset "no Aviary metadatan" verbose=true showtiming=true begin
+    @testset "no Aviary metadata" verbose=true showtiming=true begin
         include("autodense.jl")
     end
-    @testset "with Aviary metadatan" verbose=true showtiming=true begin
+    @testset "with Aviary metadata" verbose=true showtiming=true begin
         include("autodense_aviary.jl")
     end
 end

@@ -391,8 +391,6 @@ end
             @. residuals["z1"] = (a*x*x + y*y) - outputs["z1"]
             @. residuals["z2"] = (a*x + y) - outputs["z2"]
             
-            @show residuals["z1"]
-
             return nothing
         end
 
@@ -405,10 +403,6 @@ end
             @. partials["z1", "x"] = 2*a*x
             @. partials["z1", "y"] = 2*y
 
-            @show partials["z1", "z1"]
-            @show partials["z1", "x"]
-            @show partials["z1", "y"]
-
             @. partials["z2", "z2"] = -1.0
             @. partials["z2", "x"] = a
             @. partials["z2", "y"] = 1.0
@@ -417,7 +411,7 @@ end
         end
 
         p = om.Problem()
-        n = 10
+        n = 3
         a = 3.0
         icomp = SimpleImplicit(n, a)
         comp = make_component(icomp)

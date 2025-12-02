@@ -417,13 +417,23 @@ function OpenMDAOCore.compute_partials!(self::SparseADExplicitComp{true}, inputs
             # This gets the underlying Vector that stores the nonzero entries in the current sub-Jacobian that OpenMDAO sees.
             iname_aviary = get_aviary_input_name(self, iname)
             oname_aviary = get_aviary_output_name(self, oname)
-            Jsub_out = partials[oname_aviary, iname_aviary]
+            # Jsub_out = partials[oname_aviary, iname_aviary]
+            # OpenMDAO might not ask for all the partials, and so all combination of output/input keys might not be present in `partials`.
+            local Jsub_out
+            try
+                Jsub_out = partials[oname_aviary, iname_aviary]
+            catch e
+                if !isa(e, KeyError)
+                    rethrow()
+                end
+            else
+                # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
+                Jsub_out_vec = _maybe_nonzeros(Jsub_out)
 
-            # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
-            Jsub_out_vec = _maybe_nonzeros(Jsub_out)
+                # Now write the non-zero entries to Jsub_out_vec.
+                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
+            end
 
-            # Now write the non-zero entries to Jsub_out_vec.
-            Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
         end
     end
 
@@ -466,13 +476,22 @@ function OpenMDAOCore.compute_partials!(self::SparseADExplicitComp{false}, input
             # This gets the underlying Vector that stores the nonzero entries in the current sub-Jacobian that OpenMDAO sees.
             iname_aviary = get_aviary_input_name(self, iname)
             oname_aviary = get_aviary_output_name(self, oname)
-            Jsub_out = partials[oname_aviary, iname_aviary]
+            # Jsub_out = partials[oname_aviary, iname_aviary]
+            # OpenMDAO might not ask for all the partials, and so all combination of output/input keys might not be present in `partials`.
+            local Jsub_out
+            try
+                Jsub_out = partials[oname_aviary, iname_aviary]
+            catch e
+                if !isa(e, KeyError)
+                    rethrow()
+                end
+            else
+                # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
+                Jsub_out_vec = _maybe_nonzeros(Jsub_out)
 
-            # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
-            Jsub_out_vec = _maybe_nonzeros(Jsub_out)
-
-            # Now write the non-zero entries to Jsub_out_vec.
-            Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
+                # Now write the non-zero entries to Jsub_out_vec.
+                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
+            end
         end
     end
 

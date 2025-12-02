@@ -7,6 +7,7 @@ from openmdao.utils.assert_utils import assert_check_partials
 from omjlcomps import JuliaExplicitComp
 from example_python_package_openmdao_jl.paraboloid import get_parabaloid_comp
 
+
 class TestParaboloidExample(unittest.TestCase):
     def setUp(self):
         prob = self.p = om.Problem()

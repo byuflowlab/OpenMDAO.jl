@@ -1,4 +1,3 @@
-print("DJI: loading omjlcomps!!!!")
 import juliacall; jl = juliacall.newmodule("OpenMDAOJuliaComps")
 from types import MethodType
 
@@ -30,6 +29,7 @@ def _setup_common(self):
             shape = None
         else:
             shape = var.shape
+        # print(f"var.name = {var.name}, shape = {shape}, val={var.val}, units={var.units}, tags={tags}, shape_by_conn={var.shape_by_conn}, copy_shape={var.copy_shape}")
         self.add_input(var.name, shape=shape, val=var.val,
                        units=var.units, tags=tags, shape_by_conn=var.shape_by_conn,
                        copy_shape=var.copy_shape)
@@ -43,12 +43,15 @@ def _setup_common(self):
             shape = None
         else:
             shape = var.shape
+        # print(f"var.name = {var.name}, shape = {shape}, val={var.val}, units={var.units}, lower={var.lower}, upper={var.upper}, tags={tags}, shape_by_conn={var.shape_by_conn}, copy_shape={var.copy_shape}")
         self.add_output(var.name, shape=shape, val=var.val,
                         units=var.units, lower=var.lower, upper=var.upper, tags=tags,
                         shape_by_conn=var.shape_by_conn,
                         copy_shape=var.copy_shape)
 
+    # print(f"partials_data in _setup_common: {partials_data}")
     for data in partials_data:
+        # print(data.of, data.wrt, data.rows, data.cols, data.val, data.method)
         self.declare_partials(data.of, data.wrt,
                               rows=data.rows, cols=data.cols,
                               val=data.val, method=data.method)
@@ -75,7 +78,10 @@ def _setup_partials_common(self):
 
         jlcomp_new, partials_data = jl.OpenMDAOCore.setup_partials(self._jlcomp, input_sizes, output_sizes)
         self._jlcomp = self.options["jlcomp"] = jlcomp_new
+
+        # print(f"partials_data in _setup_partials_common: {partials_data}")
         for data in partials_data:
+            # print(data.of, data.wrt, data.rows, data.cols, data.val, data.method)
             self.declare_partials(data.of, data.wrt,
                                   rows=data.rows, cols=data.cols,
                                   val=data.val, method=data.method)
@@ -106,6 +112,10 @@ class JuliaExplicitComp(om.ExplicitComponent):
         if jl.OpenMDAOCore.has_compute_partials(self._jlcomp):
             def compute_partials(self, inputs, partials):
                 inputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in inputs.items()})
+
+                # print("DJI: partials.keys() in JuliaExplicitComp.compute_partials:")
+                # for k in partials.keys():
+                #     print(k)
 
                 partials_dict = {}
                 for (of_abs, wrt_abs), subjac in partials.items():
@@ -210,11 +220,9 @@ class JuliaImplicitComp(om.ImplicitComponent):
         _initialize_common(self)
 
     def setup(self):
-        print("DJI: in JuliaImplicitComp.setup")
         _setup_common(self)
 
         if jl.OpenMDAOCore.has_apply_nonlinear(self._jlcomp):
-            print(f"{type(self._jlcomp)} has apply_nonlinear")
             def apply_nonlinear(self, inputs, outputs, residuals):
                 inputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in inputs.items()})
                 outputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in outputs.items()})
@@ -262,9 +270,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
             self._has_solve_nl = True
 
         if jl.OpenMDAOCore.has_linearize(self._jlcomp):
-            print(f"{type(self._jlcomp)} has linearize")
             def linearize(self, inputs, outputs, partials):
-                print("DJI: in linearize!!!")
                 inputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in inputs.items()})
                 outputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in outputs.items()})
 
