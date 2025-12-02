@@ -10,8 +10,7 @@
         "version": "0.4.13"},
     "OpenMDAOCore": {
         "uuid": "24d19c10-6eee-420f-95df-4537264b2753",
-        "dev": true,
-        "path": "../../julia/OpenMDAOCore.jl"},
+        "version": "0.4.0"},
     "LinearAlgebra": {
         "uuid": "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"},
     "PythonCall": {
