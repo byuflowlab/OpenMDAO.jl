@@ -411,7 +411,7 @@ end
         end
 
         p = om.Problem()
-        n = 3
+        n = 10
         a = 3.0
         icomp = SimpleImplicit(n, a)
         comp = make_component(icomp)
