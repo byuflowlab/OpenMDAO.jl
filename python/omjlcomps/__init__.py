@@ -74,7 +74,6 @@ def _setup_partials_common(self):
 
         jlcomp_new, partials_data = jl.OpenMDAOCore.setup_partials(self._jlcomp, input_sizes, output_sizes)
         self._jlcomp = self.options["jlcomp"] = jlcomp_new
-
         for data in partials_data:
             self.declare_partials(data.of, data.wrt,
                                   rows=data.rows, cols=data.cols,
