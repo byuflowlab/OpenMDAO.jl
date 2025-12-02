@@ -76,9 +76,8 @@ jobs:
           using Pkg
           Pkg.activate("./julia/OpenMDAO.jl")
           Pkg.develop(path="./julia/OpenMDAOCore.jl")
-          Pkg.add(url="https://github.com/dingraha/CondaPkg.jl", rev="pip_editable")
           using CondaPkg
-          # Path needs to be relative to the CondaPkg.toml file, which is in julia/OpenMDAOCore.jl.
+          # Path needs to be relative to the CondaPkg.toml file, which is in julia/OpenMDAO.jl.
           CondaPkg.add_pip("omjlcomps"; version="@./../../python", editable=true)
           Pkg.instantiate()
           Pkg.update()
