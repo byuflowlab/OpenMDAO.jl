@@ -29,7 +29,6 @@ def _setup_common(self):
             shape = None
         else:
             shape = var.shape
-        # print(f"var.name = {var.name}, shape = {shape}, val={var.val}, units={var.units}, tags={tags}, shape_by_conn={var.shape_by_conn}, copy_shape={var.copy_shape}")
         self.add_input(var.name, shape=shape, val=var.val,
                        units=var.units, tags=tags, shape_by_conn=var.shape_by_conn,
                        copy_shape=var.copy_shape)
@@ -43,15 +42,12 @@ def _setup_common(self):
             shape = None
         else:
             shape = var.shape
-        # print(f"var.name = {var.name}, shape = {shape}, val={var.val}, units={var.units}, lower={var.lower}, upper={var.upper}, tags={tags}, shape_by_conn={var.shape_by_conn}, copy_shape={var.copy_shape}")
         self.add_output(var.name, shape=shape, val=var.val,
                         units=var.units, lower=var.lower, upper=var.upper, tags=tags,
                         shape_by_conn=var.shape_by_conn,
                         copy_shape=var.copy_shape)
 
-    # print(f"partials_data in _setup_common: {partials_data}")
     for data in partials_data:
-        # print(data.of, data.wrt, data.rows, data.cols, data.val, data.method)
         self.declare_partials(data.of, data.wrt,
                               rows=data.rows, cols=data.cols,
                               val=data.val, method=data.method)
@@ -79,9 +75,7 @@ def _setup_partials_common(self):
         jlcomp_new, partials_data = jl.OpenMDAOCore.setup_partials(self._jlcomp, input_sizes, output_sizes)
         self._jlcomp = self.options["jlcomp"] = jlcomp_new
 
-        # print(f"partials_data in _setup_partials_common: {partials_data}")
         for data in partials_data:
-            # print(data.of, data.wrt, data.rows, data.cols, data.val, data.method)
             self.declare_partials(data.of, data.wrt,
                                   rows=data.rows, cols=data.cols,
                                   val=data.val, method=data.method)
@@ -112,10 +106,6 @@ class JuliaExplicitComp(om.ExplicitComponent):
         if jl.OpenMDAOCore.has_compute_partials(self._jlcomp):
             def compute_partials(self, inputs, partials):
                 inputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in inputs.items()})
-
-                # print("DJI: partials.keys() in JuliaExplicitComp.compute_partials:")
-                # for k in partials.keys():
-                #     print(k)
 
                 partials_dict = {}
                 for (of_abs, wrt_abs), subjac in partials.items():
