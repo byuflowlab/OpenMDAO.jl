@@ -47,8 +47,8 @@ function get_circle_comp()
     coloring_algorithm = SparseMatrixColorings.GreedyColoringAlgorithm()
     ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
 
-    Y_ca = ComponentVector(area=1.0)
-    X_ca = ComponentVector(r=1.0)
+    Y_ca = ComponentVector(area=[1.0])
+    X_ca = ComponentVector(r=[1.0])
     comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_circle!, Y_ca, X_ca)
     return comp
 end
@@ -74,7 +74,7 @@ function get_r_con_comp(size)
     ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
 
     Y_ca = ComponentVector(g=ones(size))
-    X_ca = ComponentVector(x=ones(size), y=ones(size), r=1.0)
+    X_ca = ComponentVector(x=ones(size), y=ones(size), r=[1.0])
     comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_r_con!, Y_ca, X_ca)
     return comp
 end
