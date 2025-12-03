@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Creating Python Packages That Use OpenMDAOCore.jl · OpenMDAO.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">OpenMDAO.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../simple_paraboloid/">A Simple Example</a></li><li><a class="tocitem" href="../nonlinear_circuit/">A More Complicated Example</a></li><li><a class="tocitem" href="../shape_by_conn/">Variable Shapes at Runtime</a></li><li><a class="tocitem" href="../brachistochrone/">A Simple Dymos Example</a></li><li><a class="tocitem" href="../auto_dense_ad/">Auto-Dense Examples</a></li><li><a class="tocitem" href="../auto_sparse_ad/">Auto-Sparse Examples</a></li><li><a class="tocitem" href="../matrix_free_ad/">Auto-Matrix-Free Examples</a></li><li class="is-active"><a class="tocitem" href>Creating Python Packages That Use OpenMDAOCore.jl</a><ul class="internal"><li><a class="tocitem" href="#First-tip:-create-a-Python-package-that-depends-on-omjlcomps"><span>First tip: create a Python package that depends on <code>omjlcomps</code></span></a></li><li><a class="tocitem" href="#Second-tip:-create-a-Julia-package-within-the-Python-source-code-to-easily-track-Julia-dependencies"><span>Second tip: create a Julia package within the Python source code to easily track Julia dependencies</span></a></li><li><a class="tocitem" href="#Third-tip:-create-small-&quot;entry-point&quot;-files-for-getting-the-Julia-components-into-Python-and-OpenMDAO"><span>Third tip: create small &quot;entry point&quot; files for getting the Julia components into Python and OpenMDAO</span></a></li><li><a class="tocitem" href="#Fourth-tip:-use-the-Manifest.in-file-to-include-non-Python-files-in-a-Python-package"><span>Fourth tip: use the <code>Manifest.in</code> file to include non-Python files in a Python package</span></a></li></ul></li><li><a class="tocitem" href="../reference/">API Reference</a></li><li><a class="tocitem" href="../limitations/">Limitations</a></li><li><a class="tocitem" href="../dev_docs/">Developer Docs</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Creating Python Packages That Use OpenMDAOCore.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Creating Python Packages That Use OpenMDAOCore.jl</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/byuflowlab/OpenMDAO.jl/blob/master/docs/src/creating_python_packages.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Creating-Python-Packages-That-Depend-On-OpenMDAOCore.jl"><a class="docs-heading-anchor" href="#Creating-Python-Packages-That-Depend-On-OpenMDAOCore.jl">Creating Python Packages That Depend On OpenMDAOCore.jl</a><a id="Creating-Python-Packages-That-Depend-On-OpenMDAOCore.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Creating-Python-Packages-That-Depend-On-OpenMDAOCore.jl" title="Permalink"></a></h1><p>The OpenMDAO.jl repository contains an example Python package that implements a couple of the examples described in the previous docs (the <a href="../auto_sparse_ad/#SparseADExplicitComp-Paraboloid"><code>SparseADExplicitComp</code> Paraboloid</a> and <a href="../auto_sparse_ad/#SparseADExplicitComp-with-Actual-Sparsity"><code>SparseADExplicitComp</code> with Actual Sparsity</a> examples) in the <code>examples/example_python_package_openmdao_jl/</code> sub-directory. The package structure looks like this:</p><pre><code class="nohighlight hljs">shell&gt; tree example_python_package_openmdao_jl/
+example_python_package_openmdao_jl/
+├── example_python_package_openmdao_jl
+│   ├── circle.jl
+│   ├── circle.py
+│   ├── __init__.py
+│   ├── julia
+│   │   └── JuliaExampleComponents
+│   │       ├── Project.toml
+│   │       ├── src
+│   │       │   ├── circle.jl
+│   │       │   ├── JuliaExampleComponents.jl
+│   │       │   └── paraboloid.jl
+│   │       └── test
+│   │           ├── Project.toml
+│   │           └── runtests.jl
+│   ├── juliapkg.json
+│   ├── paraboloid.jl
+│   ├── paraboloid.py
+│   └── test
+│       ├── test_circle_example.py
+│       └── test_paraboloid_example.py
+├── MANIFEST.in
+├── pyproject.toml
+└── scripts
+    ├── run_circle.py
+    └── run_paraboloid.py
+
+8 directories, 23 files
+
+shell&gt; </code></pre><p>You can look through that to see how things are put together, but I&#39;ll point out a few &quot;best-practices&quot; that I&#39;ve found.</p><h2 id="First-tip:-create-a-Python-package-that-depends-on-omjlcomps"><a class="docs-heading-anchor" href="#First-tip:-create-a-Python-package-that-depends-on-omjlcomps">First tip: create a Python package that depends on <code>omjlcomps</code></a><a id="First-tip:-create-a-Python-package-that-depends-on-omjlcomps-1"></a><a class="docs-heading-anchor-permalink" href="#First-tip:-create-a-Python-package-that-depends-on-omjlcomps" title="Permalink"></a></h2><p>The <code>example_python_package_openmdao_jl</code> package is a Python package that uses  the <code>pyproject.toml</code> file to declare that it depends on <code>omjlcomps</code> in the usual way:</p><pre><code class="nohighlight hljs">shell&gt; cat example_python_package_openmdao_jl/pyproject.toml
+[project]
+name = &#39;example_python_package_openmdao_jl&#39;
+description = &quot;Example Python package using OpenMDAOCore.jl&quot;
+version = &quot;0.1.0&quot;
+
+dependencies = [
+    &quot;openmdao~=3.26&quot;,
+    &quot;juliapkg~=0.1.10&quot;,
+    &quot;juliacall~=0.9.13&quot;,
+    &quot;omjlcomps&gt;=0.2.5&quot;,
+]
+
+shell&gt; </code></pre><p>(There are many approaches to creating Python packages. Any approach should work, as long as the dependencies above are included–-your mileage may vary.)</p><p>It also depends on <code>openmdao</code> (of course), and <a href="https://github.com/JuliaPy/pyjuliapkg"><code>juliapkg</code></a> and <a href="https://github.com/JuliaPy/PythonCall.jl"><code>juliacall</code></a>. <code>juliapkg</code> is a Python package that allows us to define Julia dependencies of Python packages, and <code>juliacall</code> is what we use to call Julia code from Python. But how will we, specifically, declare which Julia packages we need? That&#39;s what the <code>juliapkg.json</code> file is for, which <code>juliapkg</code> reads when deciding what Julia packages are needed for a given Python package. After reading the <a href="https://github.com/JuliaPy/pyjuliapkg?tab=readme-ov-file#declare-dependencies"><code>juliapkg</code> docs on the subject</a>, we could edit that file directly, listing out each Julia package that we need in excruciating detail. A slightly less annoying approach would be to use <code>juliapkg</code>&#39;s functional interface, running commands like <code>juliapkg.add</code> from the Python REPL. My preferred approach instead is to have a short <code>juliapkg.json</code> file that looks like this:</p><pre><code class="nohighlight hljs">shell&gt; cat example_python_package_openmdao_jl/example_python_package_openmdao_jl/juliapkg.json
+{&quot;packages&quot;: {
+    &quot;JuliaExampleComponents&quot;: {&quot;uuid&quot;: &quot;4f289198-a466-4861-a6bd-1e7b09ed8707&quot;, &quot;dev&quot;: true, &quot;path&quot;: &quot;./julia/JuliaExampleComponents&quot;}
+    }
+}
+
+shell&gt; </code></pre><p>That says that our example Python package will depend on just one Julia package named <code>JuliaExampleComponents</code>, which is located under <code>julia/JuliaExampleComponents</code> (relative to the location of the <code>juliapkg.json</code> file itself). The <code>&quot;dev&quot;: true</code> entry means that the Julia package will be installed in <a href="https://pkgdocs.julialang.org/v1/managing-packages/#developing"><code>dev</code> mode</a>, meaning that any changes to the Julia source will be tracked and loaded by Julia package manager (the equivalent of <code>pip install --editable &lt;path&gt;</code> or <code>pip install -e &lt;path&gt;</code> in Python). <code>juliapkg</code> will automatically install any dependencies needed by the JuliaExampleComponents package.</p><h2 id="Second-tip:-create-a-Julia-package-within-the-Python-source-code-to-easily-track-Julia-dependencies"><a class="docs-heading-anchor" href="#Second-tip:-create-a-Julia-package-within-the-Python-source-code-to-easily-track-Julia-dependencies">Second tip: create a Julia package within the Python source code to easily track Julia dependencies</a><a id="Second-tip:-create-a-Julia-package-within-the-Python-source-code-to-easily-track-Julia-dependencies-1"></a><a class="docs-heading-anchor-permalink" href="#Second-tip:-create-a-Julia-package-within-the-Python-source-code-to-easily-track-Julia-dependencies" title="Permalink"></a></h2><p>But, how can we create a Julia package, like JuliaExampleComponents? The Julia package manager has a command called <code>generate</code> that will create a skeleton of a Julia package for you. Navigate to the location in your Python package where you&#39;d like to store the julia code (I prefer creating a <code>julia</code> subdirectory within the Python source), open up the Julia REPL, type <code>]</code> to get to the <code>pkg&gt;</code> mode, and then run <code>generate MyPackageName</code>, where <code>MyPackageName</code> is any name you&#39;d like. For example, the JuliaExampleComponents package was created with something like:</p><pre><code class="nohighlight hljs">(docs) pkg&gt; generate JuliaExampleComponents
+  Generating  project JuliaExampleComponents:
+    JuliaExampleComponents/Project.toml
+    JuliaExampleComponents/src/JuliaExampleComponents.jl
+
+(docs) pkg&gt; </code></pre><p>To add dependencies to the Julia package, first <code>activate</code> the package from the <code>pkg&gt;</code> mode, like this:</p><pre><code class="nohighlight hljs">(docs) pkg&gt; activate JuliaExampleComponents/
+  Activating project at `~/desk/foo/JuliaExampleComponents`
+
+(JuliaExampleComponents) pkg&gt; </code></pre><p>(Notice the change in the name to the left of the <code>pkg&gt;</code> prompt, which tells you the name of the active Julia environment.) Now, to add a dependency, we just use the <code>add</code> command, again within the <code>pkg&gt;</code> mode. For example, the JuliaExampleComponents package will need to use OpenMDAOCore.jl to create OpenMDAO components, so we can add that like so:</p><pre><code class="nohighlight hljs">(JuliaExampleComponents) pkg&gt; add OpenMDAOCore
+   Resolving package versions...
+      Compat entries added for OpenMDAOCore
+    Updating `~/desk/foo/JuliaExampleComponents/Project.toml`
+  [24d19c10] + OpenMDAOCore v0.3.2
+    Updating `~/desk/foo/JuliaExampleComponents/Manifest.toml`
+  [47edcb42] + ADTypes v1.18.0
+  [79e6a3ab] + Adapt v4.4.0
+  [4fba245c] + ArrayInterface v7.20.0
+  [d360d2e6] + ChainRulesCore v1.26.0
+  [f70d9fcc] + CommonWorldInvalidations v1.0.0
+  [34da2185] + Compat v4.18.0
+  [b0b7db55] + ComponentArrays v0.15.29
+  [187b0558] + ConstructionBase v1.6.0
+⌅ [864edb3b] + DataStructures v0.18.22
+⌅ [a0c0ee7d] + DifferentiationInterface v0.6.54
+  [ffbed154] + DocStringExtensions v0.9.5
+  [d9f16b24] + Functors v0.5.2
+  [615f187c] + IfElse v0.1.1
+  [24d19c10] + OpenMDAOCore v0.3.2
+  [bac558e1] + OrderedCollections v1.8.1
+⌅ [aea7be01] + PrecompileTools v1.2.1
+  [21216c6a] + Preferences v1.5.0
+  [ae029012] + Requires v1.3.1
+  [431bcebd] + SciMLPublic v1.0.0
+  [0a514795] + SparseMatrixColorings v0.4.21
+  [aedffcd0] + Static v1.3.0
+  [0d7ed370] + StaticArrayInterface v1.8.0
+  [1e83bf80] + StaticArraysCore v1.4.3
+  [1986cc42] + Unitful v1.25.0
+  [6fb2a4bd] + UnitfulAngles v0.7.2
+  [56f22d72] + Artifacts v1.11.0
+  [2a0f44e3] + Base64 v1.11.0
+  [ade2ca70] + Dates v1.11.0
+  [b77e0a4c] + InteractiveUtils v1.11.0
+  [8f399da3] + Libdl v1.11.0
+  [37e2e46d] + LinearAlgebra v1.11.0
+  [d6f4376e] + Markdown v1.11.0
+  [de0858da] + Printf v1.11.0
+  [9a3f8284] + Random v1.11.0
+  [ea8e919c] + SHA v0.7.0
+  [9e88b42a] + Serialization v1.11.0
+  [2f01184e] + SparseArrays v1.11.0
+  [fa267f1f] + TOML v1.0.3
+  [cf7118a7] + UUIDs v1.11.0
+  [4ec0a83e] + Unicode v1.11.0
+  [e66e0078] + CompilerSupportLibraries_jll v1.1.1+0
+  [4536629a] + OpenBLAS_jll v0.3.27+1
+  [bea87d4a] + SuiteSparse_jll v7.7.0+0
+  [8e850b90] + libblastrampoline_jll v5.11.0+0
+        Info Packages marked with ⌅ have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --outdated -m`
+
+(JuliaExampleComponents) pkg&gt; </code></pre><p>We can check what direct dependencies are associated with a particular Julia package/environment by using the <code>status</code> command. Again looking at the JuliaExampleComponents package:</p><pre><code class="nohighlight hljs">(JuliaExampleComponents) pkg&gt; status
+Project JuliaExampleComponents v0.1.0
+Status `~/desk/foo/JuliaExampleComponents/Project.toml`
+  [24d19c10] OpenMDAOCore v0.3.2
+
+(JuliaExampleComponents) pkg&gt; </code></pre><p>Source code is can be added to <code>MyPackageName/src/MyPackageName.jl</code> file, and the <code>include</code> function can be used to organize the code in different files, etc.. Also, optionally, you can use the <a href="https://pkgdocs.julialang.org/dev/creating-packages/#adding-tests-to-packages">usual Julia testing infrastructure</a> to add tests to the package.</p><h2 id="Third-tip:-create-small-&quot;entry-point&quot;-files-for-getting-the-Julia-components-into-Python-and-OpenMDAO"><a class="docs-heading-anchor" href="#Third-tip:-create-small-&quot;entry-point&quot;-files-for-getting-the-Julia-components-into-Python-and-OpenMDAO">Third tip: create small &quot;entry point&quot; files for getting the Julia components into Python and OpenMDAO</a><a id="Third-tip:-create-small-&quot;entry-point&quot;-files-for-getting-the-Julia-components-into-Python-and-OpenMDAO-1"></a><a class="docs-heading-anchor-permalink" href="#Third-tip:-create-small-&quot;entry-point&quot;-files-for-getting-the-Julia-components-into-Python-and-OpenMDAO" title="Permalink"></a></h2><p>Now, how do we get the components defined in the Julia package into Python? Within the Julia package itself, I like to create small functions that take in parameters needed to construct the OpenMDAOCore.jl struct and return the <code>struct</code> itself. For example, the Paraboloid component in <code>JuliaExampleComponents</code> has a function called <code>get_paraboloid_comp</code> that looks like this:</p><pre><code class="nohighlight hljs">function get_parabaloid_comp()
+    X_ca = ComponentVector(x=1.0, y=1.0)
+    Y_ca = ComponentVector(f_xy=0.0)
+
+    # Absolute tolerance for detecting zero entries in the Jacobian.
+    sparse_atol = 1e-10
+    # Use ForwardDiff.jl to calculate the Jacobian and determine sparsity, evaluating the Jacobian multiple times with a perturbed input vector.
+    sparsity_detector = OpenMDAOCore.PerturbedDenseSparsityDetector(ADTypes.AutoForwardDiff(); atol=sparse_atol, method=:direct)
+    # Coloring algorithm for determining the color of the Jacobian.
+    coloring_algorithm = SparseMatrixColorings.GreedyColoringAlgorithm()
+    # AD library: will also use ForwardDiff.jl to calculate the sparse jacobian each time.
+    ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
+
+    # Create the OpenMDAOCore.jl component.
+    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_paraboloid!, Y_ca, X_ca; params=nothing)
+
+    return comp
+end</code></pre><p>That function takes no arguments, but one could imagine passing in things that control what AD library the component will use, parameters associated with the size of the inputs and outputs, etc..</p><p>Now, to get that in Julia, I first create a small Julia file that just imports the function we wrote to get the OpenMDAOCore.jl <code>struct</code>. For example, in <code>example_python_package_openmdao_jl</code> we have a file called <code>paraboloid.jl</code> that looks like this:</p><pre><code class="nohighlight hljs">shell&gt; cat example_python_package_openmdao_jl/example_python_package_openmdao_jl/paraboloid.jl
+using JuliaExampleComponents: get_parabaloid_comp
+
+shell&gt; </code></pre><p>Then, in the same directory, we create a Python file that uses <code>juliacall</code> to include that Julia file, and thus access <code>get_paraboloid_comp</code> from Python. So, again for the paraboloid component, we have a file called <code>paraboloid.py</code> that looks like this</p><pre><code class="nohighlight hljs">shell&gt; cat example_python_package_openmdao_jl/example_python_package_openmdao_jl/paraboloid.py
+import os
+
+# Create a new Julia module that will hold all the Julia code imported into this Python module.
+import juliacall; jl = juliacall.newmodule(&quot;ParaboloidComponentsStub&quot;)
+
+# Get the directory this file is in, then include the `paraboloid.jl` Julia source code.
+d = os.path.dirname(os.path.abspath(__file__))
+jl.include(os.path.join(d, &quot;paraboloid.jl&quot;))
+# Now we have access to everything in `paraboloid.jl` in the `jl` object.
+
+get_parabaloid_comp = jl.get_parabaloid_comp
+
+shell&gt; </code></pre><p>Now we can access the <code>get_paraboloid_comp</code> function from Python, and thus grab the OpenMDAOCore.jl component. In <code>example_python_package_openmdao_jl/scripts</code> there is a run script called <code>run_paraboloid.py</code> that shows how it&#39;s used. The beginning of that file looks like this:</p><pre><code class="nohighlight hljs">import juliacall
+import openmdao.api as om
+from omjlcomps import JuliaExplicitComp
+from example_python_package_openmdao_jl.paraboloid import get_parabaloid_comp
+
+prob = om.Problem()
+
+jlcomp = get_parabaloid_comp()
+parab_comp = JuliaExplicitComp(jlcomp=jlcomp)
+prob.model.add_subsystem(&quot;parab_comp&quot;, parab_comp)</code></pre><p>There we have used <code>get_paraboloid_comp</code> to get the paraboloid <code>struct</code>, passed it to <code>JuliaExplicitComp</code> to create an actual OpenMDAO component, and then added that to the OpenMDAO model.</p><h2 id="Fourth-tip:-use-the-Manifest.in-file-to-include-non-Python-files-in-a-Python-package"><a class="docs-heading-anchor" href="#Fourth-tip:-use-the-Manifest.in-file-to-include-non-Python-files-in-a-Python-package">Fourth tip: use the <code>Manifest.in</code> file to include non-Python files in a Python package</a><a id="Fourth-tip:-use-the-Manifest.in-file-to-include-non-Python-files-in-a-Python-package-1"></a><a class="docs-heading-anchor-permalink" href="#Fourth-tip:-use-the-Manifest.in-file-to-include-non-Python-files-in-a-Python-package" title="Permalink"></a></h2><p>When creating a source distribution for a Python package, <code>setuptools</code> will only include <a href="https://setuptools.pypa.io/en/latest/userguide/miscellaneous.html">certain files</a>, and, perhaps not surprisingly, will ignore Julia files. The solution is to add a <code>MANIFEST.in</code> to the top-level of the Python package that includes all the Julia files you need, using <code>include</code> entries to add individual files, and <code>graft</code> to include everything under a directory. For example, the <code>Manifest.in</code> file for <code>example_python_package_openmdao_jl</code> looks like this:</p><pre><code class="nohighlight hljs">shell&gt; cat example_python_package_openmdao_jl/MANIFEST.in
+graft ./example_python_package_openmdao_jl/julia/JuliaParaboloidComponent
+include ./example_python_package_openmdao_jl/paraboloid.jl
+include ./example_python_package_openmdao_jl/circle.jl
+include ./example_python_package_openmdao_jl/juliapkg.json
+
+shell&gt; </code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../matrix_free_ad/">« Auto-Matrix-Free Examples</a><a class="docs-footer-nextpage" href="../reference/">API Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Wednesday 3 December 2025 16:21">Wednesday 3 December 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
