@@ -1,4 +1,4 @@
-struct AutosparseAutomaticAviaryTestPrep{TAD,TAM,TIV,TOV}
+struct AutoDenseAviaryTestPrep{TAD,TAM,TIV,TOV}
     M::Int
     N::Int
     ad_backend::TAD
@@ -7,7 +7,7 @@ struct AutosparseAutomaticAviaryTestPrep{TAD,TAM,TIV,TOV}
     aviary_output_vars::TOV
 end
 
-function AutosparseAutomaticAviaryTestPrep(M, N, ad_type, sparse_detect_method)
+function AutoDenseAviaryTestPrep(M, N, ad_type)
     aviary_meta_data = Dict(
                             "foo:bar:baz:a"=>Dict("units"=>"m", "default_value"=>zero(Float64)),
                             # "foo:bar:baz:b"=>Dict("units"=>"m**2", "default_value"=>zeros(Float64, N)),
@@ -31,32 +31,30 @@ function AutosparseAutomaticAviaryTestPrep(M, N, ad_type, sparse_detect_method)
 
     # Need to fill `X_ca` with "reasonable" values for the sparsity detection stuff to work.
     aviary_meta_data[aviary_input_names[:a]]["default_value"] = 2.0
+    # aviary_meta_data[aviary_input_names[:b]]["default_value"] .= range(3.0, 4.0; length=N)
     aviary_meta_data[aviary_input_names[:b]]["default_value"] = 3.0
     aviary_meta_data[aviary_input_names[:c]]["default_value"] .= range(5.0, 6.0; length=M)
+    # aviary_meta_data[aviary_input_names[:d]]["default_value"] .= reshape(range(7.0, 8.0; length=M*N), M, N)
     aviary_meta_data[aviary_input_names[:d]]["default_value"] = 7.0
 
-    # Now we can create the component.
-    sparse_atol = 1e-10
-    sparsity_detector = PerturbedDenseSparsityDetector(ADTypes.AutoForwardDiff(); atol=sparse_atol, method=sparse_detect_method)
-    coloring_algorithm = SparseMatrixColorings.GreedyColoringAlgorithm()
     if ad_type == "forwarddiff"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
+        ad_backend = ADTypes.AutoForwardDiff()
     elseif ad_type == "reversediff"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoReverseDiff(); sparsity_detector, coloring_algorithm)
+        ad_backend = ADTypes.AutoReverseDiff()
     elseif ad_type == "enzymeforward"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoEnzyme(; mode=EnzymeCore.Forward); sparsity_detector, coloring_algorithm)
+        ad_backend = ADTypes.AutoEnzyme(; mode=EnzymeCore.Forward)
     elseif ad_type == "enzymereverse"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoEnzyme(; mode=EnzymeCore.Reverse); sparsity_detector, coloring_algorithm)
+        ad_backend = ADTypes.AutoEnzyme(; mode=EnzymeCore.Reverse)
     elseif ad_type == "zygote"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoZygote(); sparsity_detector, coloring_algorithm)
+        ad_backend = ADTypes.AutoZygote()
     else
         error("unexpected ad_type = $(ad_type)")
     end
 
-    return AutosparseAutomaticAviaryTestPrep(M, N, ad_backend, aviary_meta_data, aviary_input_vars, aviary_output_vars)
+    return AutoDenseAviaryTestPrep(M, N, ad_backend, aviary_meta_data, aviary_input_vars, aviary_output_vars)
 end
 
-struct AutosparseAutomaticShapeByConnAviaryTestPrep{TAD,TAM,TIV,TOV}
+struct AutoDenseShapeByConnAviaryTestPrep{TAD,TAM,TIV,TOV}
     M::Int
     N::Int
     ad_backend::TAD
@@ -67,7 +65,7 @@ struct AutosparseAutomaticShapeByConnAviaryTestPrep{TAD,TAM,TIV,TOV}
     aviary_output_vars::TOV
 end
 
-function AutosparseAutomaticShapeByConnAviaryTestPrep(M, N, ad_type, sparse_detect_method)
+function AutoDenseShapeByConnAviaryTestPrep(M, N, ad_type)
     N_wrong = 1
 
     aviary_meta_data = Dict(
@@ -99,20 +97,16 @@ function AutosparseAutomaticShapeByConnAviaryTestPrep(M, N, ad_type, sparse_dete
     aviary_meta_data[aviary_input_names[:c]]["default_value"] .= range(5.0, 6.0; length=M)
     aviary_meta_data[aviary_input_names[:d]]["default_value"] .= reshape(range(7.0, 8.0; length=M*N_wrong), M, N_wrong)
 
-    # Now we can create the component.
-    sparse_atol = 1e-10
-    sparsity_detector = PerturbedDenseSparsityDetector(ADTypes.AutoForwardDiff(); atol=sparse_atol, method=sparse_detect_method)
-    coloring_algorithm = SparseMatrixColorings.GreedyColoringAlgorithm()
     if ad_type == "forwarddiff"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
+        ad_backend = ADTypes.AutoForwardDiff()
     elseif ad_type == "reversediff"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoReverseDiff(); sparsity_detector, coloring_algorithm)
+        ad_backend = ADTypes.AutoReverseDiff()
     elseif ad_type == "enzymeforward"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoEnzyme(; mode=EnzymeCore.Forward); sparsity_detector, coloring_algorithm)
+        ad_backend = ADTypes.AutoEnzyme(; mode=EnzymeCore.Forward)
     elseif ad_type == "enzymereverse"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoEnzyme(; mode=EnzymeCore.Reverse); sparsity_detector, coloring_algorithm)
+        ad_backend = ADTypes.AutoEnzyme(; mode=EnzymeCore.Reverse)
     elseif ad_type == "zygote"
-        ad_backend = ADTypes.AutoSparse(ADTypes.AutoZygote(); sparsity_detector, coloring_algorithm)
+        ad_backend = ADTypes.AutoZygote()
     else
         error("unexpected ad_type = $(ad_type)")
     end
@@ -120,10 +114,10 @@ function AutosparseAutomaticShapeByConnAviaryTestPrep(M, N, ad_type, sparse_dete
     shape_by_conn_dict = Dict(:b=>true, :d=>true, :g=>true)
     copy_shape_dict = Dict(:e=>:b, :f=>:d)
 
-    return AutosparseAutomaticShapeByConnAviaryTestPrep(M, N, ad_backend, shape_by_conn_dict, copy_shape_dict, aviary_meta_data, aviary_input_vars, aviary_output_vars)
+    return AutoDenseShapeByConnAviaryTestPrep(M, N, ad_backend, shape_by_conn_dict, copy_shape_dict, aviary_meta_data, aviary_input_vars, aviary_output_vars)
 end
 
-function doit_in_place(prep::AutosparseAutomaticAviaryTestPrep)
+function doit_in_place(prep::AutoDenseAviaryTestPrep)
     # `M` and `N` will be passed via the params argument.
     N = prep.N
     M = prep.M
@@ -136,7 +130,7 @@ function doit_in_place(prep::AutosparseAutomaticAviaryTestPrep)
     aviary_meta_data = prep.aviary_meta_data
 
     ad_backend = prep.ad_backend
-    comp = SparseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params, aviary_input_vars, aviary_output_vars, aviary_meta_data)
+    comp = DenseADExplicitComp(ad_backend, f_simple!, Y_ca, X_ca; params, aviary_input_vars, aviary_output_vars, aviary_meta_data)
 
     # Need to make sure the units are what I expect them to be.
     @test get_units(comp, :a) == "m"
@@ -161,32 +155,24 @@ function doit_in_place(prep::AutosparseAutomaticAviaryTestPrep)
     do_compute_partials_check(comp, aviary_input_vars, aviary_output_vars)
 end
 
-for sdm in [:direct, :iterative]
-    for ad in ["forwarddiff", "reversediff", "enzymeforward", "enzymereverse"]
-        p = AutosparseAutomaticAviaryTestPrep(4, 3, ad, sdm)
-        @testset "autosparse_automatic, in-place, Aviary, $ad, $sdm" verbose=true showtiming=true begin
-            doit_in_place(p)
-        end
+for ad in ["forwarddiff", "reversediff", "enzymeforward", "enzymereverse"]
+    p = AutoDenseAviaryTestPrep(4, 3, ad)
+    @testset "autodense, in-place, Aviary, $ad" verbose=true showtiming=true begin
+        doit_in_place(p)
     end
-   
-    # I don't think zygote works with in-place callback functions.
-    # doit_in_place(; sparse_detect_method=sdm, ad_type="zygote")
 end
 
-function doit_in_place(prep::AutosparseAutomaticShapeByConnAviaryTestPrep)
+function doit_in_place(prep::AutoDenseShapeByConnAviaryTestPrep)
     N = prep.N
     M = prep.M
 
-    # Also need copies of X_ca and Y_ca.
-    # N_wrong = 1
     X_ca = ComponentVector{Float64}()
     Y_ca = ComponentVector{Float64}()
-    ad_backend = prep.ad_backend
-    shape_by_conn_dict = prep.shape_by_conn_dict
     aviary_input_vars = prep.aviary_input_vars
     aviary_output_vars = prep.aviary_output_vars
     aviary_meta_data = prep.aviary_meta_data
-    comp = SparseADExplicitComp(ad_backend, f_simple_no_params!, Y_ca, X_ca; shape_by_conn_dict, aviary_input_vars, aviary_output_vars, aviary_meta_data)
+    ad_backend = prep.ad_backend
+    comp = DenseADExplicitComp(ad_backend, f_simple_no_params!, Y_ca, X_ca; aviary_input_vars, aviary_output_vars, aviary_meta_data)
 
     # Now set the size of b to the correct thing.
     input_sizes = Dict(:b=>N, :d=>(M, N))
@@ -210,31 +196,27 @@ function doit_in_place(prep::AutosparseAutomaticShapeByConnAviaryTestPrep)
     @test size(X_ca.c) == (M,)
     @test all(X_ca.c .≈ range(5.0, 6.0; length=M))
     @test size(X_ca.d) == (M, N)
+    # @test all(X_ca.d .≈ 7.0)
     @test all(X_ca.d .≈ range(7.0, 8.0; length=M))
 
     do_compute_check(comp, aviary_input_vars, aviary_output_vars)
     do_compute_partials_check(comp, aviary_input_vars, aviary_output_vars)
 end
 
-for sdm in [:direct, :iterative]
-    for ad in ["forwarddiff", "reversediff", "enzymeforward", "enzymereverse"]
-        p = AutosparseAutomaticShapeByConnAviaryTestPrep(4, 3, ad, sdm)
-        @testset "autosparse_automatic, in-place, shape_by_conn, aviary, $ad, $sdm" verbose=true showtiming=true begin
-            doit_in_place(p)
-        end
+for ad in ["forwarddiff", "reversediff", "enzymeforward", "enzymereverse"]
+    p = AutoDenseShapeByConnAviaryTestPrep(4, 3, ad)
+    @testset "autodense, in-place, shape_by_conn, Aviary, $ad" verbose=true showtiming=true begin
+        doit_in_place(p)
     end
-   
-    # I don't think zygote works with in-place callback functions.
-    # doit_in_place_shape_by_conn(; sparse_detect_method=sdm, ad_type="zygote")
 end
 
-function doit_out_of_place(prep::AutosparseAutomaticAviaryTestPrep)
+function doit_out_of_place(prep::AutoDenseAviaryTestPrep)
     X_ca = ComponentVector{Float64}()
     aviary_input_vars = prep.aviary_input_vars
     aviary_output_vars = prep.aviary_output_vars
     aviary_meta_data = prep.aviary_meta_data
     ad_backend = prep.ad_backend
-    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; aviary_input_vars, aviary_output_vars, aviary_meta_data)
+    comp = DenseADExplicitComp(ad_backend, f_simple, X_ca; aviary_input_vars, aviary_output_vars, aviary_meta_data)
 
     # Need to make sure the units are what I expect them to be.
     @test get_units(comp, :a) == "m"
@@ -261,16 +243,14 @@ function doit_out_of_place(prep::AutosparseAutomaticAviaryTestPrep)
     do_compute_partials_check(comp, aviary_input_vars, aviary_output_vars)
 end
 
-for sdm in [:direct, :iterative]
-    for ad in ["forwarddiff", "reversediff", "zygote"]
-        p = AutosparseAutomaticAviaryTestPrep(4, 3, ad, sdm)
-        @testset "autosparse_automatic, out-of-place, Aviary, $ad, $sdm" verbose=true showtiming=true begin
-            doit_out_of_place(p)
-        end
+for ad in ["forwarddiff", "reversediff", "zygote"]
+    p = AutoDenseAviaryTestPrep(4, 3, ad)
+    @testset "autodense, out-of-place, Aviary, $ad" verbose=true showtiming=true begin
+        doit_out_of_place(p)
     end
 end
 
-function doit_out_of_place(prep::AutosparseAutomaticShapeByConnAviaryTestPrep)
+function doit_out_of_place(prep::AutoDenseShapeByConnAviaryTestPrep)
     X_ca = ComponentVector{Float64}()
     ad_backend = prep.ad_backend
     shape_by_conn_dict = prep.shape_by_conn_dict
@@ -278,7 +258,7 @@ function doit_out_of_place(prep::AutosparseAutomaticShapeByConnAviaryTestPrep)
     aviary_input_vars = prep.aviary_input_vars
     aviary_output_vars = prep.aviary_output_vars
     aviary_meta_data = prep.aviary_meta_data
-    comp = SparseADExplicitComp(ad_backend, f_simple, X_ca; shape_by_conn_dict, copy_shape_dict, aviary_input_vars, aviary_output_vars, aviary_meta_data)
+    comp = DenseADExplicitComp(ad_backend, f_simple, X_ca; shape_by_conn_dict, copy_shape_dict, aviary_input_vars, aviary_output_vars, aviary_meta_data)
 
     M = prep.M
     N = prep.N
@@ -295,15 +275,25 @@ function doit_out_of_place(prep::AutosparseAutomaticShapeByConnAviaryTestPrep)
     @test get_units(comp, :f) == "kg/m**3"
     @test get_units(comp, :g) == "s"
 
+    # Make sure the component vectors were set appropriately.
+    X_ca = get_input_ca(comp)
+    @test X_ca.a ≈ 2.0
+    @test size(X_ca.b) == (N,)
+    @test all(X_ca.b .≈ 3.0)
+    @test size(X_ca.c) == (M,)
+    @test all(X_ca.c .≈ range(5.0, 6.0; length=M))
+    @test size(X_ca.d) == (M, N)
+    # @test all(X_ca.d .≈ 7.0)
+    @test all(X_ca.d .≈ range(7.0, 8.0; length=M))
+
     do_compute_check(comp, aviary_input_vars, aviary_output_vars)
     do_compute_partials_check(comp, aviary_input_vars, aviary_output_vars)
 end
 
-for sdm in [:direct, :iterative]
-    for ad in ["forwarddiff", "reversediff", "zygote"]
-        p = AutosparseAutomaticShapeByConnAviaryTestPrep(4, 3, ad, sdm)
-        @testset "autosparse_automatic, out-of-place, shape_by_conn, Aviary, $ad, $sdm" verbose=true showtiming=true begin
-            doit_out_of_place(p)
-        end
+for ad in ["forwarddiff", "reversediff", "zygote"]
+    p = AutoDenseShapeByConnAviaryTestPrep(4, 3, ad)
+    @testset "autodense, out-of-place, shape_by_conn, Aviary, $ad" verbose=true showtiming=true begin
+        doit_out_of_place(p)
     end
 end
+

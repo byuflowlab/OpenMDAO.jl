@@ -1,5 +1,9 @@
 
 [pip.deps]
 matplotlib = ""
+openmdao = ""
 dymos = ""
-omjlcomps = "@./../python"
+
+    [pip.deps.omjlcomps]
+    editable = true
+    version = "@./../python"

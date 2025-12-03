@@ -4,7 +4,7 @@ description = "Create OpenMDAO Components using the Julia programming language"
 readme = "README.md"
 keywords = ["openmdao_component"]
 license = {text = "MIT"}
-version = "0.2.5"
+version = "0.2.6"
 
 dependencies = [
     "openmdao~=3.36",

@@ -1,5 +1,16 @@
-using Test: @testset
+using OpenMDAOCore
+
+using ADTypes: ADTypes
+using ComponentArrays: ComponentVector, ComponentMatrix, getdata, getaxes
+using Enzyme: Enzyme
+using EnzymeCore: EnzymeCore
+using ForwardDiff: ForwardDiff
+using ReverseDiff: ReverseDiff
 using SafeTestsets: @safetestset
+using SparseArrays: sparse, findnz, nnz, issparse
+using SparseMatrixColorings: SparseMatrixColorings
+using Test: @testset, @test
+using Zygote: Zygote
 
 @safetestset "doctests" begin
     using OpenMDAOCore
@@ -673,30 +684,34 @@ end
     include("aviary_utils.jl")
 end
 
-@testset "SparseADExplicitComp" begin
-    @safetestset "manual sparsity" begin
+include("ad_callback_functions.jl")
+
+@testset "DenseADExplicitComp" verbose=true showtiming=true begin
+    @testset "no Aviary metadata" verbose=true showtiming=true begin
+        include("autodense.jl")
+    end
+    @testset "with Aviary metadata" verbose=true showtiming=true begin
+        include("autodense_aviary.jl")
+    end
+end
+
+@testset "SparseADExplicitComp" verbose=true showtiming=true begin
+    @testset "manual" verbose=true showtiming=true begin
         include("autosparse_manual.jl")
     end
-    @safetestset "automatic sparsity" begin
+    @testset "automatic" verbose=true showtiming=true begin
         include("autosparse_automatic.jl")
     end
-    @safetestset "automatic sparsity, with Aviary metadata" begin
+    @testset "automatic, with Aviary metadata" verbose=true showtiming=true begin
         include("autosparse_automatic_aviary.jl")
     end
 end
 
-@testset "MatrixFreeADExplicitComp" begin
-    @safetestset "in-place" begin
-        include("auto_matrix_free_in_place.jl")
+@testset "MatrixFreeADExplicitComp" verbose=true showtiming=true begin
+    @testset "no Aviary metadata" verbose=true showtiming=true begin
+        include("auto_matrix_free.jl")
     end
-    @safetestset "in-place, with Aviary metadata" begin
-        include("auto_matrix_free_in_place_aviary.jl")
-    end
-    @safetestset "out-of-place" begin
-        include("auto_matrix_free_out_of_place.jl")
-    end
-    @safetestset "out-of-place, with Aviary metadata" begin
-        include("auto_matrix_free_out_of_place_aviary.jl")
+    @testset "with Aviary metadata" verbose=true showtiming=true begin
+        include("auto_matrix_free_aviary.jl")
     end
 end
-

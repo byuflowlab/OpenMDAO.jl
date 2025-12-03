@@ -13,8 +13,10 @@ function doit()
                       "A More Complicated Example"=>"nonlinear_circuit.md",
                       "Variable Shapes at Runtime"=>"shape_by_conn.md",
                       "A Simple Dymos Example"=>"brachistochrone.md",
+                      "Auto-Dense Examples"=>"auto_dense_ad.md",
                       "Auto-Sparse Examples"=>"auto_sparse_ad.md",
                       "Auto-Matrix-Free Examples"=>"matrix_free_ad.md",
+                      "Creating Python Packages That Use OpenMDAOCore.jl"=>"creating_python_packages.md",
                       "API Reference"=>"reference.md",
                       "Limitations"=>"limitations.md",
                       "Developer Docs"=>"dev_docs.md"])

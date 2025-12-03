@@ -289,6 +289,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
                         partials[of_obs, wrt_abs] = _only(partials_dict[of_rel, wrt_rel])
 
             self.linearize = MethodType(linearize, self)
+            self._has_linearize = True
 
         if jl.OpenMDAOCore.has_apply_linear(self._jlcomp):
             def apply_linear(self, inputs, outputs, d_inputs, d_outputs, d_residuals, mode):

@@ -11,3 +11,4 @@ dist
 .CondaPkg/
 *.db
 coloring_files
+*_out

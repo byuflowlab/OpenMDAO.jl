@@ -76,9 +76,8 @@ jobs:
           using Pkg
           Pkg.activate("./julia/OpenMDAO.jl")
           Pkg.develop(path="./julia/OpenMDAOCore.jl")
-          Pkg.add(url="https://github.com/dingraha/CondaPkg.jl", rev="pip_editable")
           using CondaPkg
-          # Path needs to be relative to the CondaPkg.toml file, which is in julia/OpenMDAOCore.jl.
+          # Path needs to be relative to the CondaPkg.toml file, which is in julia/OpenMDAO.jl.
           CondaPkg.add_pip("omjlcomps"; version="@./../../python", editable=true)
           Pkg.instantiate()
           Pkg.update()
@@ -149,3 +148,7 @@ jobs:
           pip install --config-settings editable_mode=compat -e .
           python ./scripts/run_paraboloid.py
           python ./example_python_package_openmdao_jl/test/test_paraboloid_example.py
+          python ./scripts/run_circle.py
+          python ./example_python_package_openmdao_jl/test/test_circle_example.py
+          python ./scripts/run_circuit.py
+          python ./example_python_package_openmdao_jl/test/test_circuit_example.py

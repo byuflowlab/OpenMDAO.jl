@@ -39,22 +39,6 @@ struct SparseADExplicitComp{InPlace,TAD,TCompute,TX,TY,TJ,TPrep,TXCS,TYCS,TAMD} 
     aviary_meta_data::TAMD
 
     function SparseADExplicitComp{InPlace}(ad_backend, compute_adable, X_ca, Y_ca, J_ca_sparse, prep, rcdict, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data) where {InPlace}
-        # println("typeof(ad_backend) = $(typeof(ad_backend))")
-        # println("typeof(compute_adable) = $(typeof(compute_adable))")
-        # println("typeof(X_ca) = $(typeof(X_ca))")
-        # println("typeof(Y_ca) = $(typeof(Y_ca))")
-        # println("typeof(J_ca_sparse) = $(typeof(J_ca_sparse))")
-        # println("typeof(prep) = $(typeof(prep))")
-        # println("typeof(rcdict) = $(typeof(rcdict)), should be Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}")
-        # println("typeof(units_dict) = $(typeof(units_dict)), should be Dict{Symbol,String}")
-        # println("typeof(tags_dict) = $(typeof(tags_dict)), should be Dict{Symbol,Vector{String}}")
-        # println("typeof(shape_by_conn_dict) = $(typeof(shape_by_conn_dict)), should be Dict{Symbol,Bool}")
-        # println("typeof(copy_shape_dict) = $(typeof(copy_shape_dict)), should be Dict{Symbol,Symbol}")
-        # println("typeof(X_ca_cs) = $(typeof(X_ca_cs))")
-        # println("typeof(Y_ca_cs) = $(typeof(Y_ca_cs))")
-        # println("typeof(aviary_input_names) = $(typeof(aviary_input_names)), should be Dict{Symbol,String}")
-        # println("typeof(aviary_output_names) = $(typeof(aviary_output_names)), should be Dict{Symbol,String}")
-        # println("typeof(aviary_meta_data) = $(typeof(aviary_meta_data))")
         return new{
                                     InPlace, typeof(ad_backend), typeof(compute_adable), typeof(X_ca), typeof(Y_ca),
                                     typeof(J_ca_sparse), typeof(prep),
@@ -124,11 +108,6 @@ function SparseADExplicitComp(ad_backend::TAD, f!, Y_ca::ComponentVector, X_ca::
         prep, J_ca_sparse, rcdict, X_ca_cs, Y_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, Y_ca_full, X_ca_full)
     else
         # No point in getting a "good" prep when we don't know all the shapes.
-        # prep = DifferentiationInterface.NoJacobianPrep(DifferentiationInterface.signature(compute_adable, Y_ca_full, ad_backend, X_ca_full; strict=Val{true}()))
-        # J_ca_sparse = ComponentMatrix{eltype(X_ca_full)}()
-        # rcdict = Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}()
-        # X_ca_cs = ComponentVector{ComplexF64}()
-        # Y_ca_cs = ComponentVector{ComplexF64}()
         prep = J_ca_sparse = X_ca_cs = Y_ca_cs = nothing
         rcdict = Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}()
     end
@@ -192,6 +171,7 @@ function SparseADExplicitComp(ad_backend::TAD, f, X_ca::ComponentVector; params=
 end
 
 get_rows_cols_dict(comp::SparseADExplicitComp) = comp.rcdict
+get_jacobian_ca(comp::SparseADExplicitComp) = comp.J_ca_sparse
 
 function _get_sparse_prep_stuff(ad_backend, f!, Y_ca, X_ca)
     # Need to "prepare" the backend.
@@ -437,13 +417,23 @@ function OpenMDAOCore.compute_partials!(self::SparseADExplicitComp{true}, inputs
             # This gets the underlying Vector that stores the nonzero entries in the current sub-Jacobian that OpenMDAO sees.
             iname_aviary = get_aviary_input_name(self, iname)
             oname_aviary = get_aviary_output_name(self, oname)
-            Jsub_out = partials[oname_aviary, iname_aviary]
+            # Jsub_out = partials[oname_aviary, iname_aviary]
+            # OpenMDAO might not ask for all the partials, and so all combination of output/input keys might not be present in `partials`.
+            local Jsub_out
+            try
+                Jsub_out = partials[oname_aviary, iname_aviary]
+            catch e
+                if !isa(e, KeyError)
+                    rethrow()
+                end
+            else
+                # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
+                Jsub_out_vec = _maybe_nonzeros(Jsub_out)
 
-            # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
-            Jsub_out_vec = _maybe_nonzeros(Jsub_out)
+                # Now write the non-zero entries to Jsub_out_vec.
+                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
+            end
 
-            # Now write the non-zero entries to Jsub_out_vec.
-            Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
         end
     end
 
@@ -486,13 +476,22 @@ function OpenMDAOCore.compute_partials!(self::SparseADExplicitComp{false}, input
             # This gets the underlying Vector that stores the nonzero entries in the current sub-Jacobian that OpenMDAO sees.
             iname_aviary = get_aviary_input_name(self, iname)
             oname_aviary = get_aviary_output_name(self, oname)
-            Jsub_out = partials[oname_aviary, iname_aviary]
+            # Jsub_out = partials[oname_aviary, iname_aviary]
+            # OpenMDAO might not ask for all the partials, and so all combination of output/input keys might not be present in `partials`.
+            local Jsub_out
+            try
+                Jsub_out = partials[oname_aviary, iname_aviary]
+            catch e
+                if !isa(e, KeyError)
+                    rethrow()
+                end
+            else
+                # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
+                Jsub_out_vec = _maybe_nonzeros(Jsub_out)
 
-            # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
-            Jsub_out_vec = _maybe_nonzeros(Jsub_out)
-
-            # Now write the non-zero entries to Jsub_out_vec.
-            Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
+                # Now write the non-zero entries to Jsub_out_vec.
+                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
+            end
         end
     end
 

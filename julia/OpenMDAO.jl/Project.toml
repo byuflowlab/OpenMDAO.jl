@@ -1,7 +1,7 @@
 name = "OpenMDAO"
 uuid = "2d3f9b48-ba2d-11e9-1a3f-97e029ee3d3c"
 authors = ["Ingraham, Daniel James (GRC-LTV0) <daniel.j.ingraham@nasa.gov>"]
-version = "0.5.0"
+version = "0.5.1"
 
 [deps]
 CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
@@ -12,7 +12,7 @@ PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 
 [compat]
 CondaPkg = "0.2.17"
-OpenMDAOCore = "0.3.1"
+OpenMDAOCore = "0.3.1, 0.4.0"
 Pkg = "1.11.0"
 PreferenceTools = "0.1.2"
 PythonCall = "0.9.12"

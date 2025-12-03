@@ -40,7 +40,7 @@ jobs:
           Pkg.status()
           # Pkg.develop(path="./julia/OpenMDAO.jl")
           Pkg.status()
-          Pkg.add(url="https://github.com/dingraha/CondaPkg.jl", rev="pip_editable")
+          # Pkg.add(url="https://github.com/dingraha/CondaPkg.jl", rev="pip_editable")
           using CondaPkg
           # This path in the version argument is relative to the location of the CondaPkg.toml file (aka OpenMDAO.jl/docs), not the working directory.
           CondaPkg.add_pip("omjlcomps"; version="@./../python")

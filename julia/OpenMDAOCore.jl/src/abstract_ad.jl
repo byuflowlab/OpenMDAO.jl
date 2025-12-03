@@ -17,8 +17,6 @@ get_output_ca(::Type{Any}, comp::AbstractADExplicitComp{false}) = get_callback(c
 
 get_output_ca(comp::AbstractADExplicitComp) = get_output_ca(Float64, comp)
 
-get_jacobian_ca(comp::AbstractADExplicitComp) = comp.J_ca_sparse
-
 get_prep(comp::AbstractADExplicitComp) = comp.prep
 get_units(comp::AbstractADExplicitComp, varname) = get(comp.units_dict, varname, "unitless")
 get_tags(comp::AbstractADExplicitComp, varname) = get(comp.tags_dict, varname, Vector{String}())

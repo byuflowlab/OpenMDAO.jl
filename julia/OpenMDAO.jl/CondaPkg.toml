@@ -1,5 +1,4 @@
-
 [pip.deps]
 juliapkg = "~=0.1.10"
-openmdao = "~=3.36"
-omjlcomps = "~=0.2.5"
+openmdao = "~=3.41"
+omjlcomps = "~=0.2.6"

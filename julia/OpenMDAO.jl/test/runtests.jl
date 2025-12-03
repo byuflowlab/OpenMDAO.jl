@@ -390,7 +390,7 @@ end
 
             @. residuals["z1"] = (a*x*x + y*y) - outputs["z1"]
             @. residuals["z2"] = (a*x + y) - outputs["z2"]
-
+            
             return nothing
         end
 
