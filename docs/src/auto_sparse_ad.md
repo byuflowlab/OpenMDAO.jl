@@ -219,8 +219,8 @@ function f_circle!(Y, X, params)
 
     return nothing
 end
-Y_ca = ComponentVector(area=1.0)
-X_ca = ComponentVector(r=1.0)
+Y_ca = ComponentVector(area=[1.0]) # OpenMDAO currently doesn't handle scalar variables correctly sometimes. Fix will be in next release.
+X_ca = ComponentVector(r=[1.0]) # OpenMDAO currently doesn't handle scalar variables correctly sometimes. Fix will be in next release.
 comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_circle!, Y_ca, X_ca)
 circle_comp = make_component(comp)
 
@@ -237,7 +237,7 @@ function f_r_con!(Y, X, params)
     return nothing
 end
 Y_ca = ComponentVector(g=ones(SIZE))
-X_ca = ComponentVector(x=ones(SIZE), y=ones(SIZE), r=1.0)
+X_ca = ComponentVector(x=ones(SIZE), y=ones(SIZE), r=[1.0]) # OpenMDAO currently doesn't handle scalar variables correctly sometimes. Fix will be in next release.
 comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_r_con!, Y_ca, X_ca)
 r_con_comp = make_component(comp)
 
