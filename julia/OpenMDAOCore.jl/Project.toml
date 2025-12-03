@@ -1,7 +1,7 @@
 name = "OpenMDAOCore"
 uuid = "24d19c10-6eee-420f-95df-4537264b2753"
 authors = ["Daniel Ingraham <d.j.ingraham@gmail.com>"]
-version = "0.4.0"
+version = "0.3.3"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
