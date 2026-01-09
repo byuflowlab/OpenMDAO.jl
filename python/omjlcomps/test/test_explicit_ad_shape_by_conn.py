@@ -2,8 +2,6 @@ import juliacall; jl = juliacall.newmodule("OpenMDAOJuliaADExplictShapeByConnTes
 import os
 import unittest
 
-import aviary.api as av
-
 import numpy as np
 from numpy.random import rand
 
