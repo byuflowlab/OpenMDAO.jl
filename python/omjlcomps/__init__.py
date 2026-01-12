@@ -94,6 +94,9 @@ class JuliaExplicitComp(om.ExplicitComponent):
     jlcomp : subtype of `OpenMDAOCore.AbstractExplicitComp`
         A Julia struct that subtypes `OpenMDAOCore.AbstractExplicitComp`.
         Used by `JuliaExplicitComp` to call Julia functions that mimic methods required by an OpenMDAO `ExplicitComponent` (e.g., `OpenMDAOCore.setup`, `OpenMDAOCore.compute!`, `OpenMDAOCore.compute_partials!`, etc.).
+    noisy_julia_domain_error: bool
+        If `True`, a `DomainError` thrown in the Julia code will be printed before being re-raised as an OpenMDAO `AnalysisError`.
+        Otherwise only the `AnalysisError` will be thrown (and perhaps silenced by OpenMDAO, depending on its configuration).
     """
 
     def initialize(self):
@@ -117,9 +120,10 @@ class JuliaExplicitComp(om.ExplicitComponent):
                     jl.OpenMDAOCore.compute_partials_b(self._jlcomp, inputs_dict, partials_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        msg = f"caught Julia DomainError in {self}.compute_partials:\n{e}"
                         if self.options['noisy_julia_domain_error']:
-                            print(f"caught Julia DomainError in {self}.compute_partials:\n{e}")
-                        raise AnalysisError(f"caught Julia DomainError in {self}.compute_partials:\n{e}")
+                            print(msg)
+                        raise AnalysisError(msg)
                     else:
                         raise e from None
 
@@ -131,10 +135,7 @@ class JuliaExplicitComp(om.ExplicitComponent):
                         wrt_rel = wrt_abs.split(".")[-1]
                         partials[of_obs, wrt_abs] = _only(partials_dict[of_rel, wrt_rel])
 
-            # https://www.ianlewis.org/en/dynamically-adding-method-classes-or-class-instanc
-            self.compute_partials = MethodType(compute_partials, self)
-            # Hmm...
-            self._has_compute_partials = True
+            self.override_method("compute_partials", compute_partials)
 
         if jl.OpenMDAOCore.has_compute_jacvec_product(self._jlcomp):
             def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
@@ -146,9 +147,10 @@ class JuliaExplicitComp(om.ExplicitComponent):
                     jl.OpenMDAOCore.compute_jacvec_product_b(self._jlcomp, inputs_dict, d_inputs_dict, d_outputs_dict, mode)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        msg = f"caught Julia DomainError in {self}.compute_jacvec_product:\n{e}"
                         if self.options['noisy_julia_domain_error']:
-                            print(f"caught Julia DomainError in {self}.compute_jacvec_product:\n{e}")
-                        raise AnalysisError(f"caught Julia DomainError in {self}.compute_jacvec_product:\n{e}")
+                            print(msg)
+                        raise AnalysisError(msg)
                     else:
                         raise e from None
 
@@ -165,10 +167,7 @@ class JuliaExplicitComp(om.ExplicitComponent):
                 else:
                     raise ValueError(f"unknown mode = {mode} in {self}.compute_jacvec_product")
 
-
-            self.compute_jacvec_product = MethodType(compute_jacvec_product, self)
-            # https://github.com/OpenMDAO/OpenMDAO/pull/2802
-            self.matrix_free = True
+            self.override_method("compute_jacvec_product", compute_jacvec_product)
 
     def setup_partials(self):
         _setup_partials_common(self)
@@ -182,8 +181,9 @@ class JuliaExplicitComp(om.ExplicitComponent):
             jl.OpenMDAOCore.compute_b(self._jlcomp, inputs_dict, outputs_dict)
         except JuliaError as e:
             if jl.isa(e.exception, jl.DomainError):
+                msg = f"caught Julia DomainError in {self}.compute:\n{e}"
                 if self.options['noisy_julia_domain_error']:
-                    print(f"caught Julia DomainError in {self}.compute:\n{e}")
+                    print(msg)
                 raise AnalysisError(f"caught Julia DomainError in {self}.compute:\n{e}")
             else:
                 raise e from None
@@ -203,6 +203,9 @@ class JuliaImplicitComp(om.ImplicitComponent):
     jlcomp : subtype of `OpenMDAOCore.AbstractImplicitComp`
         A Julia struct that subtypes `OpenMDAOCore.AbstractImplicitComp`.
         Used by `JuliaImplicitComp` to call Julia functions that mimic methods required by an OpenMDAO `ImplicitComponent` (e.g., `OpenMDAOCore.setup`, `OpenMDAOCore.apply_nonlinear!`, `OpenMDAOCore.linearize!`, etc.).
+    noisy_julia_domain_error: bool
+        If `True`, a `DomainError` thrown in the Julia code will be printed before being re-raised as an OpenMDAO `AnalysisError`.
+        Otherwise only the `AnalysisError` will be thrown (and perhaps silenced by OpenMDAO, depending on its configuration).
     """
 
     def initialize(self):
@@ -210,29 +213,6 @@ class JuliaImplicitComp(om.ImplicitComponent):
 
     def setup(self):
         _setup_common(self)
-
-        if jl.OpenMDAOCore.has_apply_nonlinear(self._jlcomp):
-            def apply_nonlinear(self, inputs, outputs, residuals):
-                inputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in inputs.items()})
-                outputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in outputs.items()})
-                residuals_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in residuals.items()})
-
-                try:
-                    jl.OpenMDAOCore.apply_nonlinear_b(self._jlcomp, inputs_dict, outputs_dict, residuals_dict)
-                except JuliaError as e:
-                    if jl.isa(e.exception, jl.DomainError):
-                        if self.options['noisy_julia_domain_error']:
-                            print(f"caught Julia DomainError in {self}.apply_nonlinear:\n{e}")
-                        raise AnalysisError(f"caught Julia DomainError in {self}.apply_nonlinear:\n{e}")
-                    else:
-                        raise e from None
-
-                # Handle scalar entries in residuals, which aren't passed by reference when constructing residuals_dict.
-                for k in list(residuals.keys()):
-                    if not isinstance(residuals[k], np.ndarray):
-                        residuals[k] = _only(residuals_dict[k])
-
-            self.apply_nonlinear = MethodType(apply_nonlinear, self)
 
         if jl.OpenMDAOCore.has_solve_nonlinear(self._jlcomp):
             def solve_nonlinear(self, inputs, outputs):
@@ -243,9 +223,10 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.solve_nonlinear_b(self._jlcomp, inputs_dict, outputs_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        msg = f"caught Julia DomainError in {self}.solve_nonlinear:\n{e}"
                         if self.options['noisy_julia_domain_error']:
-                            print(f"caught Julia DomainError in {self}.solve_nonlinear:\n{e}")
-                        raise AnalysisError(f"caught Julia DomainError in {self}.solve_nonlinear:\n{e}")
+                            print(msg)
+                        raise AnalysisError(msg)
                     else:
                         raise e from None
 
@@ -254,9 +235,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     if not isinstance(outputs[k], np.ndarray):
                         outputs[k] = _only(outputs_dict[k])
 
-            self.solve_nonlinear = MethodType(solve_nonlinear, self)
-            # https://github.com/OpenMDAO/OpenMDAO/pull/2802
-            self._has_solve_nl = True
+            self.override_method("solve_nonlinear", solve_nonlinear)
 
         if jl.OpenMDAOCore.has_linearize(self._jlcomp):
             def linearize(self, inputs, outputs, partials):
@@ -274,9 +253,10 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.linearize_b(self._jlcomp, inputs_dict, outputs_dict, partials_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        msg = f"caught Julia DomainError in {self}.linearize:\n{e}"
                         if self.options['noisy_julia_domain_error']:
-                            print(f"caught Julia DomainError in {self}.linearize:\n{e}")
-                        raise AnalysisError(f"caught Julia DomainError in {self}.linearize:\n{e}")
+                            print(msg)
+                        raise AnalysisError(msg)
                     else:
                         raise e from None
 
@@ -288,8 +268,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
                         wrt_rel = wrt_abs.split(".")[-1]
                         partials[of_obs, wrt_abs] = _only(partials_dict[of_rel, wrt_rel])
 
-            self.linearize = MethodType(linearize, self)
-            self._has_linearize = True
+            self.override_method("linearize", linearize)
 
         if jl.OpenMDAOCore.has_apply_linear(self._jlcomp):
             def apply_linear(self, inputs, outputs, d_inputs, d_outputs, d_residuals, mode):
@@ -304,9 +283,10 @@ class JuliaImplicitComp(om.ImplicitComponent):
                             d_inputs_dict, d_outputs_dict, d_residuals_dict, mode)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        msg = f"caught Julia DomainError in {self}.apply_linear:\n{e}"
                         if self.options['noisy_julia_domain_error']:
-                            print(f"caught Julia DomainError in {self}.apply_linear:\n{e}")
-                        raise AnalysisError(f"caught Julia DomainError in {self}.apply_linear:\n{e}")
+                            print(msg)
+                        raise AnalysisError(msg)
                     else:
                         raise e from None
 
@@ -327,9 +307,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
                 else:
                     raise ValueError(f"unknown mode = {mode} in {self}.apply_linear")
 
-            self.apply_linear = MethodType(apply_linear, self)
-            # https://github.com/OpenMDAO/OpenMDAO/pull/2802
-            self.matrix_free = True
+            self.override_method("apply_linear", apply_linear)
 
         if jl.OpenMDAOCore.has_solve_linear(self._jlcomp):
             def solve_linear(self, d_outputs, d_residuals, mode):
@@ -340,9 +318,10 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.solve_linear_b(self._jlcomp, d_outputs_dict, d_residuals_dict, mode)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        msg = f"caught Julia DomainError in {self}.solve_linear:\n{e}"
                         if self.options['noisy_julia_domain_error']:
-                            print(f"caught Julia DomainError in {self}.solve_linear:\n{e}")
-                        raise AnalysisError(f"caught Julia DomainError in {self}.solve_linear:\n{e}")
+                            print(msg)
+                        raise AnalysisError(msg)
                     else:
                         raise e from None
 
@@ -359,7 +338,7 @@ class JuliaImplicitComp(om.ImplicitComponent):
                 else:
                     raise ValueError(f"unknown mode = {mode} in {self}.solve_linear")
 
-            self.solve_linear = MethodType(solve_linear, self)
+            self.override_method("solve_linear", solve_linear)
 
     def setup_partials(self):
         _setup_partials_common(self)
@@ -377,9 +356,10 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     jl.OpenMDAOCore.guess_nonlinear_b(self._jlcomp, inputs_dict, outputs_dict, residuals_dict)
                 except JuliaError as e:
                     if jl.isa(e.exception, jl.DomainError):
+                        msg = f"caught Julia DomainError in {self}.guess_nonlinear:\n{e}"
                         if self.options['noisy_julia_domain_error']:
-                            print(f"caught Julia DomainError in {self}.guess_nonlinear:\n{e}")
-                        raise AnalysisError(f"caught Julia DomainError in {self}.guess_nonlinear:\n{e}")
+                            print(msg)
+                        raise AnalysisError(msg)
                     else:
                         raise e from None
 
@@ -388,9 +368,28 @@ class JuliaImplicitComp(om.ImplicitComponent):
                     if not isinstance(outputs[k], np.ndarray):
                         outputs[k] = _only(outputs_dict[k])
 
-            self.guess_nonlinear = MethodType(guess_nonlinear, self)
-            # Hmm...
-            self._has_guess = True
+            self.override_method("guess_nonlinear", guess_nonlinear)
+
+    def apply_nonlinear(self, inputs, outputs, residuals):
+        inputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in inputs.items()})
+        outputs_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in outputs.items()})
+        residuals_dict = juliacall.convert(jl.Dict, {k: np.atleast_1d(v) for k, v in residuals.items()})
+
+        try:
+            jl.OpenMDAOCore.apply_nonlinear_b(self._jlcomp, inputs_dict, outputs_dict, residuals_dict)
+        except JuliaError as e:
+            if jl.isa(e.exception, jl.DomainError):
+                msg = f"caught Julia DomainError in {self}.apply_nonlinear:\n{e}"
+                if self.options['noisy_julia_domain_error']:
+                    print(msg)
+                raise AnalysisError(msg)
+            else:
+                raise e from None
+
+        # Handle scalar entries in residuals, which aren't passed by reference when constructing residuals_dict.
+        for k in list(residuals.keys()):
+            if not isinstance(residuals[k], np.ndarray):
+                residuals[k] = _only(residuals_dict[k])
 
 
 def to_jlsymstrdict(d):

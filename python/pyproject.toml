@@ -4,16 +4,16 @@ description = "Create OpenMDAO Components using the Julia programming language"
 readme = "README.md"
 keywords = ["openmdao_component"]
 license = {text = "MIT"}
-version = "0.2.6"
+version = "0.2.7"
 
 dependencies = [
-    "openmdao~=3.36",
+    "openmdao~=3.42",
     "juliapkg~=0.1.10",
     "juliacall~=0.9.13",
 ]
 
 [project.optional-dependencies]
-test = ["om-aviary"]
+test = ["aviary @ git+https://github.com/OpenMDAO/Aviary#egg=main"]
 
 [project.entry-points.openmdao_component]
 juliaexplicitcomp = "omjlcomps:JuliaExplicitComp"
