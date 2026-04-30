@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["aviary @ git+https://github.com/OpenMDAO/Aviary#egg=main"]
+test = ["aviary"]
 
 [project.entry-points.openmdao_component]
 juliaexplicitcomp = "omjlcomps:JuliaExplicitComp"

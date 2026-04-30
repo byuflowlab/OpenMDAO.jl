@@ -59,7 +59,7 @@ class TestAviaryMatrixFreeInPlacePropellerRadiusComp(unittest.TestCase):
         partials = cpd["test_comp"]
         np.testing.assert_almost_equal(actual=partials["Rtip", av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=0.5, decimal=12)
         Dtip_actual = p.get_val(av.Aircraft.Engine.Propeller.DIAMETER)
-        np.testing.assert_almost_equal(actual=partials[av.Dynamic.Vehicle.Propulsion.THRUST, av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=[6*Dtip_actual], decimal=12)
+        np.testing.assert_almost_equal(actual=partials[av.Dynamic.Vehicle.Propulsion.THRUST, av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=[[6*Dtip_actual]], decimal=12)
 
         # Check that partials approximated by the complex-step method match the user-provided partials.
         for comp in cpd:
@@ -111,7 +111,7 @@ class TestAviaryMatrixFreeOutOfPlacePropellerRadiusComp(unittest.TestCase):
         partials = cpd["test_comp"]
         np.testing.assert_almost_equal(actual=partials["Rtip", av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=0.5, decimal=12)
         Dtip_actual = p.get_val(av.Aircraft.Engine.Propeller.DIAMETER)
-        np.testing.assert_almost_equal(actual=partials[av.Dynamic.Vehicle.Propulsion.THRUST, av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=[6*Dtip_actual], decimal=12)
+        np.testing.assert_almost_equal(actual=partials[av.Dynamic.Vehicle.Propulsion.THRUST, av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=[[6*Dtip_actual]], decimal=12)
 
         # Check that partials approximated by the complex-step method match the user-provided partials.
         for comp in cpd:
@@ -163,7 +163,7 @@ class TestAviarySparseInPlacePropellerRadiusComp(unittest.TestCase):
         partials = cpd["test_comp"]
         np.testing.assert_almost_equal(actual=partials["Rtip", av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=0.5, decimal=12)
         Dtip_actual = p.get_val(av.Aircraft.Engine.Propeller.DIAMETER)
-        np.testing.assert_almost_equal(actual=partials[av.Dynamic.Vehicle.Propulsion.THRUST, av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=[6*Dtip_actual], decimal=12)
+        np.testing.assert_almost_equal(actual=partials[av.Dynamic.Vehicle.Propulsion.THRUST, av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=[[6*Dtip_actual]], decimal=12)
 
         # Check that partials approximated by the complex-step method match the user-provided partials.
         for comp in cpd:
@@ -215,7 +215,7 @@ class TestAviarySparseOutOfPlacePropellerRadiusComp(unittest.TestCase):
         partials = cpd["test_comp"]
         np.testing.assert_almost_equal(actual=partials["Rtip", av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=0.5, decimal=12)
         Dtip_actual = p.get_val(av.Aircraft.Engine.Propeller.DIAMETER)
-        np.testing.assert_almost_equal(actual=partials[av.Dynamic.Vehicle.Propulsion.THRUST, av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=[6*Dtip_actual], decimal=12)
+        np.testing.assert_almost_equal(actual=partials[av.Dynamic.Vehicle.Propulsion.THRUST, av.Aircraft.Engine.Propeller.DIAMETER]['J_fwd'], desired=[[6*Dtip_actual]], decimal=12)
 
         # Check that partials approximated by the complex-step method match the user-provided partials.
         for comp in cpd:
