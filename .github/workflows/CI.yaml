@@ -122,7 +122,7 @@ jobs:
         run: |
           echo "PWD = $PWD"
           # Get the json file with all the test dependencies, and that will install the local version of OpenMDAOCore.jl.
-          cp $PWD/python/omjlcomps/test/juliapkg-test.json $PWD/python/omjlcomps/juliapkg.json
+          # cp $PWD/python/omjlcomps/test/juliapkg-test.json $PWD/python/omjlcomps/juliapkg.json
           python -m pip install --upgrade pip
           pip install juliapkg
       - name: omjlcomps install
@@ -135,10 +135,10 @@ jobs:
       - name: omjlcomps tests
         run: |
           echo "PWD = $PWD"
-          python ./python/omjlcomps/test/test_julia_explicit_comp.py
-          python ./python/omjlcomps/test/test_julia_implicit_comp.py
-          python ./python/omjlcomps/test/test_aviary_support.py
-          python ./python/omjlcomps/test/test_explicit_ad_shape_by_conn.py
+          python ./python/test/test_julia_explicit_comp.py
+          python ./python/test/test_julia_implicit_comp.py
+          python ./python/test/test_aviary_support.py
+          python ./python/test/test_explicit_ad_shape_by_conn.py
         env:
               JULIA_PKG_USE_CLI_GIT: 'true'
       - name: test examples

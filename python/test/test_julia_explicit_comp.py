@@ -246,7 +246,7 @@ class TestJuliaExplicitCompWithLargeOption(unittest.TestCase):
         if os.getenv("GITHUB_ACTIONS") == "true":
             # n_big = 1_000_000_000 is too big for GitHub Actions---it appears to consume all the virtual machine's memory and kills the job, giving me a big sad.
             if sys.platform == "darwin":
-                n_big = self.n_big = 10_000_000
+                n_big = self.n_big = 1_000_000
             else:
                 n_big = self.n_big = 100_000_000
         else:
@@ -424,6 +424,112 @@ class TestAnalysisError(unittest.TestCase):
         p.set_val("x", -1.0)
         self.assertRaises(AnalysisError, p.run_model)
         self.assertRaises(AnalysisError, p.check_partials)
+
+
+class TestSimpleWithScalarsJuliaExplicitComp(unittest.TestCase):
+
+    def setUp(self):
+        p = self.p = om.Problem()
+        ecomp = jl.ECompTest.ECompSimpleWithScalars()
+        comp = JuliaExplicitComp(jlcomp=ecomp)
+        p.model.add_subsystem("ecomp", comp, promotes_inputs=["x"], promotes_outputs=["y"])
+        p.setup(force_alloc_complex=True)
+        p.set_val("x", 3.0)
+        p.run_model()
+
+    def test_results(self):
+        p = self.p
+        # expected = 2*p.get_val("x")[0]**2 + 1
+        expected = 2*p.get_val("x")**2 + 1
+        actual = p.get_val("y")
+        np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials(self):
+        p = self.p
+        np.set_printoptions(linewidth=1024)
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that the partials the user provided are correct.
+        ecomp_partials = cpd["ecomp"]
+        # np.testing.assert_almost_equal(actual=ecomp_partials["y", "x"]['J_fwd'], desired=[[4*p.get_val("x")[0]]], decimal=12)
+        np.testing.assert_almost_equal(actual=ecomp_partials["y", "x"]['J_fwd'], desired=[[4*p.get_val("x")]], decimal=12)
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
+                                               desired=cpd[comp][var, wrt]['J_fd'],
+                                               decimal=12)
+
+class TestJuliaMatrixFreeScalarExplicitComp(unittest.TestCase):
+
+    def setUp(self):
+        p = self.p = om.Problem()
+        ecomp = jl.ECompTest.ECompMatrixFreeScalar()
+        comp = JuliaExplicitComp(jlcomp=ecomp)
+        p.model.add_subsystem("ecomp", comp, promotes_inputs=["x1", "x2"], promotes_outputs=["y1", "y2"])
+        p.setup(force_alloc_complex=True)
+        p.set_val("x1", 2.0)
+        p.set_val("x2", 3.0)
+        p.run_model()
+
+    def test_results(self):
+        p = self.p
+        expected = 2*p.get_val("x1") + 3*p.get_val("x2")**2
+        actual = p.get_val("y1")
+        np.testing.assert_almost_equal(actual, expected)
+
+        expected = 4*p.get_val("x1")**3 + 5*p.get_val("x2")**4
+        actual = p.get_val("y2")
+        np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials(self):
+        p = self.p
+        np.set_printoptions(linewidth=1024)
+
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                np.testing.assert_allclose(actual=cpd[comp][var, wrt]['J_fwd'], desired=cpd[comp][var, wrt]['J_fd'], rtol=1e-12)
+                np.testing.assert_allclose(actual=cpd[comp][var, wrt]['J_rev'], desired=cpd[comp][var, wrt]['J_fd'], rtol=1e-12)
+
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                np.testing.assert_allclose(actual=cpd[comp][var, wrt]['J_fwd'], desired=cpd[comp][var, wrt]['J_fd'], rtol=1e-12)
+                np.testing.assert_allclose(actual=cpd[comp][var, wrt]['J_rev'], desired=cpd[comp][var, wrt]['J_fd'], rtol=1e-12)
+
+
+class TestJuliaParaboloidRelevance(unittest.TestCase):
+
+    def test_relevance(self):
+        prob = om.Problem()
+
+        comp = JuliaExplicitComp(jlcomp=jl.ECompTest.ParaboloidComp())
+        prob.model.add_subsystem('paraboloid', comp)
+
+        prob.driver = om.ScipyOptimizeDriver()
+        prob.driver.options['optimizer'] = 'SLSQP'
+
+        prob.model.add_design_var('paraboloid.x', lower=-50, upper=50)
+        prob.model.add_objective('paraboloid.f')
+
+        prob.setup()
+
+        prob.set_val('paraboloid.x', 3.0)
+        prob.set_val('paraboloid.y', 8.0)
+
+        # run the optimization
+        prob.run_driver()
+
+        # minimum value
+        np.testing.assert_allclose(prob.get_val('paraboloid.x'), -1.0)
+        np.testing.assert_allclose(prob.get_val('paraboloid.y'), 8.0)
+        np.testing.assert_allclose(prob.get_val('paraboloid.f'), 149.0)
 
 
 if __name__ == '__main__':

@@ -629,4 +629,268 @@ function OpenMDAOCore.linearize!(self::ICompDomainError, inputs, outputs, partia
     return nothing
 end
 
+struct SimpleImplicitWithScalars{TF} <: OpenMDAOCore.AbstractImplicitComp
+    a::TF
+end
+
+function OpenMDAOCore.setup(self::SimpleImplicitWithScalars)
+ 
+    inputs = [
+        VarData("x"; shape=(), val=2.0),
+        VarData("y"; shape=(), val=3.0)]
+
+    outputs = [
+        VarData("z1"; shape=(), val=2.0),
+        VarData("z2"; shape=(), val=3.0)]
+
+    partials = [
+        PartialsData("z1", "x"),
+        PartialsData("z1", "y"),
+        PartialsData("z1", "z1"),
+        PartialsData("z2", "x"),
+        PartialsData("z2", "y"),          
+        PartialsData("z2", "z2")
+    ]
+
+    return inputs, outputs, partials
+end
+
+function OpenMDAOCore.apply_nonlinear!(self::SimpleImplicitWithScalars, inputs, outputs, residuals)
+    a = self.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    residuals["z1"] = (a*x*x + y*y) - outputs["z1"]
+    residuals["z2"] = (a*x + y) - outputs["z2"]
+
+    return nothing
+end
+
+function OpenMDAOCore.linearize!(self::SimpleImplicitWithScalars, inputs, outputs, partials)
+    a = self.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    # Apparently subjacobians are always 2D.
+    partials["z1", "z1"] .= -1.0
+    partials["z1", "x"] .= 2*a*x
+    partials["z1", "y"] .= 2*y
+
+    partials["z2", "z2"] .= -1.0
+    partials["z2", "x"] .= a
+    partials["z2", "y"] .= 1.0
+
+    return nothing
+end
+
+struct MatrixFreeImplicitScalar{TF} <: OpenMDAOCore.AbstractImplicitComp
+    a::TF
+end
+
+function OpenMDAOCore.setup(self::MatrixFreeImplicitScalar)
+ 
+    inputs = [
+        VarData("x"; shape=(), val=2.0),
+        VarData("y"; shape=(), val=3.0)]
+
+    outputs = [
+        VarData("z1"; shape=(), val=2.0),
+        VarData("z2"; shape=(), val=3.0)]
+
+    partials = Vector{PartialsData}()
+
+    return inputs, outputs, partials
+end
+
+function OpenMDAOCore.apply_nonlinear!(self::MatrixFreeImplicitScalar, inputs, outputs, residuals)
+    a = self.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    residuals["z1"] = (a*x*x + y*y) - outputs["z1"]
+    residuals["z2"] = (a*x + y) - outputs["z2"]
+
+    return nothing
+end
+
+function OpenMDAOCore.apply_linear!(self::MatrixFreeImplicitScalar, inputs, outputs, d_inputs, d_outputs, d_residuals, mode)
+    a = self.a
+    x, y = inputs["x"], inputs["y"]
+
+    if mode == "fwd"
+        # In forward mode, the goal is to calculate the derivatives of the
+        # residuals wrt an upstream input, given the inputs and outputs and the
+        # derivatives of the inputs and outputs wrt the upstream input.
+        if "z1" in keys(d_residuals)
+            if "x" in keys(d_inputs)
+                d_residuals["z1"] += 2*a*inputs["x"]*d_inputs["x"]
+            end
+            if "y" in keys(d_inputs)
+                d_residuals["z1"] += 2*inputs["y"]*d_inputs["y"]
+            end
+            if "z1" in keys(d_outputs)
+                d_residuals["z1"] += -d_outputs["z1"]
+            end
+        end
+        if "z2" in keys(d_residuals)
+            if "x" in keys(d_inputs)
+                d_residuals["z2"] += a*d_inputs["x"]
+            end
+            if "y" in keys(d_inputs)
+                d_residuals["z2"] += d_inputs["y"]
+            end
+            if "z2" in keys(d_outputs)
+                d_residuals["z2"] += -d_outputs["z2"]
+            end
+        end
+    elseif mode == "rev"
+        # In reverse mode, the goal is to calculate the derivatives of an
+        # downstream output wrt the inputs and outputs, given the derivatives of
+        # the downstream output wrt the residuals.
+        if "x" in keys(d_inputs)
+            # fill!(xdot, 0)
+            if "z1" in keys(d_residuals)
+                d_inputs["x"] += 2*a*x*d_residuals["z1"]
+            end
+            if "z2" in keys(d_residuals)
+                d_inputs["x"] += a*d_residuals["z2"]
+            end
+        end
+        if "y" in keys(d_inputs)
+            # fill!(ydot, 0)
+            if "z1" in keys(d_residuals)
+                d_inputs["y"] += 2*y*d_residuals["z1"]
+            end
+            if "z2" in keys(d_residuals)
+                d_inputs["y"] += d_residuals["z2"]
+            end
+        end
+        if "z1" in keys(d_outputs)
+            # fill!(z1dot, 0)
+            # if Rz1dot !== nothing
+            if "z1" in keys(d_residuals)
+                d_outputs["z1"] += -d_residuals["z1"]
+            end
+        end
+        if "z2" in keys(d_outputs)
+            # fill!(z2dot, 0)
+            if "z2" in keys(d_residuals)
+                d_outputs["z2"] += -d_residuals["z2"]
+            end
+        end
+    end
+
+end
+
+struct SolveLinearImplicitScalar{TF} <: OpenMDAOCore.AbstractImplicitComp
+    a::TF
+end
+
+function OpenMDAOCore.setup(self::SolveLinearImplicitScalar)
+ 
+    inputs = [
+        VarData("x"; shape=(), val=2.0),
+        VarData("y"; shape=(), val=3.0)]
+
+    outputs = [
+        VarData("z1"; shape=(), val=2.0),
+        VarData("z2"; shape=(), val=3.0)]
+
+    partials = [
+        PartialsData("z1", "x"),
+        PartialsData("z1", "y"),
+        PartialsData("z1", "z1"),
+        PartialsData("z2", "x"),
+        PartialsData("z2", "y"),          
+        PartialsData("z2", "z2")
+    ]
+
+    return inputs, outputs, partials
+end
+
+function OpenMDAOCore.apply_nonlinear!(self::SolveLinearImplicitScalar, inputs, outputs, residuals)
+    a = self.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    residuals["z1"] = (a*x*x + y*y) - outputs["z1"]
+    residuals["z2"] = (a*x + y) - outputs["z2"]
+
+    return nothing
+end
+
+function OpenMDAOCore.solve_nonlinear!(self::SolveLinearImplicitScalar, inputs, outputs)
+    a = self.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    outputs["z1"] = a*x*x + y*y
+    outputs["z2"] = a*x + y
+
+    return nothing
+end
+
+function OpenMDAOCore.linearize!(self::SolveLinearImplicitScalar, inputs, outputs, partials)
+    a = self.a
+    x = inputs["x"]
+    y = inputs["y"]
+
+    partials["z1", "z1"] .= -1.0
+    partials["z1", "x"] .= 2*a*x
+    partials["z1", "y"] .= 2*y
+
+    partials["z2", "z2"] .= -1.0
+    partials["z2", "x"] .= a
+    partials["z2", "y"] .= 1.0
+
+    return nothing
+end
+
+function OpenMDAOCore.solve_linear!(self::SolveLinearImplicitScalar, d_outputs, d_residuals, mode)
+    if mode == "fwd"
+        if "z1" in keys(d_outputs)
+            d_outputs["z1"] = -d_residuals["z1"]
+        end
+
+        if "z2" in keys(d_outputs)
+            d_outputs["z2"] = -d_residuals["z2"]
+        end
+
+    elseif mode == "rev"
+        if "z1" in keys(d_residuals)
+            d_residuals["z1"] = -d_outputs["z1"]
+        end
+
+        if "z2" in keys(d_residuals)
+            d_residuals["z2"] = -d_outputs["z2"]
+        end
+
+    end
+    return nothing
+end
+
+struct ImplicitParaboloidComp <: OpenMDAOCore.AbstractImplicitComp end
+
+function OpenMDAOCore.setup(self::ImplicitParaboloidComp)
+    input_data = [VarData("x"; shape=()), VarData("y"; shape=())]
+    output_data = [VarData("f"; shape=())]
+    partials_data = [PartialsData("*", "*")]
+
+    return input_data, output_data, partials_data
+end
+
+function OpenMDAOCore.apply_nonlinear!(self::ImplicitParaboloidComp, inputs, outputs, residuals)
+    residuals["f"] = (inputs["x"]-3)^2 + inputs["x"]*inputs["y"] + (inputs["y"]+4)^2 - 3 - outputs["f"]
+    return nothing
+end
+
+function OpenMDAOCore.linearize!(self::ImplicitParaboloidComp, inputs, outputs, partials)
+    x = inputs["x"]
+    y = inputs["y"]
+    @. partials["f", "x"] = 2*(x - 3) + y
+    @. partials["f", "y"] = x + 2*(y + 4)
+    @. partials["f", "f"] = -1
+    return nothing
+end
+
 end # module

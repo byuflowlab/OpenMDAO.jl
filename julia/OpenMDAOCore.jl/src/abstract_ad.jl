@@ -73,8 +73,11 @@ function OpenMDAOCore.setup(self::AbstractADExplicitComp)
 end
 
 function OpenMDAOCore.compute!(self::AbstractADExplicitComp{true}, inputs, outputs)
+    # I used to try to do eltype(valtype(inputs)) but that would return `Any` if there were arrays and scalars in `inputs`.
+    TF = eltype(inputs[first(keys(inputs))])
+
     # Copy the inputs into the input `ComponentArray`.
-    X_ca = get_input_ca(eltype(valtype(inputs)), self)
+    X_ca = get_input_ca(TF, self)
     for iname in keys(X_ca)
         iname_aviary = get_aviary_input_name(self, iname)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
@@ -82,7 +85,7 @@ function OpenMDAOCore.compute!(self::AbstractADExplicitComp{true}, inputs, outpu
     end
 
     # Call the actual function.
-    Y_ca = get_output_ca(eltype(valtype(outputs)), self)
+    Y_ca = get_output_ca(TF, self)
     f! = get_callback(self)
     f!(Y_ca, X_ca)
 
@@ -101,8 +104,10 @@ function OpenMDAOCore.compute!(self::AbstractADExplicitComp{true}, inputs, outpu
 end
 
 function OpenMDAOCore.compute!(self::AbstractADExplicitComp{false}, inputs, outputs)
+    # I used to try to do TF = eltype(valtype(inputs)) but that would return `Any` if there were arrays and scalars in `inputs`.
+    TF = eltype(inputs[first(keys(inputs))])
     # Copy the inputs into the input `ComponentArray`.
-    X_ca = get_input_ca(eltype(valtype(inputs)), self)
+    X_ca = get_input_ca(TF, self)
     for iname in keys(X_ca)
         iname_aviary = get_aviary_input_name(self, iname)
         # This works even if `X_ca[iname]` is a scalar, because of the `@view`!

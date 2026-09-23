@@ -377,11 +377,12 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_i
     # So I guess I should iterate over the keys in d_inputs.
     # And I should also zero out the input vector, in case d_inputs doesn't have everything.
     dX_ca = get_dinput_ca(self)
-    dX_ca .= 0.0
     for iname in keys(dX_ca)
         iname_aviary = get_aviary_input_name(self, iname)
         if iname_aviary in keys(d_inputs)
             @view(dX_ca[iname]) .= d_inputs[iname_aviary]
+        else
+            @view(dX_ca[iname]) .= zero(eltype(dX_ca))
         end
     end
 
@@ -407,9 +408,9 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_i
     for oname in keys(dY_ca)
         oname_aviary = get_aviary_output_name(self, oname)
         if typeof(d_outputs[oname_aviary]) <: AbstractArray
-            d_outputs[oname_aviary] .= @view(dY_ca[oname])
+            d_outputs[oname_aviary] .+= @view(dY_ca[oname])
         else
-            d_outputs[oname_aviary] = only(dY_ca[oname])
+            d_outputs[oname_aviary] += only(dY_ca[oname])
         end
     end
 
@@ -434,11 +435,13 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{false}, inputs, d_
     # So I guess I should iterate over the keys in d_inputs.
     # And I should also zero out the input vector, in case d_inputs doesn't have everything.
     dX_ca = get_dinput_ca(self)
-    dX_ca .= 0.0
+    # dX_ca .= 0.0
     for iname in keys(dX_ca)
         iname_aviary = get_aviary_input_name(self, iname)
         if iname_aviary in keys(d_inputs)
             @view(dX_ca[iname]) .= d_inputs[iname_aviary]
+        else
+            @view(dX_ca[iname]) .= zero(eltype(dX_ca))
         end
     end
 
@@ -461,9 +464,9 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{false}, inputs, d_
     for oname in keys(dY_ca)
         oname_aviary = get_aviary_output_name(self, oname)
         if typeof(d_outputs[oname_aviary]) <: AbstractArray
-            d_outputs[oname_aviary] .= @view(dY_ca[oname])
+            d_outputs[oname_aviary] .+= @view(dY_ca[oname])
         else
-            d_outputs[oname_aviary] = only(dY_ca[oname])
+            d_outputs[oname_aviary] += only(dY_ca[oname])
         end
     end
 
@@ -480,11 +483,12 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{true}, inputs, d_inpu
     end
 
     dY_ca = get_doutput_ca(self)
-    dY_ca .= 0.0
     for oname in keys(dY_ca)
         oname_aviary = get_aviary_output_name(self, oname)
         if oname_aviary in keys(d_outputs)
             @view(dY_ca[oname]) .= d_outputs[oname_aviary]
+        else
+            @view(dY_ca[oname]) .= zero(eltype(dY_ca))
         end
     end
 
@@ -510,9 +514,9 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{true}, inputs, d_inpu
     for iname in keys(dX_ca)
         iname_aviary = get_aviary_input_name(self, iname)
         if typeof(d_inputs[iname_aviary]) <: AbstractArray
-            d_inputs[iname_aviary] .= @view(dX_ca[iname])
+            d_inputs[iname_aviary] .+= @view(dX_ca[iname])
         else
-            d_inputs[iname_aviary] = only(dX_ca[iname])
+            d_inputs[iname_aviary] += only(dX_ca[iname])
         end
     end
 
@@ -529,11 +533,12 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{false}, inputs, d_inp
     end
 
     dY_ca = get_doutput_ca(self)
-    dY_ca .= 0.0
     for oname in keys(dY_ca)
         oname_aviary = get_aviary_output_name(self, oname)
         if oname_aviary in keys(d_outputs)
             @view(dY_ca[oname]) .= d_outputs[oname_aviary]
+        else
+            @view(dY_ca[oname]) .= zero(eltype(dY_ca))
         end
     end
 
@@ -556,9 +561,9 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{false}, inputs, d_inp
     for iname in keys(dX_ca)
         iname_aviary = get_aviary_input_name(self, iname)
         if typeof(d_inputs[iname_aviary]) <: AbstractArray
-            d_inputs[iname_aviary] .= @view(dX_ca[iname])
+            d_inputs[iname_aviary] .+= @view(dX_ca[iname])
         else
-            d_inputs[iname_aviary] = only(dX_ca[iname])
+            d_inputs[iname_aviary] += only(dX_ca[iname])
         end
     end
 

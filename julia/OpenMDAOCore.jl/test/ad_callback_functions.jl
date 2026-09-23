@@ -485,6 +485,9 @@ function do_compute_jacvec_product_check_forward(comp, aviary_input_vars=Dict{Sy
     dx .= rand(length(dx))
     dinputs_dict = ca2strdict(dx, aviary_input_names)
     doutputs_dict = ca2strdict(get_doutput_ca(comp), aviary_output_names)
+    for k in keys(doutputs_dict)
+        doutputs_dict[k] .= 0
+    end
     OpenMDAOCore.compute_jacvec_product!(comp, inputs_dict, dinputs_dict, doutputs_dict, "fwd")
 
     # Hmm... so how do I check this?
@@ -613,6 +616,9 @@ function do_compute_jacvec_product_check_reverse(comp, aviary_input_vars=Dict{Sy
     dy .= rand(length(dy))
     doutputs_dict = ca2strdict(dy, aviary_output_names)
     dinputs_dict = ca2strdict(get_dinput_ca(comp), aviary_input_names)
+    for k in keys(dinputs_dict)
+        dinputs_dict[k] .= 0
+    end
     OpenMDAOCore.compute_jacvec_product!(comp, inputs_dict, dinputs_dict, doutputs_dict, "rev")
 
     # Hmm... so how do I check this?

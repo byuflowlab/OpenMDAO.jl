@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = 'omjlcomps'
 description = "Create OpenMDAO Components using the Julia programming language"
@@ -18,3 +22,7 @@ test = ["aviary"]
 [project.entry-points.openmdao_component]
 juliaexplicitcomp = "omjlcomps:JuliaExplicitComp"
 juliaimplicitcomp = "omjlcomps:JuliaImplicitComp"
+
+# Tell Hatch to find the single file inside src/
+[tool.hatch.build.targets.wheel]
+packages = ["src/omjlcomps.py"]
