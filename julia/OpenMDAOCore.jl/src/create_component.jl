@@ -14,9 +14,7 @@
 
 Create an in-place [`ADExplicitComp`](@ref) from a user-defined function and output and input `ComponentVector`s.
 
-For the matrix-free flavors, `ad_backend` is validated against the flavor's required derivative mode:
-* [`MatrixFreeForwardFlavor`](@ref) requires the backend to support JVPs (pushforwards).
-* [`MatrixFreeReverseFlavor`](@ref) requires the backend to support VJPs (pullbacks).
+`ad_backend` is validated against the flavor: [`DenseFlavor`](@ref) requires a dense (non-`AutoSparse`) backend; [`SparseFlavor`](@ref) requires an `AutoSparse` backend; [`MatrixFreeForwardFlavor`](@ref) requires a backend that supports JVPs (pushforwards); and [`MatrixFreeReverseFlavor`](@ref) requires a backend that supports VJPs (pullbacks).
 
 # Positional Arguments
 * `flavor`: [`DenseFlavor`](@ref), [`MatrixFreeForwardFlavor`](@ref), [`MatrixFreeReverseFlavor`](@ref), or [`SparseFlavor`](@ref)
@@ -38,11 +36,7 @@ function create_explicit_component(flavor::DerivativeFlavor, ad_backend::TAD,
         params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(),
         shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(),
         force_skip_prep=false) where {TAD<:ADTypes.AbstractADType}
-    if flavor isa MatrixFreeForwardFlavor
-        can_jvp(ad_backend) || throw(ArgumentError("AD backend $(ad_backend) does not support JVPs (pushforwards), which are required for MatrixFreeForwardFlavor"))
-    elseif flavor isa MatrixFreeReverseFlavor
-        can_vjp(ad_backend) || throw(ArgumentError("AD backend $(ad_backend) does not support VJPs (pullbacks), which are required for MatrixFreeReverseFlavor"))
-    end
+    _check_flavor_backend(flavor, ad_backend)
     return ADExplicitComp(flavor, ad_backend, f!, Y_ca, X_ca;
         params=params, units_dict=units_dict, tags_dict=tags_dict,
         shape_by_conn_dict=shape_by_conn_dict, copy_shape_dict=copy_shape_dict,
@@ -54,9 +48,7 @@ end
 
 Create an out-of-place [`ADExplicitComp`](@ref) from a user-defined function and input `ComponentVector`.
 
-For the matrix-free flavors, `ad_backend` is validated against the flavor's required derivative mode:
-* [`MatrixFreeForwardFlavor`](@ref) requires the backend to support JVPs (pushforwards).
-* [`MatrixFreeReverseFlavor`](@ref) requires the backend to support VJPs (pullbacks).
+`ad_backend` is validated against the flavor: [`DenseFlavor`](@ref) requires a dense (non-`AutoSparse`) backend; [`SparseFlavor`](@ref) requires an `AutoSparse` backend; [`MatrixFreeForwardFlavor`](@ref) requires a backend that supports JVPs (pushforwards); and [`MatrixFreeReverseFlavor`](@ref) requires a backend that supports VJPs (pullbacks).
 
 # Positional Arguments
 * `flavor`: [`DenseFlavor`](@ref), [`MatrixFreeForwardFlavor`](@ref), [`MatrixFreeReverseFlavor`](@ref), or [`SparseFlavor`](@ref)
@@ -77,11 +69,7 @@ function create_explicit_component(flavor::DerivativeFlavor, ad_backend::TAD,
         params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(),
         shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(),
         force_skip_prep=false) where {TAD<:ADTypes.AbstractADType}
-    if flavor isa MatrixFreeForwardFlavor
-        can_jvp(ad_backend) || throw(ArgumentError("AD backend $(ad_backend) does not support JVPs (pushforwards), which are required for MatrixFreeForwardFlavor"))
-    elseif flavor isa MatrixFreeReverseFlavor
-        can_vjp(ad_backend) || throw(ArgumentError("AD backend $(ad_backend) does not support VJPs (pullbacks), which are required for MatrixFreeReverseFlavor"))
-    end
+    _check_flavor_backend(flavor, ad_backend)
     return ADExplicitComp(flavor, ad_backend, f, X_ca;
         params=params, units_dict=units_dict, tags_dict=tags_dict,
         shape_by_conn_dict=shape_by_conn_dict, copy_shape_dict=copy_shape_dict,
