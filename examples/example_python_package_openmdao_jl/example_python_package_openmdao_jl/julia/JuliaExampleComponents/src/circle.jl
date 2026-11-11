@@ -21,7 +21,7 @@ function get_arctan_yox_comp(size)
 
     Y_ca = ComponentVector(g=ones(size))
     X_ca = ComponentVector(x=ones(size), y=ones(size))
-    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_arctan_yox!, Y_ca, X_ca)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_arctan_yox!, Y_ca, X_ca)
     # arctan_yox_comp = make_component(comp)
     return comp
 end
@@ -49,7 +49,7 @@ function get_circle_comp()
 
     Y_ca = ComponentVector(area=[1.0])
     X_ca = ComponentVector(r=[1.0])
-    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_circle!, Y_ca, X_ca)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_circle!, Y_ca, X_ca)
     return comp
 end
 
@@ -75,7 +75,7 @@ function get_r_con_comp(size)
 
     Y_ca = ComponentVector(g=ones(size))
     X_ca = ComponentVector(x=ones(size), y=ones(size), r=[1.0])
-    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_r_con!, Y_ca, X_ca)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_r_con!, Y_ca, X_ca)
     return comp
 end
 
@@ -107,7 +107,7 @@ function get_theta_con_comp(size)
     Y_ca = ComponentVector(g=ones(size))
     X_ca = ComponentVector(x=ones(size))
     params_theta_con = (theta_min=0.0, theta_max=pi/4)
-    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_theta_con!, Y_ca, X_ca; params=params_theta_con)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_theta_con!, Y_ca, X_ca; params=params_theta_con)
 end
 
 function f_delta_theta_con!(Y, X, params)
@@ -135,7 +135,7 @@ function get_delta_theta_con_comp(size)
 
     Y_ca = ComponentVector(g=ones(size÷2))
     X_ca = ComponentVector(even=ones(size÷2), odd=ones(size÷2))
-    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_delta_theta_con!, Y_ca, X_ca)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_delta_theta_con!, Y_ca, X_ca)
     return comp
 end
 
@@ -161,5 +161,5 @@ function get_l_conx_comp(size)
 
     Y_ca = ComponentVector(g=ones(size))
     X_ca = ComponentVector(x=ones(size))
-    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_l_conx!, Y_ca, X_ca)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_l_conx!, Y_ca, X_ca)
 end

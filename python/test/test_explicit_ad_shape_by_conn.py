@@ -8,6 +8,7 @@ from numpy.random import rand
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.core.analysis_error import AnalysisError
+from openmdao.utils.testing_utils import use_tempdirs
 
 from omjlcomps import JuliaExplicitComp
 
@@ -16,6 +17,7 @@ d = os.path.dirname(os.path.abspath(__file__))
 jl.include(os.path.join(d, "test_explicit_ad_shape_by_conn.jl"))
 
 
+@use_tempdirs
 class TestExplicitADSparseInPlace(unittest.TestCase):
 
     def setUp(self):
@@ -59,6 +61,7 @@ class TestExplicitADSparseInPlace(unittest.TestCase):
                                                decimal=12)
 
 
+@use_tempdirs
 class TestMatrixFreeADInPlace(unittest.TestCase):
 
     def setUp(self):
@@ -103,6 +106,7 @@ class TestMatrixFreeADInPlace(unittest.TestCase):
                                                decimal=12)
 
 
+@use_tempdirs
 class TestExplicitADSparseOutOfPlace(unittest.TestCase):
 
     def setUp(self):
@@ -146,6 +150,7 @@ class TestExplicitADSparseOutOfPlace(unittest.TestCase):
                                                decimal=12)
 
 
+@use_tempdirs
 class TestMatrixFreeADOutOfPlace(unittest.TestCase):
 
     def setUp(self):

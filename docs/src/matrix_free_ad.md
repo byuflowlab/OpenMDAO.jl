@@ -9,10 +9,10 @@ The resulting components will use the [OpenMDAO Matrix-Free API](https://openmda
 ## The User-Defined Function for Matrix-Free AD
 The requirements for the user-defined function for the matrix-free AD functionality is identical to those for [Automatic Dense AD](@ref) and [Automatic Sparse AD](@ref), and the interface is much the same, as well.
 We'll still need to provide a function that expects a `ComponentVector` for its input, and either write its outputs to a `ComponentVector` (for the in-place form) or return a `ComponentVector` with outputs (for the out-of-place form).
-The only significant difference is that users will create a `MatrixFreeADExplicitComp` instead of a `SparseADExplicitComp`.
+The only significant difference is that users will create a `ADExplicitComp (MatrixFreeFlavor)` instead of a `ADExplicitComp (SparseFlavor)`.
 
-## `MatrixFreeADExplicitComp` Paraboloid 
-Let's do the good old Paraboloid example yet again, this time with the `MatrixFreeADExplicitComp`.
+## `ADExplicitComp (MatrixFreeFlavor)` Paraboloid 
+Let's do the good old Paraboloid example yet again, this time with the `ADExplicitComp (MatrixFreeFlavor)`.
 We'll load the same packages as we did for the sparse AD example (except we don't need `SparseMatrixColorings` since we won't be doing sparsity):
 
 ```@example matrix_free_paraboloid
@@ -66,12 +66,12 @@ nothing # hide
 Now we can create the component:
 
 ```@example matrix_free_paraboloid
-comp = OpenMDAOCore.MatrixFreeADExplicitComp(ad_backend, f_paraboloid, X_ca)
+comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.MatrixFreeReverseFlavor(), ad_backend, f_paraboloid, X_ca)
 parab_comp = make_component(comp)
 nothing # hide
 ```
 
-As before, `make_component` will convert the `MatrixFreeADExplicitComp` into a OpenMDAO Python component that we can use with OpenMDAO.
+As before, `make_component` will convert the `ADExplicitComp (MatrixFreeFlavor)` into a OpenMDAO Python component that we can use with OpenMDAO.
 So now we just need to proceed with the paraboloid example as usual.
 But!
 We need to make sure to [tell OpenMDAO that we need to calculate total derivatives in reverse mode](https://openmdao.org/newdocs/versions/latest/features/core_features/working_with_derivatives/picking_mode.html), not forward, since we're using reverse AD for our paraboloid component.
@@ -146,3 +146,32 @@ nothing # hide
 ```
 
 We got the right answer, so everything's good!
+
+## Forward and reverse backends together: `MatrixFreeForwardReverseFlavor`
+
+The two matrix-free flavors above each support only one of the two `apply_linear` directions:
+`MatrixFreeForwardFlavor` computes Jacobian-vector products (JVPs) with a forward-mode backend, and
+`MatrixFreeReverseFlavor` computes vector-Jacobian products (VJPs) with a reverse-mode backend.
+When a component is checked with `check_partials`, OpenMDAO runs *both* directions for matrix-free
+components, so with the single-direction flavors one of the two directions gets filled in with
+incorrect values (OpenMDAO prints a warning when this happens).
+
+The `MatrixFreeForwardReverseFlavor` avoids that limitation by holding **two** AD backends: a
+forward-mode backend used for JVPs (`mode="fwd"`) and a reverse-mode backend used for VJPs
+(`mode="rev"`). Pass both backends to the `create_*_component` call:
+
+```julia
+comp = OpenMDAOCore.create_explicit_component(
+    OpenMDAOCore.MatrixFreeForwardReverseFlavor(),
+    ADTypes.AutoForwardDiff(),  # used for JVPs (mode="fwd")
+    ADTypes.AutoReverseDiff(),  # used for VJPs (mode="rev")
+    f_paraboloid, X_ca)
+```
+
+(The same two-backend signature is available for `create_implicit_component`, with `in_place=true`
+or `in_place=false`. Each backend is validated at construction: the forward one must support
+pushforwards (`OpenMDAOCore.can_jvp`) and the reverse one pullbacks (`OpenMDAOCore.can_vjp`).)
+
+With both directions available, matrix-free components built this way work under OpenMDAO's Newton
+solver, support `compute_totals` in both modes, and pass a full `check_partials` check, in which the
+JVP comes from the forward backend and the VJP from the reverse backend.

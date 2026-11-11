@@ -36,7 +36,7 @@ function get_parabaloid_comp()
     ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
 
     # Create the OpenMDAOCore.jl component.
-    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_paraboloid!, Y_ca, X_ca; params=nothing)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_paraboloid!, Y_ca, X_ca; params=nothing)
 
     return comp
 end

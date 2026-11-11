@@ -2,36 +2,41 @@
 CurrentModule = OpenMDAODocs
 ```
 # Creating Python Packages That Depend On OpenMDAOCore.jl
-The OpenMDAO.jl repository contains an example Python package that implements a couple of the examples described in the previous docs (the [`SparseADExplicitComp` Paraboloid](@ref) and [`SparseADExplicitComp` with Actual Sparsity](@ref) examples) in the `examples/example_python_package_openmdao_jl/` sub-directory.
+The OpenMDAO.jl repository contains an example Python package that implements several of the examples described in the previous docs (the [`ADExplicitComp (SparseFlavor)` Paraboloid](@ref) and [`ADExplicitComp (SparseFlavor)` with Actual Sparsity](@ref) examples, plus a version of the [A More Complicated Example: Nonlinear Circuit](@ref) example that uses an `ADExplicitComp (DenseFlavor)` instead of hand-written components) in the `examples/example_python_package_openmdao_jl/` sub-directory.
 The package structure looks like this:
 
 ```
 shell> tree example_python_package_openmdao_jl/
 example_python_package_openmdao_jl/
 ├── example_python_package_openmdao_jl
-│   ├── circle.jl
-│   ├── circle.py
-│   ├── __init__.py
-│   ├── julia
-│   │   └── JuliaExampleComponents
-│   │       ├── Project.toml
-│   │       ├── src
-│   │       │   ├── circle.jl
-│   │       │   ├── JuliaExampleComponents.jl
-│   │       │   └── paraboloid.jl
-│   │       └── test
-│   │           ├── Project.toml
-│   │           └── runtests.jl
-│   ├── juliapkg.json
-│   ├── paraboloid.jl
-│   ├── paraboloid.py
-│   └── test
-│       ├── test_circle_example.py
-│       └── test_paraboloid_example.py
+│   ├── circle.jl
+│   ├── circle.py
+│   ├── circuit.jl
+│   ├── circuit.py
+│   ├── __init__.py
+│   ├── julia
+│   │   └── JuliaExampleComponents
+│   │       ├── Project.toml
+│   │       ├── src
+│   │       │   ├── circle.jl
+│   │       │   ├── circuit.jl
+│   │       │   ├── JuliaExampleComponents.jl
+│   │       │   └── paraboloid.jl
+│   │       └── test
+│   │           ├── Project.toml
+│   │           └── runtests.jl
+│   ├── juliapkg.json
+│   ├── paraboloid.jl
+│   ├── paraboloid.py
+│   └── test
+│       ├── test_circle_example.py
+│       ├── test_circuit_example.py
+│       └── test_paraboloid_example.py
 ├── MANIFEST.in
 ├── pyproject.toml
 └── scripts
     ├── run_circle.py
+    ├── run_circuit.py
     └── run_paraboloid.py
 
 8 directories, 23 files
@@ -205,7 +210,7 @@ function get_parabaloid_comp()
     ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
 
     # Create the OpenMDAOCore.jl component.
-    comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_paraboloid!, Y_ca, X_ca; params=nothing)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_paraboloid!, Y_ca, X_ca; params=nothing)
 
     return comp
 end
@@ -270,9 +275,10 @@ For example, the `Manifest.in` file for `example_python_package_openmdao_jl` loo
 
 ```
 shell> cat example_python_package_openmdao_jl/MANIFEST.in
-graft ./example_python_package_openmdao_jl/julia/JuliaParaboloidComponent
+graft ./example_python_package_openmdao_jl/julia/JuliaExampleComponents
 include ./example_python_package_openmdao_jl/paraboloid.jl
 include ./example_python_package_openmdao_jl/circle.jl
+include ./example_python_package_openmdao_jl/circuit.jl
 include ./example_python_package_openmdao_jl/juliapkg.json
 
 shell> 

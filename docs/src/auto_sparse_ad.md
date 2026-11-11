@@ -12,7 +12,7 @@ The sparsity pattern of the component will also be communicated to OpenMDAO via 
 Like the [Automatic Dense AD](@ref) functionality described previously, the first step in creating a sparse AD component is to define a Julia function that performs the desired computation.
 The form of the user-defined function for the sparse AD is identical to the one for dense AD, so go ahead and read [The User-Defined Function](@ref) if you haven't yet before proceeding further.
 
-## `SparseADExplicitComp` Paraboloid 
+## `ADExplicitComp (SparseFlavor)` Paraboloid 
 Let's try implementing the Paraboloid optimization problem from previous examples with a sparse AD algorithm.
 We'll start fresh, first with importing the stuff we'll need:
 
@@ -72,7 +72,7 @@ nothing # hide
 
 Again, no different from the dense AD case.
 
-Now we're almost ready to create the `SparseADExplicitComp`.
+Now we're almost ready to create the `ADExplicitComp (SparseFlavor)`.
 The last step is to decide what AD library to use.
 OpenMDAOCore.jl relies on the [ADTypes.jl](https://github.com/SciML/ADTypes.jl) and DifferentiationInterface.jl packages for implementing the interface for calling the AD.
 Theoretically we can use any AD that those packages support.
@@ -93,12 +93,12 @@ The `PerturbedDenseSparsityDetector` evaluates the Jacobian multiple times, pert
 Now we are finally ready to create the component:
 
 ```@example simple_auto_sparse_forwarddiff_paraboloid
-comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_paraboloid!, Y_ca, X_ca; params=nothing)
+comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_paraboloid!, Y_ca, X_ca; params=nothing)
 parab_comp = make_component(comp)
 nothing # hide
 ```
 
-`make_component` will convert the `SparseADExplicitComp` into a OpenMDAO Python component that we can use with OpenMDAO.
+`make_component` will convert the `ADExplicitComp (SparseFlavor)` into a OpenMDAO Python component that we can use with OpenMDAO.
 So now we just need to proceed with the paraboloid example as usual:
 
 ```@example simple_auto_sparse_forwarddiff_paraboloid
@@ -160,10 +160,10 @@ nothing # hide
 
 Victory!
 
-## `SparseADExplicitComp` with Actual Sparsity
-The Paraboloid example does a nice job of showing how to use `SparseADExplicitComp`, but careful readers will realize that it's not actually sparse!
+## `ADExplicitComp (SparseFlavor)` with Actual Sparsity
+The Paraboloid example does a nice job of showing how to use `ADExplicitComp (SparseFlavor)`, but careful readers will realize that it's not actually sparse!
 So let's try an example with some sparse components: the [Simple Optimization using Simultaneous Derivatives](https://openmdao.org/newdocs/versions/latest/examples/simul_deriv_example.html) example from the OpenMDAO docs.
-That example makes heavy use of `ExecComps` with `has_diag_partials`, but we'll use `SparseADExplicitComp` to implement each component, and allow it to find the sparsity pattern for us.
+That example makes heavy use of `ExecComps` with `has_diag_partials`, but we'll use `ADExplicitComp (SparseFlavor)` to implement each component, and allow it to find the sparsity pattern for us.
 
 Let's start with a fresh Julia script and load what we'll need:
 
@@ -203,7 +203,7 @@ function f_arctan_yox!(Y, X, params)
 end
 Y_ca = ComponentVector(g=ones(SIZE))
 X_ca = ComponentVector(x=ones(SIZE), y=ones(SIZE))
-comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_arctan_yox!, Y_ca, X_ca)
+comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_arctan_yox!, Y_ca, X_ca)
 arctan_yox_comp = make_component(comp)
 
 function f_circle!(Y, X, params)
@@ -221,7 +221,7 @@ function f_circle!(Y, X, params)
 end
 Y_ca = ComponentVector(area=[1.0]) # OpenMDAO currently doesn't handle scalar variables correctly sometimes. Fix will be in next release.
 X_ca = ComponentVector(r=[1.0]) # OpenMDAO currently doesn't handle scalar variables correctly sometimes. Fix will be in next release.
-comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_circle!, Y_ca, X_ca)
+comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_circle!, Y_ca, X_ca)
 circle_comp = make_component(comp)
 
 function f_r_con!(Y, X, params)
@@ -238,13 +238,13 @@ function f_r_con!(Y, X, params)
 end
 Y_ca = ComponentVector(g=ones(SIZE))
 X_ca = ComponentVector(x=ones(SIZE), y=ones(SIZE), r=[1.0]) # OpenMDAO currently doesn't handle scalar variables correctly sometimes. Fix will be in next release.
-comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_r_con!, Y_ca, X_ca)
+comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_r_con!, Y_ca, X_ca)
 r_con_comp = make_component(comp)
 
 nothing # hide
 ```
 
-We can check that `SparseADExplicitComp` has detected the diagonal partials by getting the rows and columns `Dict` that it constructs.
+We can check that `ADExplicitComp (SparseFlavor)` has detected the diagonal partials by getting the rows and columns `Dict` that it constructs.
 For that last component:
 
 ```@example simple_auto_sparse_forwarddiff_circle
@@ -297,14 +297,14 @@ end
 Y_ca = ComponentVector(g=ones(SIZE))
 X_ca = ComponentVector(x=ones(SIZE))
 params_theta_con = (theta_min=0.0, theta_max=pi/4)
-comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_theta_con!, Y_ca, X_ca; params=params_theta_con)
+comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_theta_con!, Y_ca, X_ca; params=params_theta_con)
 theta_con_comp = make_component(comp)
 nothing # hide
 ```
 
 Notice that we decided to use a `NamedTuple` for the `params` argument.
 It could be anything, as long as it's consistent with the definition of `f_theta_con!`.
-For example, we could have passed a `Vector` `[0.0, pi/4]` to `SparseADExplicitComp`, then done something like
+For example, we could have passed a `Vector` `[0.0, pi/4]` to `ADExplicitComp (SparseFlavor)`, then done something like
 
 ```julia
 theta_min = params[1]
@@ -335,7 +335,7 @@ function f_delta_theta_con!(Y, X, params)
 end
 Y_ca = ComponentVector(g=ones(SIZE÷2))
 X_ca = ComponentVector(even=ones(SIZE÷2), odd=ones(SIZE÷2))
-comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_delta_theta_con!, Y_ca, X_ca)
+comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_delta_theta_con!, Y_ca, X_ca)
 delta_theta_con_comp = make_component(comp)
 
 function f_l_conx!(Y, X, params)
@@ -352,7 +352,7 @@ function f_l_conx!(Y, X, params)
 end
 Y_ca = ComponentVector(g=ones(SIZE))
 X_ca = ComponentVector(x=ones(SIZE))
-comp = OpenMDAOCore.SparseADExplicitComp(ad_backend, f_l_conx!, Y_ca, X_ca)
+comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, f_l_conx!, Y_ca, X_ca)
 l_conx_comp = make_component(comp)
 
 nothing # hide
@@ -442,9 +442,9 @@ nothing # hide
 We got the right answer!
 Yay!
 
-## The Brachistochrone with `SparseADExplicitComp`
-Finally, let's implement the Brachistochrone problem from [A Simple Dymos Example](@ref) using `SparseADExplicitComp`.
-This will demonstrate how to add units and tags to variables used in a `SparseADExplicitComp` component.
+## The Brachistochrone with `ADExplicitComp (SparseFlavor)`
+Finally, let's implement the Brachistochrone problem from [A Simple Dymos Example](@ref) using `ADExplicitComp (SparseFlavor)`.
+This will demonstrate how to add units and tags to variables used in a `ADExplicitComp (SparseFlavor)` component.
 
 First, let's start a new Julia script, and import Dymos:
 
@@ -487,7 +487,7 @@ nothing # hide
 ```
 
 Now, for the tricky part: we need to give Dymos a function that, when passed the `num_nodes` keyword argument, returns a component that implements the ODE.
-The component this yet-to-be-written function will return will be a `SparseADExplicitComp`, and that means we will need to also create the required `ComponentVector`s for the inputs and outputs.
+The component this yet-to-be-written function will return will be a `ADExplicitComp (SparseFlavor)`, and that means we will need to also create the required `ComponentVector`s for the inputs and outputs.
 How will we do that?
 Like this:
 
@@ -524,7 +524,7 @@ function brachistochrone_ode_factory(; num_nodes, static_gravity)
     coloring_algorithm = SparseMatrixColorings.GreedyColoringAlgorithm()
     ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
 
-    return make_component(OpenMDAOCore.SparseADExplicitComp(ad_backend, brachistochrone_ode!, Y_ca, X_ca; units_dict=units_dict, tags_dict=tags_dict))
+    return make_component(OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, brachistochrone_ode!, Y_ca, X_ca; units_dict=units_dict, tags_dict=tags_dict))
 end
 nothing # hide
 ```
@@ -534,8 +534,8 @@ Once we know the value of `num_nodes`, we can create the `X_ca` and `Y_ca` `Comp
 We also create two dictionaries: `units_dict` and `tags_dict`.
 `units_dict` maps variable names (expressed as `Symbol`s, just like the component names for the `ComponentVector`s) to `String`s defining the units of the variable.
 The `tags_dict` similarly maps `Symbol` variable names to `Vector`s of `String` specifying the tags for each variable.
-Both `Dict`s are passed to the `SparseADExplicitComp` constructor as keyword arguments.
-Finally, the resulting `SparseADExplicitComp` is passed to `make_component` to actually create the Python OpenMDAO component.
+Both `Dict`s are passed to the `ADExplicitComp (SparseFlavor)` constructor as keyword arguments.
+Finally, the resulting `ADExplicitComp (SparseFlavor)` is passed to `make_component` to actually create the Python OpenMDAO component.
 
 Now, let's actually define the problem and run the optimization.
 We'll define a driver function called `doit` that allows us to try the example with the `static_gravity` argument set to `true` and `false`.
@@ -634,7 +634,7 @@ nothing # hide
 
 Also looks good!
 
-## The Brachistochrone with `SparseADExplicitComp` and User-Defined Sparsity
+## The Brachistochrone with `ADExplicitComp (SparseFlavor)` and User-Defined Sparsity
 Having OpenMDAOCore.jl determine the sparsity pattern of your component is quite convent, but involves evaluating the full Jacobian multiple times, which may be expensive depending on the complexity of your component.
 Often it's quite easy to figure out the sparsity pattern yourself, and DifferentiationInterface.jl supports a user-defined sparsity pattern.
 So let's learn how to do that with the previous Brachistochrone example.
@@ -734,7 +734,7 @@ function brachistochrone_ode_factory(; num_nodes, static_gravity)
     coloring_algorithm = SparseMatrixColorings.GreedyColoringAlgorithm()
     ad_backend = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=sparsity_detector, coloring_algorithm=coloring_algorithm)
 
-    return make_component(OpenMDAOCore.SparseADExplicitComp(ad_backend, brachistochrone_ode, X_ca; units_dict=units_dict, tags_dict=tags_dict))
+    return make_component(OpenMDAOCore.create_explicit_component(OpenMDAOCore.SparseFlavor(), ad_backend, brachistochrone_ode, X_ca; units_dict=units_dict, tags_dict=tags_dict))
 end
 nothing # hide
 ```

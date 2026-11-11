@@ -150,6 +150,6 @@ function get_circuit_comp(Is, Vt)
     ad_backend = ADTypes.AutoForwardDiff()
     params = (; Is, Vt)
     units_dict = Dict(:R1=>"ohm", :R2=>"ohm", :I_in=>"A", :V_g=>"V", :n1_V=>"V", :n2_V=>"V")
-    comp = OpenMDAOCore.DenseADExplicitComp(ad_backend, f_circuit, X_ca; params=params, units_dict=units_dict)
+    comp = OpenMDAOCore.create_explicit_component(OpenMDAOCore.DenseFlavor(), ad_backend, f_circuit, X_ca; params=params, units_dict=units_dict)
     return comp
 end

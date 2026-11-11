@@ -1,389 +1,463 @@
-struct MatrixFreeADExplicitComp{InPlace,TAD,TCompute,TX,TY,TdX,TdY,TPrep,TXCS,TYCS,TAMD} <: AbstractADExplicitComp{InPlace}
-    ad_backend::TAD
-    compute_adable::TCompute
-    X_ca::TX
-    Y_ca::TY
-    dX_ca::TdX
-    dY_ca::TdY
-    force_mode::String
-    disable_prep::Bool
-    prep::TPrep
-    units_dict::Dict{Symbol,String}
-    tags_dict::Dict{Symbol,Vector{String}}
-    shape_by_conn_dict::Dict{Symbol,Bool}
-    copy_shape_dict::Dict{Symbol,Symbol}
-    X_ca_cs::TXCS
-    Y_ca_cs::TYCS
-    aviary_input_names::Dict{Symbol,String}
-    aviary_output_names::Dict{Symbol,String}
-    aviary_meta_data::TAMD
+# Matrix-free explicit AD component: constructors and methods, split into
+# `MatrixFreeForwardFlavor` (pushforward / JVP) and `MatrixFreeReverseFlavor`
+# (pullback / VJP).
+#
+# The `ADExplicitComp{<:MatrixFreeFlavor, ...}` *type* and the shared accessors
+# (`get_dinput_ca`, `get_doutput_ca`, `has_*`) are declared in `abstract_ad.jl`.
+# This file provides the flavor-specific constructors, `_update_prep`,
+# `setup_partials`, and `compute_jacvec_product!` (+ internals).
 
-    function MatrixFreeADExplicitComp{InPlace}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data) where {InPlace}
-        return new{InPlace,typeof(ad_backend), typeof(compute_adable), typeof(X_ca), typeof(Y_ca), typeof(dX_ca), typeof(dY_ca), typeof(prep), typeof(X_ca_cs), typeof(Y_ca_cs), typeof(aviary_meta_data)}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
+using ADTypes: ADTypes
+using ComponentArrays: ComponentVector
+using DifferentiationInterface: DifferentiationInterface
+
+# ---------------------------------------------------------------------------
+# Flavor auto-detection (replaces the old `force_mode=""` behavior).
+# ---------------------------------------------------------------------------
+
+# Resolve the old `force_mode` argument to a concrete matrix-free flavor.
+# `force_mode="fwd"` -> `MatrixFreeForwardFlavor`; `"rev"` -> `MatrixFreeReverseFlavor`;
+# `""` -> pick based on the backend's pushforward performance (preferring forward),
+# matching the previous runtime auto-detection.
+function _resolve_matrix_free_flavor(ad_backend, force_mode::AbstractString="")
+    if force_mode == "fwd"
+        return MatrixFreeForwardFlavor()
+    elseif force_mode == "rev"
+        return MatrixFreeReverseFlavor()
+    elseif force_mode == ""
+        if DifferentiationInterface.pushforward_performance(ad_backend) isa DifferentiationInterface.PushforwardFast
+            return MatrixFreeForwardFlavor()
+        else
+            return MatrixFreeReverseFlavor()
+        end
+    else
+        throw(ArgumentError("force_mode argument should be one of `\"\"`, \"fwd\", or \"rev\" but is $(force_mode)"))
     end
 end
 
-function MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-    Y_ca = nothing
-    Y_ca_cs = nothing
-    return MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-end
-get_dinput_ca(comp::MatrixFreeADExplicitComp) = comp.dX_ca
-get_doutput_ca(comp::MatrixFreeADExplicitComp) = comp.dY_ca
-get_force_mode(comp::MatrixFreeADExplicitComp) = comp.force_mode
-get_disable_prep(comp::MatrixFreeADExplicitComp) = comp.disable_prep
+# ---------------------------------------------------------------------------
+# Prep builders. `force_skip_prep` replaces the old `disable_prep` flag.
+# ---------------------------------------------------------------------------
 
-function get_partials_data(self::MatrixFreeADExplicitComp)
+# The tangent/cotangent buffers for the matrix-free flavors are plain arrays of
+# the same shape and element type as the primal vectors, for both derivative
+# directions, so a single routine creates them for all flavor/in-place
+# combinations.
+_get_matrix_free_buffers(X_ca, Y_ca) = (similar(X_ca), similar(Y_ca))
+
+function _get_matrix_free_forward_prep_in_place(ad_backend, compute_adable, Y_ca, X_ca, force_skip_prep::Bool)
+    dX_ca, dY_ca = _get_matrix_free_buffers(X_ca, Y_ca)
+    if force_skip_prep
+        prep = nothing
+    else
+        prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,))
+    end
+    X_ca_cs = similar(X_ca, Complex{eltype(X_ca)})
+    Y_ca_cs = similar(Y_ca, Complex{eltype(Y_ca)})
+    return MatrixFreeDerivPrep(dX_ca, dY_ca, prep), X_ca_cs, Y_ca_cs
+end
+
+function _get_matrix_free_reverse_prep_in_place(ad_backend, compute_adable, Y_ca, X_ca, force_skip_prep::Bool)
+    dX_ca, dY_ca = _get_matrix_free_buffers(X_ca, Y_ca)
+    if force_skip_prep
+        prep = nothing
+    else
+        prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,))
+    end
+    X_ca_cs = similar(X_ca, Complex{eltype(X_ca)})
+    Y_ca_cs = similar(Y_ca, Complex{eltype(Y_ca)})
+    return MatrixFreeDerivPrep(dX_ca, dY_ca, prep), X_ca_cs, Y_ca_cs
+end
+
+function _get_matrix_free_forward_prep_out_of_place(ad_backend, compute_adable, Y_ca, X_ca, force_skip_prep::Bool)
+    dX_ca, dY_ca = _get_matrix_free_buffers(X_ca, Y_ca)
+    if force_skip_prep
+        prep = nothing
+    else
+        prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca, (dX_ca,))
+    end
+    X_ca_cs = similar(X_ca, Complex{eltype(X_ca)})
+    return MatrixFreeDerivPrep(dX_ca, dY_ca, prep), X_ca_cs
+end
+
+function _get_matrix_free_reverse_prep_out_of_place(ad_backend, compute_adable, Y_ca, X_ca, force_skip_prep::Bool)
+    dX_ca, dY_ca = _get_matrix_free_buffers(X_ca, Y_ca)
+    if force_skip_prep
+        prep = nothing
+    else
+        prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca, (dY_ca,))
+    end
+    X_ca_cs = similar(X_ca, Complex{eltype(X_ca)})
+    return MatrixFreeDerivPrep(dX_ca, dY_ca, prep), X_ca_cs
+end
+
+# Prep builders for `MatrixFreeForwardReverseFlavor`: separate forward- and
+# reverse-mode backends share the same plain-Float64 tangent/cotangent buffers.
+function _get_matrix_free_forward_reverse_prep_in_place(backend_fwd, backend_rev, compute_adable, Y_ca, X_ca, force_skip_prep::Bool)
+    dX_ca, dY_ca = _get_matrix_free_buffers(X_ca, Y_ca)
+    if force_skip_prep
+        prep_fwd = nothing
+        prep_rev = nothing
+    else
+        prep_fwd = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca, backend_fwd, X_ca, (dX_ca,))
+        prep_rev = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca, backend_rev, X_ca, (dY_ca,))
+    end
+    X_ca_cs = similar(X_ca, Complex{eltype(X_ca)})
+    Y_ca_cs = similar(Y_ca, Complex{eltype(Y_ca)})
+    return MatrixFreeForwardReverseDerivPrep(dX_ca, dY_ca, prep_fwd, prep_rev), X_ca_cs, Y_ca_cs
+end
+
+function _get_matrix_free_forward_reverse_prep_out_of_place(backend_fwd, backend_rev, compute_adable, Y_ca, X_ca, force_skip_prep::Bool)
+    dX_ca, dY_ca = _get_matrix_free_buffers(X_ca, Y_ca)
+    if force_skip_prep
+        prep_fwd = nothing
+        prep_rev = nothing
+    else
+        prep_fwd = DifferentiationInterface.prepare_pushforward(compute_adable, backend_fwd, X_ca, (dX_ca,))
+        prep_rev = DifferentiationInterface.prepare_pullback(compute_adable, backend_rev, X_ca, (dY_ca,))
+    end
+    X_ca_cs = similar(X_ca, Complex{eltype(X_ca)})
+    return MatrixFreeForwardReverseDerivPrep(dX_ca, dY_ca, prep_fwd, prep_rev), X_ca_cs
+end
+
+# ---------------------------------------------------------------------------
+# Constructors.
+# ---------------------------------------------------------------------------
+
+"""
+    ADExplicitComp(::MatrixFreeForwardFlavor, ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=..., tags_dict=..., shape_by_conn_dict=..., copy_shape_dict=..., force_skip_prep=false)
+
+Create an in-place [`MatrixFreeForwardFlavor`](@ref) [`ADExplicitComp`](@ref).
+Derivatives are computed via `DifferentiationInterface.pushforward!` (JVPs).
+"""
+function ADExplicitComp(::MatrixFreeForwardFlavor, ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector;
+        params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(),
+        shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false)
+
+    compute_adable = _make_compute_adable(Val(true), f!, params)
+
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
+        deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_forward_prep_in_place(ad_backend, compute_adable, Y_ca, X_ca, force_skip_prep)
+    else
+        # No point in getting a "good" prep when we don't know all the shapes.
+        # The prep is set to `nothing`; the prep-less DifferentiationInterface
+        # methods are used at runtime until OpenMDAO's `setup_partials` call
+        # creates the real prep.
+        dX_ca = ComponentVector{eltype(X_ca)}()
+        dY_ca = ComponentVector{eltype(Y_ca)}()
+        X_ca_cs = ComponentVector{ComplexF64}()
+        Y_ca_cs = ComponentVector{ComplexF64}()
+        deriv_prep = MatrixFreeDerivPrep(dX_ca, dY_ca, nothing)
+    end
+
+    return ADExplicitComp{MatrixFreeForwardFlavor, true}(ad_backend, f!, params, compute_adable, X_ca, Y_ca, deriv_prep,
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
+end
+
+"""
+    ADExplicitComp(::MatrixFreeReverseFlavor, ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=..., tags_dict=..., shape_by_conn_dict=..., copy_shape_dict=..., force_skip_prep=false)
+
+Create an in-place [`MatrixFreeReverseFlavor`](@ref) [`ADExplicitComp`](@ref).
+Derivatives are computed via `DifferentiationInterface.pullback!` (VJPs).
+"""
+function ADExplicitComp(::MatrixFreeReverseFlavor, ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector;
+        params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(),
+        shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false)
+
+    compute_adable = _make_compute_adable(Val(true), f!, params)
+
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
+        deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_reverse_prep_in_place(ad_backend, compute_adable, Y_ca, X_ca, force_skip_prep)
+    else
+        # No point in getting a "good" prep when we don't know all the shapes.
+        # The prep is set to `nothing`; the prep-less DifferentiationInterface
+        # methods are used at runtime until OpenMDAO's `setup_partials` call
+        # creates the real prep.
+        dX_ca = ComponentVector{eltype(X_ca)}()
+        dY_ca = ComponentVector{eltype(Y_ca)}()
+        X_ca_cs = ComponentVector{ComplexF64}()
+        Y_ca_cs = ComponentVector{ComplexF64}()
+        deriv_prep = MatrixFreeDerivPrep(dX_ca, dY_ca, nothing)
+    end
+
+    return ADExplicitComp{MatrixFreeReverseFlavor, true}(ad_backend, f!, params, compute_adable, X_ca, Y_ca, deriv_prep,
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
+end
+
+"""
+    ADExplicitComp(::MatrixFreeForwardFlavor, ad_backend, f, X_ca::ComponentVector; params=nothing, units_dict=..., tags_dict=..., shape_by_conn_dict=..., copy_shape_dict=..., force_skip_prep=false)
+
+Create an out-of-place [`MatrixFreeForwardFlavor`](@ref) [`ADExplicitComp`](@ref).
+Derivatives are computed via `DifferentiationInterface.pushforward!` (JVPs).
+"""
+function ADExplicitComp(::MatrixFreeForwardFlavor, ad_backend, f, X_ca::ComponentVector;
+        params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(),
+        shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false)
+
+    compute_adable = _make_compute_adable(Val(false), f, params)
+
+    Y_ca = compute_adable(X_ca)
+
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
+        deriv_prep, X_ca_cs = _get_matrix_free_forward_prep_out_of_place(ad_backend, compute_adable, Y_ca, X_ca, force_skip_prep)
+    else
+        # No point in getting a "good" prep when we don't know all the shapes.
+        # The prep is set to `nothing`; the prep-less DifferentiationInterface
+        # methods are used at runtime until OpenMDAO's `setup_partials` call
+        # creates the real prep.
+        dX_ca = ComponentVector{eltype(X_ca)}()
+        dY_ca = ComponentVector{eltype(Y_ca)}()
+        X_ca_cs = ComponentVector{ComplexF64}()
+        deriv_prep = MatrixFreeDerivPrep(dX_ca, dY_ca, nothing)
+    end
+
+    Y_ca_cs = nothing
+    return ADExplicitComp{MatrixFreeForwardFlavor, false}(ad_backend, f, params, compute_adable, X_ca, nothing, deriv_prep,
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
+end
+
+"""
+    ADExplicitComp(::MatrixFreeReverseFlavor, ad_backend, f, X_ca::ComponentVector; params=nothing, units_dict=..., tags_dict=..., shape_by_conn_dict=..., copy_shape_dict=..., force_skip_prep=false)
+
+Create an out-of-place [`MatrixFreeReverseFlavor`](@ref) [`ADExplicitComp`](@ref).
+Derivatives are computed via `DifferentiationInterface.pullback!` (VJPs).
+"""
+function ADExplicitComp(::MatrixFreeReverseFlavor, ad_backend, f, X_ca::ComponentVector;
+        params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(),
+        shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false)
+
+    compute_adable = _make_compute_adable(Val(false), f, params)
+
+    Y_ca = compute_adable(X_ca)
+
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
+        deriv_prep, X_ca_cs = _get_matrix_free_reverse_prep_out_of_place(ad_backend, compute_adable, Y_ca, X_ca, force_skip_prep)
+    else
+        # No point in getting a "good" prep when we don't know all the shapes.
+        # The prep is set to `nothing`; the prep-less DifferentiationInterface
+        # methods are used at runtime until OpenMDAO's `setup_partials` call
+        # creates the real prep.
+        dX_ca = ComponentVector{eltype(X_ca)}()
+        dY_ca = ComponentVector{eltype(Y_ca)}()
+        X_ca_cs = ComponentVector{ComplexF64}()
+        deriv_prep = MatrixFreeDerivPrep(dX_ca, dY_ca, nothing)
+    end
+
+    Y_ca_cs = nothing
+    return ADExplicitComp{MatrixFreeReverseFlavor, false}(ad_backend, f, params, compute_adable, X_ca, nothing, deriv_prep,
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
+end
+
+"""
+    ADExplicitComp(::MatrixFreeForwardReverseFlavor, ad_backend_fwd, ad_backend_rev, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, units_dict=..., tags_dict=..., shape_by_conn_dict=..., copy_shape_dict=..., force_skip_prep=false)
+
+Create an in-place [`MatrixFreeForwardReverseFlavor`](@ref) [`ADExplicitComp`](@ref).
+JVPs (`mode="fwd"`) are computed via `DifferentiationInterface.pushforward!` using
+`ad_backend_fwd`; VJPs (`mode="rev"`) are computed via `DifferentiationInterface.pullback!`
+using `ad_backend_rev`.
+"""
+function ADExplicitComp(::MatrixFreeForwardReverseFlavor, ad_backend_fwd, ad_backend_rev, f!, Y_ca::ComponentVector, X_ca::ComponentVector;
+        params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(),
+        shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false)
+
+    compute_adable = _make_compute_adable(Val(true), f!, params)
+
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
+        deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_forward_reverse_prep_in_place(ad_backend_fwd, ad_backend_rev, compute_adable, Y_ca, X_ca, force_skip_prep)
+    else
+        # No point in getting a "good" prep when we don't know all the shapes.
+        # The preps are set to `nothing`; the prep-less DifferentiationInterface
+        # methods are used at runtime until OpenMDAO's `setup_partials` call
+        # creates the real preps.
+        dX_ca = ComponentVector{eltype(X_ca)}()
+        dY_ca = ComponentVector{eltype(Y_ca)}()
+        X_ca_cs = ComponentVector{ComplexF64}()
+        Y_ca_cs = ComponentVector{ComplexF64}()
+        deriv_prep = MatrixFreeForwardReverseDerivPrep(dX_ca, dY_ca, nothing, nothing)
+    end
+
+    return ADExplicitComp{MatrixFreeForwardReverseFlavor, true}(ad_backend_fwd, f!, params, compute_adable, X_ca, Y_ca, deriv_prep,
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca);
+        ad_backend_rev=ad_backend_rev)
+end
+
+"""
+    ADExplicitComp(::MatrixFreeForwardReverseFlavor, ad_backend_fwd, ad_backend_rev, f, X_ca::ComponentVector; params=nothing, units_dict=..., tags_dict=..., shape_by_conn_dict=..., copy_shape_dict=..., force_skip_prep=false)
+
+Create an out-of-place [`MatrixFreeForwardReverseFlavor`](@ref) [`ADExplicitComp`](@ref).
+JVPs (`mode="fwd"`) are computed via `DifferentiationInterface.pushforward!` using
+`ad_backend_fwd`; VJPs (`mode="rev"`) are computed via `DifferentiationInterface.pullback!`
+using `ad_backend_rev`.
+"""
+function ADExplicitComp(::MatrixFreeForwardReverseFlavor, ad_backend_fwd, ad_backend_rev, f, X_ca::ComponentVector;
+        params=nothing, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(),
+        shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), force_skip_prep=false)
+
+    compute_adable = _make_compute_adable(Val(false), f, params)
+
+    Y_ca = compute_adable(X_ca)
+
+    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
+        deriv_prep, X_ca_cs = _get_matrix_free_forward_reverse_prep_out_of_place(ad_backend_fwd, ad_backend_rev, compute_adable, Y_ca, X_ca, force_skip_prep)
+    else
+        # No point in getting a "good" prep when we don't know all the shapes.
+        # The preps are set to `nothing`; the prep-less DifferentiationInterface
+        # methods are used at runtime until OpenMDAO's `setup_partials` call
+        # creates the real preps.
+        dX_ca = ComponentVector{eltype(X_ca)}()
+        dY_ca = ComponentVector{eltype(Y_ca)}()
+        X_ca_cs = ComponentVector{ComplexF64}()
+        deriv_prep = MatrixFreeForwardReverseDerivPrep(dX_ca, dY_ca, nothing, nothing)
+    end
+
+    Y_ca_cs = nothing
+    return ADExplicitComp{MatrixFreeForwardReverseFlavor, false}(ad_backend_fwd, f, params, compute_adable, X_ca, nothing, deriv_prep,
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca));
+        ad_backend_rev=ad_backend_rev)
+end
+
+# ---------------------------------------------------------------------------
+# _update_prep / setup_partials / get_partials_data
+# ---------------------------------------------------------------------------
+
+function _update_prep(self::ADExplicitComp{MatrixFreeForwardFlavor, true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+    if (length(input_sizes) > 0) || (length(output_sizes) > 0)
+        X_ca_old = get_input_ca(self)
+        Y_ca_old = get_output_ca(self)
+
+        X_ca = _resize_component_vector(X_ca_old, input_sizes)
+        Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
+
+        ad_backend = get_backend(self)
+        f! = _make_compute_adable(Val(true), self.func, self.params)
+        deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_forward_prep_in_place(ad_backend, f!, Y_ca, X_ca, false)
+
+        self = ADExplicitComp{MatrixFreeForwardFlavor, true}(ad_backend, self.func, self.params, f!, X_ca, Y_ca, deriv_prep,
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
+    end
+    return self
+end
+
+function _update_prep(self::ADExplicitComp{MatrixFreeReverseFlavor, true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+    if (length(input_sizes) > 0) || (length(output_sizes) > 0)
+        X_ca_old = get_input_ca(self)
+        Y_ca_old = get_output_ca(self)
+
+        X_ca = _resize_component_vector(X_ca_old, input_sizes)
+        Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
+
+        ad_backend = get_backend(self)
+        f! = _make_compute_adable(Val(true), self.func, self.params)
+        deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_reverse_prep_in_place(ad_backend, f!, Y_ca, X_ca, false)
+
+        self = ADExplicitComp{MatrixFreeReverseFlavor, true}(ad_backend, self.func, self.params, f!, X_ca, Y_ca, deriv_prep,
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
+    end
+    return self
+end
+
+function _update_prep(self::ADExplicitComp{MatrixFreeForwardFlavor, false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+    if (length(input_sizes) > 0) || (length(output_sizes) > 0)
+        X_ca_old = get_input_ca(self)
+        Y_ca_old = get_output_ca(self)
+
+        X_ca = _resize_component_vector(X_ca_old, input_sizes)
+        Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
+
+        ad_backend = get_backend(self)
+        f = _make_compute_adable(Val(false), self.func, self.params)
+        deriv_prep, X_ca_cs = _get_matrix_free_forward_prep_out_of_place(ad_backend, f, Y_ca, X_ca, false)
+
+        self = ADExplicitComp{MatrixFreeForwardFlavor, false}(ad_backend, self.func, self.params, f, X_ca, nothing, deriv_prep,
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
+    end
+    return self
+end
+
+function _update_prep(self::ADExplicitComp{MatrixFreeReverseFlavor, false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+    if (length(input_sizes) > 0) || (length(output_sizes) > 0)
+        X_ca_old = get_input_ca(self)
+        Y_ca_old = get_output_ca(self)
+
+        X_ca = _resize_component_vector(X_ca_old, input_sizes)
+        Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
+
+        ad_backend = get_backend(self)
+        f = _make_compute_adable(Val(false), self.func, self.params)
+        deriv_prep, X_ca_cs = _get_matrix_free_reverse_prep_out_of_place(ad_backend, f, Y_ca, X_ca, false)
+
+        self = ADExplicitComp{MatrixFreeReverseFlavor, false}(ad_backend, self.func, self.params, f, X_ca, nothing, deriv_prep,
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
+    end
+    return self
+end
+
+function _update_prep(self::ADExplicitComp{MatrixFreeForwardReverseFlavor, true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+    if (length(input_sizes) > 0) || (length(output_sizes) > 0)
+        X_ca_old = get_input_ca(self)
+        Y_ca_old = get_output_ca(self)
+
+        X_ca = _resize_component_vector(X_ca_old, input_sizes)
+        Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
+
+        backend_fwd = get_backend_fwd(self)
+        backend_rev = get_backend_rev(self)
+        f! = _make_compute_adable(Val(true), self.func, self.params)
+        deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_forward_reverse_prep_in_place(backend_fwd, backend_rev, f!, Y_ca, X_ca, false)
+
+        self = ADExplicitComp{MatrixFreeForwardReverseFlavor, true}(backend_fwd, self.func, self.params, f!, X_ca, Y_ca, deriv_prep,
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca);
+            ad_backend_rev=backend_rev)
+    end
+    return self
+end
+
+function _update_prep(self::ADExplicitComp{MatrixFreeForwardReverseFlavor, false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
+    if (length(input_sizes) > 0) || (length(output_sizes) > 0)
+        X_ca_old = get_input_ca(self)
+        Y_ca_old = get_output_ca(self)
+
+        X_ca = _resize_component_vector(X_ca_old, input_sizes)
+        Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
+
+        backend_fwd = get_backend_fwd(self)
+        backend_rev = get_backend_rev(self)
+        f = _make_compute_adable(Val(false), self.func, self.params)
+        deriv_prep, X_ca_cs = _get_matrix_free_forward_reverse_prep_out_of_place(backend_fwd, backend_rev, f, Y_ca, X_ca, false)
+
+        self = ADExplicitComp{MatrixFreeForwardReverseFlavor, false}(backend_fwd, self.func, self.params, f, X_ca, nothing, deriv_prep,
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(Y_ca);
+            ad_backend_rev=backend_rev)
+    end
+    return self
+end
+
+# Matrix-free components don't declare any partials (the Jacobian is never assembled).
+function get_partials_data(self::ADExplicitComp{<:MatrixFreeFlavor})
     return Vector{PartialsData}()
 end
 
-"""
-    MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_output_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_meta_data=Dict{String,Any}())
+function setup_partials(self::ADExplicitComp{<:MatrixFreeFlavor}, input_sizes, output_sizes)
+    input_sizes_ca = Dict{Symbol,Any}(Symbol(k)=>sz for (k, sz) in input_sizes)
+    output_sizes_ca = Dict{Symbol,Any}(Symbol(k)=>sz for (k, sz) in output_sizes)
 
-Create a `MatrixFreeADExplicitComp` from a user-defined function and output and input `ComponentVector`s.
+    self_new = _update_prep(self, input_sizes_ca, output_sizes_ca)
 
-# Positional Arguments
-* `ad_backend`: `<:ADTypes.AbstractADType` automatic differentation "backend" library
-* `f!`: function of the form `f!(Y_ca, X_ca, params)` which writes outputs to `Y_ca` using inputs `X_ca` and, optionally, parameters `params`.
-* `Y_ca`: `ComponentVector` of outputs
-* `X_ca`: `ComponentVector` of inputs
-
-# Keyword Arguments
-* `params`: parameters passed to the third argument to `f!`. Could be anything, or `nothing`, but the derivatives of `Y_ca` with respect to `params` will not be calculated
-* `force_mode=""`: If `"fwd"`, use `DifferentiationInterface.pushforward!` to compute the derivatives (aka perform a Jacobian-vector product).
-  If `"rev"`, use `DifferentiationInterface.pullback!` to compute the derivatives (aka perform a vector-Jacobian product).
-  If `""`, use whatever would be faster, as determined by `DifferentiationInterface.pushforward_performance` and `DifferentiationInterface.pullback_performance`, prefering `pushforward`.
-* `disable_prep`: if `true`, do not use either `prepare_pushforward` or `prepare_pullback` to create a `DifferentiationInterface.PushforwardPrep` or `PullbackPrep` object to accelerate the derivative calculation.
-  Disabling prep can avoid correctness issues with ReverseDiff.jl, see [the discussion of branching and the `AbstractTape` API](https://juliadiff.org/ReverseDiff.jl/dev/api/#The-AbstractTape-API).
-* `units_dict`: `Dict` mapping variable names (as `Symbol`s) to OpenMDAO units (expressed as `String`s)
-* `tags_dict`: `Dict` mapping variable names (as `Symbol`s) to `Vector`s of OpenMDAO tags
-* `shape_by_conn_dict`: `Dict` mapping variable names (as `Symbol`s) to `Bool`s indicating if the variable's shape (size) will be set dynamically by a connection
-* `copy_shape_dict`: `Dict` mapping variable names to other variable names indicating the "key" symbol should take its size from the "value" symbol
-* `aviary_input_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of input variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary input variables.
-* `aviary_output_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of output variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary output variables.
-* `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
-"""
-function MatrixFreeADExplicitComp(ad_backend, f!, Y_ca::ComponentVector, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_vars=Dict{Symbol,Dict{String,Nothing}}(), aviary_output_vars=Dict{Symbol,Dict{String,Nothing}}(), aviary_meta_data=Dict{String,Nothing}())
-
-    # Create a new user-defined function that captures the `params` argument.
-    # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
-    compute_adable = let params=params
-        (Y, X)->begin
-            f!(Y, X, params)
-            return nothing
-        end
-    end
-
-    # Process the Aviary metadata.
-    X_ca_full, units_dict_tmp, aviary_input_names = _process_aviary_metadata(X_ca, units_dict, aviary_input_vars, aviary_meta_data)
-    Y_ca_full, units_dict_full, aviary_output_names = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_vars, aviary_meta_data)
-
-    _check_aviary_names(aviary_input_names, aviary_output_names)
-
-    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
-        prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs = _get_matrix_free_prep_stuff_in_place(ad_backend, compute_adable, Y_ca_full, X_ca_full, force_mode, disable_prep)
-    else
-        dX_ca = ComponentVector{eltype(X_ca_full)}()
-        dY_ca = ComponentVector{eltype(Y_ca_full)}()
-        X_ca_cs = ComponentVector{ComplexF64}()
-        Y_ca_cs = ComponentVector{ComplexF64}()
-        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep`.
-        prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, Y_ca_full, ad_backend, X_ca_full, (dX_ca,); strict=Val{true}()))
-    end
-
-    return MatrixFreeADExplicitComp{true}(ad_backend, compute_adable, X_ca_full, Y_ca_full, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict_full, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-end
-
-"""
-    MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_output_vars=Dict{Symbol,Dict{String,<:Any}}(), aviary_meta_data=Dict{String,Any}())
-
-Create a `MatrixFreeADExplicitComp` from a user-defined function and output and input `ComponentVector`s.
-
-# Positional Arguments
-* `ad_backend`: `<:ADTypes.AbstractADType` automatic differentation "backend" library
-* `f`: function of the form `Y_ca = f(X_ca, params)` which returns outputs `Y_ca` using inputs `X_ca` and, optionally, parameters `params`.
-* `X_ca`: `ComponentVector` of inputs
-
-# Keyword Arguments
-* `params`: parameters passed to the third argument to `f!`. Could be anything, or `nothing`, but the derivatives of `Y_ca` with respect to `params` will not be calculated
-* `force_mode=""`: If `"fwd"`, use `DifferentiationInterface.pushforward!` to compute the derivatives (aka perform a Jacobian-vector product).
-  If `"rev"`, use `DifferentiationInterface.pullback!` to compute the derivatives (aka perform a vector-Jacobian product).
-  If `""`, use whatever would be faster, as determined by `DifferentiationInterface.pushforward_performance` and `DifferentiationInterface.pullback_performance`, prefering `pushforward`.
-* `disable_prep`: if `true`, do not use either `prepare_pushforward` or `prepare_pullback` to create a `DifferentiationInterface.PushforwardPrep` or `PullbackPrep` object to accelerate the derivative calculation.
-  Disabling prep can avoid correctness issues with ReverseDiff.jl, see [the discussion of branching and the `AbstractTape` API](https://juliadiff.org/ReverseDiff.jl/dev/api/#The-AbstractTape-API).
-* `units_dict`: `Dict` mapping variable names (as `Symbol`s) to OpenMDAO units (expressed as `String`s)
-* `tags_dict`: `Dict` mapping variable names (as `Symbol`s) to `Vector`s of OpenMDAO tags
-* `shape_by_conn_dict`: `Dict` mapping variable names (as `Symbol`s) to `Bool`s indicating if the variable's shape (size) will be set dynamically by a connection
-* `copy_shape_dict`: `Dict` mapping variable names to other variable names indicating the "key" symbol should take its size from the "value" symbol
-* `aviary_input_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of input variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary input variables.
-* `aviary_output_vars::Dict{Symbol,Dict{String,<:Any}}`: mapping of output variable names to a `Dict` that contains keys `name` and optionally `shape` defining the Aviary name and shape for Aviary output variables.
-* `aviary_meta_data::Dict{String,Any}`: mapping of Aviary variable names to aviary metadata. Currently only the `"units"` and `"default_value"` fields are used.
-"""
-function MatrixFreeADExplicitComp(ad_backend, f, X_ca::ComponentVector; params=nothing, force_mode="", disable_prep=false, units_dict=Dict{Symbol,String}(), tags_dict=Dict{Symbol,Vector{String}}(), shape_by_conn_dict=Dict{Symbol,Bool}(), copy_shape_dict=Dict{Symbol,Symbol}(), aviary_input_vars=Dict{Symbol,Dict{String,Nothing}}(), aviary_output_vars=Dict{Symbol,Dict{String,Nothing}}(), aviary_meta_data=Dict{String,Nothing}())
-
-    # Create a new user-defined function that captures the `params` argument.
-    # https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured
-    compute_adable = let params=params
-        (X,)->begin
-            return f(X, params)
-        end
-    end
-
-    # Process the Aviary metadata for the inputs.
-    X_ca_full, units_dict_tmp, aviary_input_names = _process_aviary_metadata(X_ca, units_dict, aviary_input_vars, aviary_meta_data)
-    # Process the Aviary metadata for the outputs.
-    Y_ca = compute_adable(X_ca_full)
-    Y_ca_full, units_dict_full, aviary_output_names = _process_aviary_metadata(Y_ca, units_dict_tmp, aviary_output_vars, aviary_meta_data)
-
-    _check_aviary_names(aviary_input_names, aviary_output_names)
-
-    if (!any(values(shape_by_conn_dict))) && (length(copy_shape_dict) == 0)
-        prep, dX_ca, dY_ca, X_ca_cs = _get_matrix_free_prep_stuff_out_of_place(ad_backend, compute_adable, Y_ca_full, X_ca_full, force_mode, disable_prep)
-    else
-        dX_ca = ComponentVector{eltype(X_ca_full)}()
-        dY_ca = ComponentVector{eltype(Y_ca_full)}()
-        X_ca_cs = ComponentVector{ComplexF64}()
-        # Doesn't matter if we chose NoPushforwardPrep() or NoPullbackPrep(), since it will be set to the correct thing later in `update_prep`.
-        prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca_full, (dX_ca,); strict=Val{true}()))
-    end
-
-    return MatrixFreeADExplicitComp{false}(ad_backend, compute_adable, X_ca_full, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict_full, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-end
-
-function _get_matrix_free_prep_stuff_in_place(ad_backend, compute_adable, Y_ca, X_ca, force_mode::String, disable_prep::Bool)
-    # Create copies of X_ca and Y_ca that will be use for the input and output tangents (not sure if that's the correct terminology).
-    dX_ca = similar(X_ca)
-    dY_ca = similar(Y_ca)
-
-    # Get the "preparation" objective for efficiency.
-    if force_mode == ""
-        if DifferentiationInterface.pushforward_performance(ad_backend) isa DifferentiationInterface.PushforwardFast
-            if disable_prep
-                prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,); strict=Val{true}()))
-            else
-                prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,))
-            end
-        else
-            if disable_prep
-                prep = DifferentiationInterface.NoPullbackPrep(DifferentiationInterface.signature(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,); strict=Val{true}()))
-            else
-                prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,))
-            end
-        end
-    elseif force_mode == "fwd"
-        if disable_prep
-            prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,); strict=Val{true}()))
-        else
-            prep = DifferentiationInterface.prepare_pushforward(compute_adable, Y_ca, ad_backend, X_ca, (dX_ca,))
-        end
-    elseif force_mode == "rev"
-        if disable_prep
-            prep = DifferentiationInterface.NoPullbackPrep(DifferentiationInterface.signature(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,); strict=Val{true}()))
-        else
-            prep = DifferentiationInterface.prepare_pullback(compute_adable, Y_ca, ad_backend, X_ca, (dY_ca,))
-        end
-    else
-        throw(ArgumentError("force_mode argument should be one of `\"\"`, \"fwd\", or \"rev\" but is $(force_mode)"))
-    end
-
-    # Create complex-valued versions of the X_ca_full and Y_ca arrays.
-    X_ca_cs = similar(X_ca, ComplexF64)
-    Y_ca_cs = similar(Y_ca, ComplexF64)
-
-    return prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs
-end
-
-function _get_matrix_free_prep_stuff_out_of_place(ad_backend, compute_adable, Y_ca, X_ca, force_mode::String, disable_prep::Bool)
-    # Create a copy of X_ca that will be use for the input tangents (not sure if that's the correct terminology).
-    dX_ca = similar(X_ca)
-
-    # Create a copy of Y_ca_full that will be use for the output tangents (not sure if that's the correct terminology).
-    dY_ca = similar(Y_ca)
-
-    # Get the "preparation" objective for efficiency.
-    if force_mode == ""
-        if DifferentiationInterface.pushforward_performance(ad_backend) isa DifferentiationInterface.PushforwardFast
-            if disable_prep
-                prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca, (dX_ca,); strict=Val{true}()))
-            else
-                prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca, (dX_ca,))
-            end
-        else
-            if disable_prep
-                prep = DifferentiationInterface.NoPullbackPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca, (dY_ca,); strict=Val{true}()))
-            else
-                prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca, (dY_ca,))
-            end
-        end
-    elseif force_mode == "fwd"
-        if disable_prep
-            prep = DifferentiationInterface.NoPushforwardPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca, (dX_ca,); strict=Val{true}()))
-        else
-            prep = DifferentiationInterface.prepare_pushforward(compute_adable, ad_backend, X_ca, (dX_ca,))
-        end
-    elseif force_mode == "rev"
-        if disable_prep
-            prep = DifferentiationInterface.NoPullbackPrep(DifferentiationInterface.signature(compute_adable, ad_backend, X_ca, (dY_ca,); strict=Val{true}()))
-        else
-            prep = DifferentiationInterface.prepare_pullback(compute_adable, ad_backend, X_ca, (dY_ca,))
-        end
-    else
-        throw(ArgumentError("force_mode argument should be one of `\"\"`, \"fwd\", or \"rev\" but is $(force_mode)"))
-    end
-
-    # Create complex-valued versions of the X_ca and Y_ca arrays.
-    X_ca_cs = similar(X_ca, ComplexF64)
-
-    return prep, dX_ca, dY_ca, X_ca_cs
-end
-
-# function update_prep!(self::MatrixFreeADExplicitComp{true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
-#     if (length(input_sizes) > 0) || (length(output_sizes) > 0)
-#         X_ca_old = get_input_ca(self)
-#         Y_ca_old = get_output_ca(self)
-#
-#         # Create a new versions of `X_ca_old` and `Y_ca_old` that have the correct sizes and default values.
-#         X_ca = _resize_component_vector(X_ca_old, input_sizes)
-#         Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
-#
-#         # Get the new prep stuff.
-#         prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs = _get_matrix_free_prep_stuff_in_place(get_backend(self), get_callback(self), Y_ca, X_ca, get_force_mode(self), get_disable_prep(self))
-#
-#         # Save everything in this struct.
-#         self.X_ca = X_ca
-#         self.Y_ca = Y_ca
-#         self.dX_ca = dX_ca
-#         self.dY_ca = dY_ca
-#         self.prep = prep
-#         self.X_ca_cs = X_ca_cs
-#         self.Y_ca_cs = Y_ca_cs
-#     end
-#
-#     return nothing
-# end
-
-function update_prep(self::MatrixFreeADExplicitComp{true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
-    if (length(input_sizes) > 0) || (length(output_sizes) > 0)
-        X_ca_old = get_input_ca(self)
-        Y_ca_old = get_output_ca(self)
-
-        # Create a new versions of `X_ca_old` and `Y_ca_old` that have the correct sizes and default values.
-        X_ca = _resize_component_vector(X_ca_old, input_sizes)
-        Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
-
-        # Get the new prep stuff.
-        ad_backend = get_backend(self)
-        f! = get_callback(self)
-        force_mode = get_force_mode(self)
-        disable_prep = get_disable_prep(self)
-        prep, dX_ca, dY_ca, X_ca_cs, Y_ca_cs = _get_matrix_free_prep_stuff_in_place(ad_backend, f!, Y_ca, X_ca, get_force_mode(self), get_disable_prep(self))
-
-        # Copy things over.
-        units_dict = self.units_dict
-        tags_dict = self.tags_dict
-        shape_by_conn_dict = self.shape_by_conn_dict
-        copy_shape_dict = self.copy_shape_dict
-        aviary_input_names = self.aviary_input_names
-        aviary_output_names = self.aviary_output_names
-        aviary_meta_data = self.aviary_meta_data
-        self = MatrixFreeADExplicitComp{true}(ad_backend, f!, X_ca, Y_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-    end
-
-    return self
-end
-
-# function update_prep!(self::MatrixFreeADExplicitComp{false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
-#     if (length(input_sizes) > 0) || (length(output_sizes) > 0)
-#         X_ca_old = get_input_ca(self)
-#         Y_ca_old = get_output_ca(self)
-#
-#         # Create a new versions of `X_ca_old` and `Y_ca_old` that have the correct sizes and default values.
-#         X_ca = _resize_component_vector(X_ca_old, input_sizes)
-#         Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
-#
-#         # Get the new prep stuff.
-#         prep, dX_ca, dY_ca, X_ca_cs = _get_matrix_free_prep_stuff_out_of_place(get_backend(self), get_callback(self), Y_ca, X_ca, get_force_mode(self), get_disable_prep(self))
-#
-#         # Save everything in this struct.
-#         self.X_ca = X_ca
-#         self.Y_ca = Y_ca
-#         self.dX_ca = dX_ca
-#         self.dY_ca = dY_ca
-#         self.prep = prep
-#         self.X_ca_cs = X_ca_cs
-#     end
-#
-#     return nothing
-# end
-
-function update_prep(self::MatrixFreeADExplicitComp{false}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
-    if (length(input_sizes) > 0) || (length(output_sizes) > 0)
-        X_ca_old = get_input_ca(self)
-        Y_ca_old = get_output_ca(self)
-
-        # Create a new versions of `X_ca_old` and `Y_ca_old` that have the correct sizes and default values.
-        X_ca = _resize_component_vector(X_ca_old, input_sizes)
-        Y_ca = _resize_component_vector(Y_ca_old, output_sizes)
-
-        # Get the new prep stuff.
-        ad_backend = get_backend(self)
-        f = get_callback(self)
-        force_mode = get_force_mode(self)
-        disable_prep = get_disable_prep(self)
-        prep, dX_ca, dY_ca, X_ca_cs = _get_matrix_free_prep_stuff_out_of_place(ad_backend, f, Y_ca, X_ca, force_mode, disable_prep)
-
-        # Copy things over.
-        units_dict = self.units_dict
-        tags_dict = self.tags_dict
-        shape_by_conn_dict = self.shape_by_conn_dict
-        copy_shape_dict = self.copy_shape_dict
-        aviary_input_names = self.aviary_input_names
-        aviary_output_names = self.aviary_output_names
-        aviary_meta_data = self.aviary_meta_data
-        self = MatrixFreeADExplicitComp{false}(ad_backend, f, X_ca, dX_ca, dY_ca, force_mode, disable_prep, prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, aviary_input_names, aviary_output_names, aviary_meta_data)
-    end
-
-    return self
-end
-
-function setup_partials(self::MatrixFreeADExplicitComp, input_sizes, output_sizes)
-    input_av_name_to_ca_name = Dict(get_aviary_input_name(self, k)=>k for k in keys(get_input_ca(self)))
-    input_sizes_ca = Dict{Symbol,Any}(input_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in input_sizes)
-
-    output_av_name_to_ca_name = Dict(get_aviary_output_name(self, k)=>k for k in keys(get_output_ca(self)))
-    output_sizes_ca = Dict{Symbol,Any}(output_av_name_to_ca_name[aviary_name]=>sz for (aviary_name, sz) in output_sizes)
-
-    self_new = update_prep(self, input_sizes_ca, output_sizes_ca)
-
-    # Now finally get the partials data.
     return self_new, get_partials_data(self_new)
 end
 
-function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_inputs, d_outputs)
+# ---------------------------------------------------------------------------
+# compute_jacvec_product! + internals (pushforward / pullback).
+# ---------------------------------------------------------------------------
+
+function _compute_pushforward!(self::ADExplicitComp{<:MatrixFreeFlavor, true}, inputs, d_inputs, d_outputs, prep, backend)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        iname_aviary = get_aviary_input_name(self, iname)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[iname_aviary]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
-    # Hmm... how do the sizes work?
-    # Well, I think d_inputs has the derivative each input wrt some upstream input (a design variable, I guess).
-    # So shouldn't that be the same size as the input vector itself?
-    # Well, is it possible that it wouldn't include all of them?
-    # I guess it could be, right?
-    # Maybe one of the inputs to this particular component is not impacted by the design variables.
-    # So I guess I should iterate over the keys in d_inputs.
-    # And I should also zero out the input vector, in case d_inputs doesn't have everything.
+    # d_inputs has the derivative of each input wrt some upstream input.
     dX_ca = get_dinput_ca(self)
-    dX_ca .= 0.0
-    for iname in keys(dX_ca)
-        iname_aviary = get_aviary_input_name(self, iname)
-        if iname_aviary in keys(d_inputs)
-            @view(dX_ca[iname]) .= d_inputs[iname_aviary]
-        end
-    end
+    _copy_component_deriv_inputs!(getdata(dX_ca), d_inputs, self.input_copy_prep)
 
     # The AD library will need the output component array to do the Jacobian-vector product.
     Y_ca = get_output_ca(self)
@@ -394,53 +468,29 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{true}, inputs, d_i
     # This is the function that will actually do the computation.
     compute_adable = get_callback(self)
 
-    # We stored the "preparation" for reusing.
-    prep = get_prep(self)
-
-    # Get the AD backend.
-    backend = get_backend(self)
-
     # Now actually do the Jacobian-vector product.
+    if prep === nothing
+        isempty(dX_ca) && throw(_prep_not_created_error(self, "compute_jacvec_product!"))
+        # No prep available: fall back to the prep-less DifferentiationInterface
+        # methods, which prepare internally on each call.
+    DifferentiationInterface.pushforward!(compute_adable, Y_ca, (dY_ca,), backend, X_ca, (dX_ca,))
+    else
     DifferentiationInterface.pushforward!(compute_adable, Y_ca, (dY_ca,), prep, backend, X_ca, (dX_ca,))
+    end
 
     # Now copy the output derivatives to `d_outputs`:
-    for oname in keys(dY_ca)
-        oname_aviary = get_aviary_output_name(self, oname)
-        if typeof(d_outputs[oname_aviary]) <: AbstractArray
-            d_outputs[oname_aviary] .= @view(dY_ca[oname])
-        else
-            d_outputs[oname_aviary] = only(dY_ca[oname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dY_ca), d_outputs, self.output_copy_prep)
 
     return nothing
 end
 
-function _compute_pushforward!(self::MatrixFreeADExplicitComp{false}, inputs, d_inputs, d_outputs)
+function _compute_pushforward!(self::ADExplicitComp{<:MatrixFreeFlavor, false}, inputs, d_inputs, d_outputs, prep, backend)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        iname_aviary = get_aviary_input_name(self, iname)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[iname_aviary]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
-    # Hmm... how do the sizes work?
-    # Well, I think d_inputs has the derivative each input wrt some upstream input (a design variable, I guess).
-    # So shouldn't that be the same size as the input vector itself?
-    # Well, is it possible that it wouldn't include all of them?
-    # I guess it could be, right?
-    # Maybe one of the inputs to this particular component is not impacted by the design variables.
-    # So I guess I should iterate over the keys in d_inputs.
-    # And I should also zero out the input vector, in case d_inputs doesn't have everything.
     dX_ca = get_dinput_ca(self)
-    dX_ca .= 0.0
-    for iname in keys(dX_ca)
-        iname_aviary = get_aviary_input_name(self, iname)
-        if iname_aviary in keys(d_inputs)
-            @view(dX_ca[iname]) .= d_inputs[iname_aviary]
-        end
-    end
+    _copy_component_deriv_inputs!(getdata(dX_ca), d_inputs, self.input_copy_prep)
 
     # We'll write the result of the Jacobian-vector product to a different component array.
     dY_ca = get_doutput_ca(self)
@@ -448,45 +498,29 @@ function _compute_pushforward!(self::MatrixFreeADExplicitComp{false}, inputs, d_
     # This is the function that will actually do the computation.
     compute_adable = get_callback(self)
 
-    # We stored the "preparation" for reusing.
-    prep = get_prep(self)
-
-    # Get the AD backend.
-    backend = get_backend(self)
-
     # Now actually do the Jacobian-vector product.
+    if prep === nothing
+        isempty(dX_ca) && throw(_prep_not_created_error(self, "compute_jacvec_product!"))
+        # No prep available: fall back to the prep-less DifferentiationInterface
+        # methods, which prepare internally on each call.
+    DifferentiationInterface.pushforward!(compute_adable, (dY_ca,), backend, X_ca, (dX_ca,))
+    else
     DifferentiationInterface.pushforward!(compute_adable, (dY_ca,), prep, backend, X_ca, (dX_ca,))
+    end
 
     # Now copy the output derivatives to `d_outputs`:
-    for oname in keys(dY_ca)
-        oname_aviary = get_aviary_output_name(self, oname)
-        if typeof(d_outputs[oname_aviary]) <: AbstractArray
-            d_outputs[oname_aviary] .= @view(dY_ca[oname])
-        else
-            d_outputs[oname_aviary] = only(dY_ca[oname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dY_ca), d_outputs, self.output_copy_prep)
 
     return nothing
 end
 
-function _compute_pullback!(self::MatrixFreeADExplicitComp{true}, inputs, d_inputs, d_outputs)
+function _compute_pullback!(self::ADExplicitComp{<:MatrixFreeFlavor, true}, inputs, d_inputs, d_outputs, prep, backend)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        iname_aviary = get_aviary_input_name(self, iname)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[iname_aviary]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     dY_ca = get_doutput_ca(self)
-    dY_ca .= 0.0
-    for oname in keys(dY_ca)
-        oname_aviary = get_aviary_output_name(self, oname)
-        if oname_aviary in keys(d_outputs)
-            @view(dY_ca[oname]) .= d_outputs[oname_aviary]
-        end
-    end
+    _copy_component_deriv_inputs!(getdata(dY_ca), d_outputs, self.output_copy_prep)
 
     # The AD library will need the output component array to do the Jacobian-vector product.
     Y_ca = get_output_ca(self)
@@ -497,45 +531,29 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{true}, inputs, d_inpu
     # This is the function that will actually do the computation.
     compute_adable = get_callback(self)
 
-    # Need the AD backend.
-    backend = get_backend(self)
-
-    # We stored the "preparation" for reusing.
-    prep = get_prep(self)
-
     # Now actually do the Jacobian-vector product.
+    if prep === nothing
+        isempty(dX_ca) && throw(_prep_not_created_error(self, "compute_jacvec_product!"))
+        # No prep available: fall back to the prep-less DifferentiationInterface
+        # methods, which prepare internally on each call.
+    DifferentiationInterface.pullback!(compute_adable, Y_ca, (dX_ca,), backend, X_ca, (dY_ca,))
+    else
     DifferentiationInterface.pullback!(compute_adable, Y_ca, (dX_ca,), prep, backend, X_ca, (dY_ca,))
+    end
 
     # Now copy the input derivatives to `d_inputs`:
-    for iname in keys(dX_ca)
-        iname_aviary = get_aviary_input_name(self, iname)
-        if typeof(d_inputs[iname_aviary]) <: AbstractArray
-            d_inputs[iname_aviary] .= @view(dX_ca[iname])
-        else
-            d_inputs[iname_aviary] = only(dX_ca[iname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dX_ca), d_inputs, self.input_copy_prep)
 
     return nothing
 end
 
-function _compute_pullback!(self::MatrixFreeADExplicitComp{false}, inputs, d_inputs, d_outputs)
+function _compute_pullback!(self::ADExplicitComp{<:MatrixFreeFlavor, false}, inputs, d_inputs, d_outputs, prep, backend)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        iname_aviary = get_aviary_input_name(self, iname)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[iname_aviary]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     dY_ca = get_doutput_ca(self)
-    dY_ca .= 0.0
-    for oname in keys(dY_ca)
-        oname_aviary = get_aviary_output_name(self, oname)
-        if oname_aviary in keys(d_outputs)
-            @view(dY_ca[oname]) .= d_outputs[oname_aviary]
-        end
-    end
+    _copy_component_deriv_inputs!(getdata(dY_ca), d_outputs, self.output_copy_prep)
 
     # We'll write the result of the vector-Jacobian product to a different component array.
     dX_ca = get_dinput_ca(self)
@@ -543,42 +561,44 @@ function _compute_pullback!(self::MatrixFreeADExplicitComp{false}, inputs, d_inp
     # This is the function that will actually do the computation.
     compute_adable = get_callback(self)
 
-    # Need the AD backend.
-    backend = get_backend(self)
-
-    # We stored the "preparation" for reusing.
-    prep = get_prep(self)
-
     # Now actually do the Jacobian-vector product.
+    if prep === nothing
+        isempty(dX_ca) && throw(_prep_not_created_error(self, "compute_jacvec_product!"))
+        # No prep available: fall back to the prep-less DifferentiationInterface
+        # methods, which prepare internally on each call.
+    DifferentiationInterface.pullback!(compute_adable, (dX_ca,), backend, X_ca, (dY_ca,))
+    else
     DifferentiationInterface.pullback!(compute_adable, (dX_ca,), prep, backend, X_ca, (dY_ca,))
+    end
 
     # Now copy the input derivatives to `d_inputs`:
-    for iname in keys(dX_ca)
-        iname_aviary = get_aviary_input_name(self, iname)
-        if typeof(d_inputs[iname_aviary]) <: AbstractArray
-            d_inputs[iname_aviary] .= @view(dX_ca[iname])
-        else
-            d_inputs[iname_aviary] = only(dX_ca[iname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dX_ca), d_inputs, self.input_copy_prep)
 
     return nothing
 end
 
-function OpenMDAOCore.compute_jacvec_product!(self::MatrixFreeADExplicitComp, inputs, d_inputs, d_outputs, mode)
+"""
+    compute_jacvec_product!(self::ADExplicitComp{<:MatrixFreeFlavor}, inputs, d_inputs, d_outputs, mode)
+
+Compute the Jacobian-vector product (`mode="fwd"`, requires
+[`MatrixFreeForwardFlavor`](@ref) or [`MatrixFreeForwardReverseFlavor`](@ref)) or
+vector-Jacobian product (`mode="rev"`, requires [`MatrixFreeReverseFlavor`](@ref)
+or [`MatrixFreeForwardReverseFlavor`](@ref)).
+"""
+function OpenMDAOCore.compute_jacvec_product!(self::ADExplicitComp{<:MatrixFreeFlavor}, inputs, d_inputs, d_outputs, mode)
     backend = get_backend(self)
     prep = get_prep(self)
     if mode == "fwd"
-        if prep isa DifferentiationInterface.PushforwardPrep
-            _compute_pushforward!(self, inputs, d_inputs, d_outputs)
+        if self isa ADExplicitComp{MatrixFreeForwardFlavor}
+            _compute_pushforward!(self, inputs, d_inputs, d_outputs, get_prep(self), get_backend(self))
         else
-            @warn "mode = \"fwd\" not supported for AD backend $(backend), preparation $(prep), derivatives for $(self) will be incorrect"
+            @warn "mode = \"fwd\" not supported for AD backend $(nameof(typeof(backend))), preparation $(nameof(typeof(prep))), derivatives for $(nameof(typeof(self))) will be incorrect"
         end
     elseif mode == "rev"
-        if prep isa DifferentiationInterface.PullbackPrep
-            _compute_pullback!(self, inputs, d_inputs, d_outputs)
+        if self isa ADExplicitComp{MatrixFreeReverseFlavor}
+            _compute_pullback!(self, inputs, d_inputs, d_outputs, get_prep(self), get_backend(self))
         else
-            @warn "mode = \"rev\" not supported for AD backend $(backend), preparation $(prep), derivatives for $(self) will be incorrect"
+            @warn "mode = \"rev\" not supported for AD backend $(nameof(typeof(backend))), preparation $(nameof(typeof(prep))), derivatives for $(nameof(typeof(self))) will be incorrect"
         end
     else
         throw(ArgumentError("unknown mode = \"$(mode)\""))
@@ -587,3 +607,21 @@ function OpenMDAOCore.compute_jacvec_product!(self::MatrixFreeADExplicitComp, in
     return nothing
 end
 
+"""
+    compute_jacvec_product!(self::ADExplicitComp{MatrixFreeForwardReverseFlavor}, inputs, d_inputs, d_outputs, mode)
+
+Compute the Jacobian-vector product (`mode="fwd"`, using the forward-mode
+backend) or vector-Jacobian product (`mode="rev"`, using the reverse-mode
+backend); both directions are supported.
+"""
+function OpenMDAOCore.compute_jacvec_product!(self::ADExplicitComp{MatrixFreeForwardReverseFlavor}, inputs, d_inputs, d_outputs, mode)
+    if mode == "fwd"
+        _compute_pushforward!(self, inputs, d_inputs, d_outputs, self.deriv_prep.prep_fwd, get_backend_fwd(self))
+    elseif mode == "rev"
+        _compute_pullback!(self, inputs, d_inputs, d_outputs, self.deriv_prep.prep_rev, get_backend_rev(self))
+    else
+        throw(ArgumentError("unknown mode = \"$(mode)\""))
+    end
+
+    return nothing
+end

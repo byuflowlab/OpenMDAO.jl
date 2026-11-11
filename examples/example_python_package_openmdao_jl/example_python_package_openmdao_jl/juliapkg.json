@@ -1,4 +1,1 @@
-{"packages": {
-    "JuliaExampleComponents": {"uuid": "4f289198-a466-4861-a6bd-1e7b09ed8707", "dev": true, "path": "./julia/JuliaExampleComponents"}
-    }
-}
+{"packages": {"JuliaExampleComponents": {"uuid": "4f289198-a466-4861-a6bd-1e7b09ed8707", "dev": true, "path": "./julia/JuliaExampleComponents"}, "OpenMDAOCore": {"uuid": "24d19c10-6eee-420f-95df-4537264b2753", "dev": true, "path": "/home/daniel/Documents/openmdao_jl_dev/dev/OpenMDAO.jl/examples/example_python_package_openmdao_jl/../../julia/OpenMDAOCore.jl"}}}

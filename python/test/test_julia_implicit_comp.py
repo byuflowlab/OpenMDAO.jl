@@ -11,6 +11,7 @@ import numpy as np
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.core.analysis_error import AnalysisError
+from openmdao.utils.testing_utils import use_tempdirs
 
 from omjlcomps import JuliaImplicitComp
 
@@ -18,6 +19,7 @@ d = os.path.dirname(os.path.abspath(__file__))
 jl.include(os.path.join(d, "test_icomp.jl"))
 
 
+@use_tempdirs
 class TestSimpleJuliaImplicitComp(unittest.TestCase):
 
     def setUp(self):
@@ -95,6 +97,7 @@ class TestSimpleJuliaImplicitComp(unittest.TestCase):
                                                    decimal=12)
 
 
+@use_tempdirs
 class TestSimpleJuliaImplicitWithGlobComp(unittest.TestCase):
 
     def setUp(self):
@@ -168,6 +171,7 @@ class TestSimpleJuliaImplicitWithGlobComp(unittest.TestCase):
 
 
 
+@use_tempdirs
 class TestSolveNonlinearJuliaImplicitComp(unittest.TestCase):
 
     def setUp(self):
@@ -244,6 +248,7 @@ class TestSolveNonlinearJuliaImplicitComp(unittest.TestCase):
                                                    decimal=12)
 
 
+@use_tempdirs
 class TestMatrixFreeImplicitComp(unittest.TestCase):
 
     def setUp(self):
@@ -319,6 +324,7 @@ class TestMatrixFreeImplicitComp(unittest.TestCase):
                                                decimal=12)
 
 
+@use_tempdirs
 class TestSolveLinearImplicitComp(unittest.TestCase):
 
     def setUp(self):
@@ -423,6 +429,7 @@ class TestSolveLinearImplicitComp(unittest.TestCase):
 
 
 
+@use_tempdirs
 class TestGuessNonlinearImplicitComp(unittest.TestCase):
 
     def setUp(self):
@@ -485,6 +492,7 @@ class TestGuessNonlinearImplicitComp(unittest.TestCase):
                                                    decimal=12)
 
 
+@use_tempdirs
 class TestShapeByConn(unittest.TestCase):
 
     def setUp(self):
@@ -566,6 +574,7 @@ class TestShapeByConn(unittest.TestCase):
                                                        decimal=12)
 
 
+@use_tempdirs
 class TestAnalysisError(unittest.TestCase):
 
     def setUp(self):
@@ -647,6 +656,274 @@ class TestAnalysisError(unittest.TestCase):
         p.set_val("x", -1.0)
         self.assertRaises(AnalysisError, p.run_model)
         self.assertRaises(AnalysisError, p.check_partials)
+
+
+@use_tempdirs
+class TestSimpleJuliaImplicitWithScalarsComp(unittest.TestCase):
+
+    def setUp(self):
+        p = self.p = om.Problem()
+        a = self.a = 3.0
+        icomp = jl.ICompTest.SimpleImplicitWithScalars(a)
+        comp = JuliaImplicitComp(jlcomp=icomp)
+        comp.linear_solver = om.DirectSolver(assemble_jac=True)
+        comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=True, iprint=2, err_on_non_converge=True)
+        p.model.add_subsystem("icomp", comp, promotes_inputs=["x", "y"], promotes_outputs=["z1", "z2"])
+        p.setup(force_alloc_complex=True)
+        p.set_val("x", 3.0)
+        p.set_val("y", 4.0)
+        p.run_model()
+
+    def test_results(self):
+        p = self.p
+        a = self.a
+        expected = a*p.get_val("x")**2 + p.get_val("y")**2
+        actual = p.get_val("z1")
+        np.testing.assert_almost_equal(actual, expected)
+        expected = a*p.get_val("x") + p.get_val("y")
+        actual = p.get_val("z2")
+        np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials(self):
+        p = self.p
+        np.set_printoptions(linewidth=1024)
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that the partials the user provided are correct.
+        icomp_partials = cpd["icomp"]
+
+        actual = icomp_partials["z1", "x"]['J_fwd']
+        expected = 2*self.a*p.get_val("x")
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z1", "y"]['J_fwd']
+        expected = 2*p.get_val("y")
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z1", "z1"]['J_fwd']
+        expected = -1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "x"]['J_fwd']
+        expected = self.a
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "y"]['J_fwd']
+        expected = 1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "z2"]['J_fwd']
+        expected = -1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                if (var == "z1") and (wrt == "z2"):
+                    pass
+                elif (var == "z2") and (wrt == "z1"):
+                    pass
+                else:
+                    np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
+                                                   desired=cpd[comp][var, wrt]['J_fd'],
+                                                   decimal=12)
+
+
+@use_tempdirs
+class TestMatrixFreeImplicitScalarComp(unittest.TestCase):
+
+    def setUp(self):
+        p = self.p = om.Problem()
+        a = self.a = 3.0
+        icomp = jl.ICompTest.MatrixFreeImplicitScalar(a)
+        comp = JuliaImplicitComp(jlcomp=icomp)
+        comp.linear_solver = om.DirectSolver(assemble_jac=False)
+        comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=True, iprint=2, err_on_non_converge=True)
+        p.model.add_subsystem("icomp", comp, promotes_inputs=["x", "y"], promotes_outputs=["z1", "z2"])
+        p.setup(force_alloc_complex=True)
+        p.set_val("x", 0.5)
+        p.set_val("y", 2)
+        p.run_model()
+
+    def test_results(self):
+        p = self.p
+        a = self.a
+        expected = a*p.get_val("x")**2 + p.get_val("y")**2
+        actual = p.get_val("z1")
+        np.testing.assert_almost_equal(actual, expected)
+        expected = a*p.get_val("x") + p.get_val("y")
+        actual = p.get_val("z2")
+        np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials(self):
+        p = self.p
+        np.set_printoptions(linewidth=1024)
+        cpd = self.p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+        # Check that the partials the user provided are correct.
+        icomp_partials = cpd["icomp"]
+
+        actual = icomp_partials["z1", "x"]['J_fwd']
+        expected = 2*self.a*p.get_val("x")
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z1", "y"]['J_fwd']
+        expected = 2*p.get_val("y")
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z1", "z1"]['J_fwd']
+        expected = -1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "x"]['J_fwd']
+        expected = self.a
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "y"]['J_fwd']
+        expected = 1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        actual = icomp_partials["z2", "z2"]['J_fwd']
+        expected = -1.0
+        np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+        # Check that partials approximated by the complex-step method match the user-provided partials.
+        for comp in cpd:
+            for (var, wrt) in cpd[comp]:
+                np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
+                                               desired=cpd[comp][var, wrt]['J_fd'],
+                                               decimal=12)
+                np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_rev'],
+                                               desired=cpd[comp][var, wrt]['J_fd'],
+                                               decimal=12)
+
+
+@use_tempdirs
+class TestSolveLinearImplicitScalarComp(unittest.TestCase):
+
+    def setUp(self):
+        a = self.a = 3.0
+
+        p = self.p_fwd = om.Problem()
+        icomp = jl.ICompTest.SolveLinearImplicitScalar(a)
+        comp = JuliaImplicitComp(jlcomp=icomp)
+        p.model.add_subsystem("icomp", comp, promotes_inputs=["x", "y"], promotes_outputs=["z1", "z2"])
+
+        p.setup(force_alloc_complex=True, mode="fwd")
+        p.set_val("x", 0.5)
+        p.set_val("y", 2)
+        p.run_model()
+
+        p = self.p_rev = om.Problem()
+        icomp = jl.ICompTest.SolveLinearImplicitScalar(a)
+        comp = JuliaImplicitComp(jlcomp=icomp)
+        p.model.add_subsystem("icomp", comp, promotes_inputs=["x", "y"], promotes_outputs=["z1", "z2"])
+
+        p.setup(force_alloc_complex=True, mode="rev")
+        p.set_val("x", 0.5)
+        p.set_val("y", 2)
+        p.run_model()
+
+    def test_results(self):
+        for p in [self.p_fwd, self.p_rev]:
+            a = self.a
+            expected = a*p.get_val("x")**2 + p.get_val("y")**2
+            actual = p.get_val("z1")
+            np.testing.assert_almost_equal(actual, expected)
+            expected = a*p.get_val("x") + p.get_val("y")
+            actual = p.get_val("z2")
+            np.testing.assert_almost_equal(actual, expected)
+
+    def test_partials(self):
+        for p in [self.p_fwd, self.p_rev]:
+            np.set_printoptions(linewidth=1024)
+            cpd = p.check_partials(compact_print=True, out_stream=None, method='cs')
+
+            # Check that the partials the user provided are correct.
+            icomp_partials = cpd["icomp"]
+
+            actual = icomp_partials["z1", "x"]['J_fwd']
+            expected = 2*self.a*p.get_val("x")
+            np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+            actual = icomp_partials["z1", "y"]['J_fwd']
+            expected = 2*p.get_val("y")
+            np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+            actual = icomp_partials["z1", "z1"]['J_fwd']
+            expected = -1.0
+            np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+            actual = icomp_partials["z2", "x"]['J_fwd']
+            expected = self.a
+            np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+            actual = icomp_partials["z2", "y"]['J_fwd']
+            expected = 1.0
+            np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+            actual = icomp_partials["z2", "z2"]['J_fwd']
+            expected = -1.0
+            np.testing.assert_almost_equal(actual=actual, desired=expected, decimal=12)
+
+            # Check that partials approximated by the complex-step method match the user-provided partials.
+            for comp in cpd:
+                for (var, wrt) in cpd[comp]:
+                    if (var == "z1") and (wrt == "z2"):
+                        pass
+                    elif (var == "z2") and (wrt == "z1"):
+                        pass
+                    else:
+                        np.testing.assert_almost_equal(actual=cpd[comp][var, wrt]['J_fwd'],
+                                                       desired=cpd[comp][var, wrt]['J_fd'],
+                                                       decimal=12)
+
+    def test_totals(self):
+        for p in [self.p_fwd, self.p_rev]:
+            ctd = p.check_totals(of=["z1", "z2"], wrt=["x", "y"], method='cs', compact_print=True, out_stream=None)
+            for of_wrt in ctd:
+                # In OpenMDAO 3.26.0, the correct key is always `"J_fwd"`, but in 3.30.0 it depends on the `mode` argument to `problem.setup()`.
+                try:
+                    J_actual = ctd[of_wrt]["J_fwd"]
+                except KeyError:
+                    try:
+                        J_actual = ctd[of_wrt]["J_rev"]
+                    except KeyError:
+                        raise(ValueError(f"ctd[{of_wrt}] contains neither 'J_fwd' nor 'J_rev'.\nctd.keys() = {ctd.keys()}"))
+                np.testing.assert_almost_equal(actual=J_actual,
+                                               desired=ctd[of_wrt]['J_fd'],
+                                               decimal=12)
+
+
+@use_tempdirs
+class TestJuliaParaboloidImplicitRelevance(unittest.TestCase):
+
+    def test_relevance(self):
+        prob = om.Problem()
+
+        comp = JuliaImplicitComp(jlcomp=jl.ICompTest.ImplicitParaboloidComp())
+        comp.linear_solver = om.DirectSolver(assemble_jac=True)
+        comp.nonlinear_solver = om.NewtonSolver(solve_subsystems=True, iprint=2, err_on_non_converge=True)
+        prob.model.add_subsystem('paraboloid', comp)
+
+        prob.driver = om.ScipyOptimizeDriver()
+        prob.driver.options['optimizer'] = 'SLSQP'
+
+        prob.model.add_design_var('paraboloid.x', lower=-50, upper=50)
+        prob.model.add_objective('paraboloid.f')
+
+        prob.setup()
+
+        prob.set_val('paraboloid.x', 3.0)
+        prob.set_val('paraboloid.y', 8.0)
+
+        # run the optimization
+        prob.run_driver()
+
+        # minimum value
+        np.testing.assert_allclose(prob.get_val('paraboloid.x'), -1.0)
+        np.testing.assert_allclose(prob.get_val('paraboloid.y'), 8.0)
+        np.testing.assert_allclose(prob.get_val('paraboloid.f'), 149.0)
 
 
 if __name__ == '__main__':

@@ -33,8 +33,6 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
       - name: OpenMDAOCore.jl Tests
         shell: julia --color=yes {0}
         run: |
@@ -42,8 +40,6 @@ jobs:
           Pkg.activate("./julia/OpenMDAOCore.jl")
           Pkg.update()
           Pkg.test()
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
 
   OpenMDAO_jl:
     name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
@@ -68,8 +64,6 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
       - name: OpenMDAO.jl Tests
         shell: julia --color=yes {0}
         run: |
@@ -82,8 +76,6 @@ jobs:
           Pkg.instantiate()
           Pkg.update()
           Pkg.test()
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
 
   omjlcomps:
     name: Python ${{ matrix.python-version }} - ${{ matrix.os }} - ${{ github.event_name }}
@@ -92,7 +84,7 @@ jobs:
       fail-fast: true
       matrix:
         julia-version:
-          - '1' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
+          - '1.12' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
         os:
           - ubuntu-latest
           - macOS-latest
@@ -116,35 +108,32 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General"))
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
-      - name: Install juliapkg and add latest version of OpenMDAOCore.jl
+      - name: Install juliapkg
         run: |
           echo "PWD = $PWD"
-          # Get the json file with all the test dependencies, and that will install the local version of OpenMDAOCore.jl.
-          cp $PWD/python/omjlcomps/test/juliapkg-test.json $PWD/python/omjlcomps/juliapkg.json
           python -m pip install --upgrade pip
-          pip install juliapkg
+          pip install juliapkg'[cli]'
+          python -m juliapkg resolve
       - name: omjlcomps install
         run: |
           echo "PWD = $PWD"
-          pip install --config-settings editable_mode=compat -e ./python[test]
-          python -c "import juliapkg; juliapkg.resolve()"
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
+          # WTF?
+          python -m juliapkg run -E 'using Pkg; rm(joinpath(DEPOT_PATH[1], "registries", "General"), force=true, recursive=true); Pkg.Registry.add("General")'
+          python -m juliapkg add --dev --path=$PWD/julia/OpenMDAOCore.jl --target=$PWD/python/src/juliapkg.json OpenMDAOCore
+          pip install --config-settings editable_mode=compat -e ./python
       - name: omjlcomps tests
         run: |
           echo "PWD = $PWD"
-          python ./python/omjlcomps/test/test_julia_explicit_comp.py
-          python ./python/omjlcomps/test/test_julia_implicit_comp.py
-          python ./python/omjlcomps/test/test_aviary_support.py
-          python ./python/omjlcomps/test/test_explicit_ad_shape_by_conn.py
-        env:
-              JULIA_PKG_USE_CLI_GIT: 'true'
+          cd python/test
+          python test_julia_explicit_comp.py
+          python test_julia_implicit_comp.py
+          python test_explicit_ad_shape_by_conn.py
+          python test_implicit_ad_comps.py
       - name: test examples
         run: |
           echo "PWD = $PWD"
           cd ./examples/example_python_package_openmdao_jl
+          python -m juliapkg add --dev --path=$PWD/../../julia/OpenMDAOCore.jl --target=$PWD/example_python_package_openmdao_jl/juliapkg.json OpenMDAOCore
           pip install --config-settings editable_mode=compat -e .
           python ./scripts/run_paraboloid.py
           python ./example_python_package_openmdao_jl/test/test_paraboloid_example.py

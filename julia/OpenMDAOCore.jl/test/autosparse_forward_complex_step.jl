@@ -434,7 +434,7 @@ function doit_ad(; sparse_detect_method)
     # Now we can create the component.
     sparse_atol = 1e-10
     ad = ADTypes.AutoSparse(ADTypes.AutoForwardDiff(); sparsity_detector=PerturbedDenseSparsityDetector(ADTypes.AutoForwardDiff(); atol=sparse_atol, method=sparse_detect_method), coloring_algorithm=SparseMatrixColorings.GreedyColoringAlgorithm())
-    comp = ADSparseExplicitComp(ad, f_simple!, Y_ca, X_ca; params=params_simple)
+    comp = create_explicit_component(SparseFlavor(), ad, f_simple!, Y_ca, X_ca; params=params_simple)
 
     # Now run all the checks from the previous case.
     rcdict = get_rows_cols_dict(comp)

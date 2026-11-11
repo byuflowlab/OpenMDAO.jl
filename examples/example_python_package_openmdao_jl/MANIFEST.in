@@ -1,4 +1,5 @@
-graft ./example_python_package_openmdao_jl/julia/JuliaParaboloidComponent
+graft ./example_python_package_openmdao_jl/julia/JuliaExampleComponents
 include ./example_python_package_openmdao_jl/paraboloid.jl
 include ./example_python_package_openmdao_jl/circle.jl
+include ./example_python_package_openmdao_jl/circuit.jl
 include ./example_python_package_openmdao_jl/juliapkg.json

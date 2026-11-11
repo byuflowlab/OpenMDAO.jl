@@ -228,3 +228,93 @@ nothing
 ```
 
 Looks good!
+
+## `shape_by_conn` and `copy_shape` with the AD Components
+
+The automatic differentiation components support `shape_by_conn` and `copy_shape` too.
+Let's redo the `DynPartialsComp` example from the [OpenMDAO dynamic shapes documentation](https://openmdao.org/newdocs/versions/latest/features/experimental/dyn_shapes.html), which computes `y = 3*x` element-wise, with the shapes of `x` and `y` determined at runtime.
+
+We need the usual preamble:
+
+```@example shape_by_conn_ad
+using OpenMDAOCore: OpenMDAOCore
+using ComponentArrays: ComponentVector
+using ADTypes: ADTypes
+using ForwardDiff: ForwardDiff
+```
+
+The user-defined function is the same idea as always: compute `y` from `x`.
+The one requirement is that the function works for **any** size of `x` and `y`, since the sizes won't be known until OpenMDAO sets up the problem.
+Broadcasting takes care of that:
+
+```@example shape_by_conn_ad
+function f_dyn_partials!(Y, X, params)
+    Y[:y] .= 3.0 .* X[:x]
+    return nothing
+end
+nothing # hide
+```
+
+Note that we don't need anything like the Python example's `setup_partials` method, which allocates the `3*I` matrix and declares the partials once the size is known.
+The `ADExplicitComp` takes care of all of that for us.
+
+Next, the input and output `ComponentVector`s.
+Here we hit the first thing to watch out for: the values in the `ComponentVector`s are passed to OpenMDAO as the declared `val` of each variable, and OpenMDAO requires that a variable with a dynamic shape be declared with a **scalar** `val`.
+So we use scalar placeholders:
+
+```@example shape_by_conn_ad
+# Scalar placeholders: OpenMDAO resolves the real shapes at setup time.
+X_ca = ComponentVector(x=0.0)
+Y_ca = ComponentVector(y=0.0)
+nothing # hide
+```
+
+(The sizes of the placeholders don't matter, but they must be scalars, as in the Python example, where `add_input` is called without a `shape` or `val` argument.)
+
+Now we can create the component.
+The `shape_by_conn_dict` and `copy_shape_dict` keyword arguments play the role of the `shape_by_conn` and `copy_shape` arguments to OpenMDAO's `add_input`/`add_output` methods:
+
+```@example shape_by_conn_ad
+dyn_comp = OpenMDAOCore.create_explicit_component(
+    OpenMDAOCore.DenseFlavor(), ADTypes.AutoForwardDiff(), f_dyn_partials!, Y_ca, X_ca;
+    shape_by_conn_dict=Dict(:x=>true, :y=>true),
+    copy_shape_dict=Dict(:x=>:y, :y=>:x))
+nothing # hide
+```
+
+Normally the `ADExplicitComp` constructor prepares everything DifferentiationInterface.jl needs to compute derivatives.
+Here, of course, the sizes of `x` and `y` aren't known yet, so OpenMDAOCore automatically defers that preparation until OpenMDAO calls `setup_partials` during `Problem.setup`, at which point the shapes have been resolved and the derivative machinery is created at the right sizes.
+No extra input is needed from us — it just works.
+
+Finally, the run script.
+We use an `IndepVarComp` to set the size of `x` to 5, and an `ExecComp` as the "sink", with `shape_by_conn`/`copy_shape` set the same way as in the Python example:
+
+```@example shape_by_conn_ad
+using OpenMDAO: om, make_component
+using PythonCall: PyDict
+
+p = om.Problem()
+# The AD components declare their variables with "unitless" units by default,
+# so we declare the Python-side variables with the same units to keep OpenMDAO
+# from warning about the (harmless) mismatch.
+p.model.add_subsystem("indeps", om.IndepVarComp("x", val=ones(5); units="unitless"))
+p.model.add_subsystem("comp", make_component(dyn_comp))
+p.model.add_subsystem("sink", om.ExecComp("y=x"; units="unitless",
+    x=PyDict(Dict("shape_by_conn"=>true, "copy_shape"=>"y")),
+    y=PyDict(Dict("shape_by_conn"=>true, "copy_shape"=>"x"))))
+p.model.connect("indeps.x", "comp.x")
+p.model.connect("comp.y", "sink.x")
+p.setup()
+p.run_model()
+J = p.compute_totals(of=["sink.y"], wrt=["indeps.x"])
+println(J["sink.y", "indeps.x"])
+```
+
+And we get the same 3\*I total derivative matrix as the Python example!
+
+!!! warning "Use `PyDict`, not a Julia `Dict`, for Python keyword-argument values"
+
+    Notice the `PyDict(Dict(...))` calls in the run script.
+    Julia `Dict`s are *not* automatically converted to Python `dict`s by juliacall — they get wrapped in a `juliacall.DictValue`, which is not a Python `dict` instance.
+    Some OpenMDAO code (like `ExecComp`) checks `isinstance(val, dict)`, and misinterprets the wrapped `Dict` if it isn't converted.
+    `PyDict` from PythonCall.jl creates a genuine Python `dict`, avoiding the problem.
