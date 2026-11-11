@@ -403,8 +403,8 @@ function _compute_implicit_pullback!(comp::ADImplicitComp{<:MatrixFreeFlavor, tr
     end
 
     # Scatter dYX cotangents back: Y part → doutputs, X part → dinputs.
-    _copy_component_outputs_accum!(getdata(dYX_ca), doutputs, comp.state_copy_prep)
-    _copy_component_outputs_accum!(getdata(dYX_ca), dinputs, comp.input_copy_prep)
+    _copy_component_outputs_accum!(view(getdata(dYX_ca), comp.Y_range), doutputs, comp.state_copy_prep)
+    _copy_component_outputs_accum!(view(getdata(dYX_ca), comp.X_range), dinputs, comp.input_copy_prep)
 
     return nothing
 end
@@ -511,8 +511,8 @@ function _compute_implicit_pullback!(comp::ADImplicitComp{<:MatrixFreeFlavor, fa
     DifferentiationInterface.pullback!(compute_adable, (dYX_ca,), prep, backend, YX_ca, (dR_ca,))
     end
 
-    _copy_component_outputs_accum!(getdata(dYX_ca), doutputs, comp.state_copy_prep)
-    _copy_component_outputs_accum!(getdata(dYX_ca), dinputs, comp.input_copy_prep)
+    _copy_component_outputs_accum!(view(getdata(dYX_ca), comp.Y_range), doutputs, comp.state_copy_prep)
+    _copy_component_outputs_accum!(view(getdata(dYX_ca), comp.X_range), dinputs, comp.input_copy_prep)
 
     return nothing
 end

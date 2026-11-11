@@ -104,6 +104,8 @@ Derivative preparation data for [`DenseFlavor`](@ref) components.
 # Fields
 * `J_ca::TJ`: dense `ComponentMatrix` storing the Jacobian of outputs w.r.t. inputs
 * `prep::TPrep`: `DifferentiationInterface.JacobianPrep`, or `nothing` if prep was skipped
+* `partial_copy_prep::DensePartialCopyPrep`: prepared metadata for scattering the
+  sub-Jacobians of `J_ca` into the string-tuple-keyed partials dictionary
 """
 struct DenseDerivPrep{TJ,TPrep}
     J_ca::TJ
@@ -259,6 +261,8 @@ An explicit AD component parameterized by derivative flavor `F`.
 * `copy_shape_dict`: `Dict{Symbol,Symbol}` for shape-copying
 * `X_ca_cs`: `ComplexF64` copy of `X_ca` (for Python-side complex-step)
 * `Y_ca_cs`: `ComplexF64` copy of `Y_ca` (for Python-side complex-step); `nothing` for out-of-place
+* `input_copy_prep::InputCopyPrep`: prepared metadata for copying the `inputs` dict into `X_ca`
+* `output_copy_prep::InputCopyPrep`: prepared metadata for copying `Y_ca` into the `outputs` dict
 """
 struct ADExplicitComp{F<:DerivativeFlavor, InPlace, TAD, TADRev, TFunc, TParams, TCompute, TX, TY, TDP, TXCS, TYCS} <: AbstractExplicitComp
     ad_backend::TAD
@@ -509,6 +513,9 @@ where `YX` is the concatenated output (state)+input `ComponentVector` and `R` is
 * `X_range::TXR`: range of indices for inputs within `YX_ca`
 * `Y_axes::TYAx`: axes information for outputs (states)
 * `X_axes::TXAx`: axes information for inputs
+* `state_copy_prep::InputCopyPrep`: prepared metadata for copying the `outputs` dict into (or out of) the states part of `YX_ca`
+* `input_copy_prep::InputCopyPrep`: prepared metadata for copying the `inputs` dict into (or out of) the inputs part of `YX_ca`
+* `residual_copy_prep::InputCopyPrep`: prepared metadata for copying the `residuals` dict into (or out of) `R_ca`
 """
 struct ADImplicitComp{F<:DerivativeFlavor,InPlace,TAD,TADRev,TFunc,TParams,TGuessFunc,TCompute,TYX,TR,TYXCS,TRCS,TDP,TUD,TTD,TSBC,TCS,TYR,TXR,TYAx,TXAx} <: AbstractImplicitComp
     ad_backend::TAD

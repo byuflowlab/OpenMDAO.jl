@@ -369,7 +369,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeForwardFlavor, false}, inpu
         deriv_prep, X_ca_cs = _get_matrix_free_forward_prep_out_of_place(ad_backend, f, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeForwardFlavor, false}(ad_backend, self.func, self.params, f, X_ca, nothing, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
     end
     return self
 end
@@ -387,7 +387,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeReverseFlavor, false}, inpu
         deriv_prep, X_ca_cs = _get_matrix_free_reverse_prep_out_of_place(ad_backend, f, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeReverseFlavor, false}(ad_backend, self.func, self.params, f, X_ca, nothing, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
     end
     return self
 end
@@ -426,7 +426,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeForwardReverseFlavor, false
         deriv_prep, X_ca_cs = _get_matrix_free_forward_reverse_prep_out_of_place(backend_fwd, backend_rev, f, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeForwardReverseFlavor, false}(backend_fwd, self.func, self.params, f, X_ca, nothing, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca));
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(Y_ca);
             ad_backend_rev=backend_rev)
     end
     return self
