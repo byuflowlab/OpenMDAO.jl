@@ -85,7 +85,7 @@ function ADExplicitComp(::DenseFlavor, ad_backend::TAD, f!, Y_ca::ComponentVecto
     end
 
     return ADExplicitComp{DenseFlavor, true}(ad_backend, f!, params, compute_adable, X_ca, Y_ca, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
 end
 
 """
@@ -123,7 +123,7 @@ function ADExplicitComp(::DenseFlavor, ad_backend::TAD, f, X_ca::ComponentVector
 
     Y_ca_cs = nothing
     return ADExplicitComp{DenseFlavor, false}(ad_backend, f, params, compute_adable, X_ca, Y_ca, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
 end
 
 # `get_jacobian_ca` for `DenseFlavor` is defined in `abstract_ad.jl`.
@@ -152,7 +152,7 @@ function _update_prep(self::ADExplicitComp{DenseFlavor, true}, input_sizes::Abst
         copy_shape_dict = self.copy_shape_dict
 
         self = ADExplicitComp{DenseFlavor, true}(ad_backend, self.func, self.params, compute_adable, X_ca, Y_ca, deriv_prep,
-            units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+            units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
     end
 
     return self
@@ -177,7 +177,7 @@ function _update_prep(self::ADExplicitComp{DenseFlavor, false}, input_sizes::Abs
         copy_shape_dict = self.copy_shape_dict
 
         self = ADExplicitComp{DenseFlavor, false}(ad_backend, self.func, self.params, compute_adable, X_ca, nothing, deriv_prep,
-            units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, nothing)
+            units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
     end
 
     return self
@@ -201,10 +201,7 @@ end
 function OpenMDAOCore.compute_partials!(self::ADExplicitComp{DenseFlavor, true}, inputs, partials)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     # Get the Jacobian.
     f! = get_callback(self)
@@ -216,27 +213,7 @@ function OpenMDAOCore.compute_partials!(self::ADExplicitComp{DenseFlavor, true},
     DifferentiationInterface.jacobian!(f!, Y_ca, J_ca, prep, ad_backend, X_ca)
 
     # Extract the derivatives from `J_ca` and put them in `partials`.
-    raxis, caxis = getaxes(J_ca)
-    for oname in keys(raxis)
-        for iname in keys(caxis)
-            # Grab the subjacobian we're interested in.
-            Jsub_in = @view(J_ca[oname, iname])
-
-            # OpenMDAO might not ask for all the partials, and so all combination of output/input keys might not be present in `partials`.
-            local Jsub_out
-            try
-                Jsub_out = partials[string(oname), string(iname)]
-            catch e
-                if !isa(e, KeyError)
-                    rethrow()
-                end
-            else
-                # Now we should be able to write the partials to the OpenMDAO Python array.
-                Jsub_out .= Jsub_in
-            end
-
-        end
-    end
+    _copy_dense_partials!(partials, J_ca, self.deriv_prep.partial_copy_prep)
 
     return nothing
 end
@@ -244,11 +221,7 @@ end
 function OpenMDAOCore.compute_partials!(self::ADExplicitComp{DenseFlavor, false}, inputs, partials)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    # println("DJI: in OpenMDAOCore.compute_partials!: keys(X_ca) = $(keys(X_ca))")
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     # Get the Jacobian.
     f = get_callback(self)
@@ -259,26 +232,7 @@ function OpenMDAOCore.compute_partials!(self::ADExplicitComp{DenseFlavor, false}
     DifferentiationInterface.jacobian!(f, J_ca, prep, ad_backend, X_ca)
 
     # Extract the derivatives from `J_ca` and put them in `partials`.
-    raxis, caxis = getaxes(J_ca)
-    for oname in keys(raxis)
-        for iname in keys(caxis)
-            # Grab the subjacobian we're interested in.
-            Jsub_in = @view(J_ca[oname, iname])
-            
-            # OpenMDAO might not ask for all the partials, and so all combination of output/input keys might not be present in `partials`.
-            local Jsub_out
-            try
-                Jsub_out = partials[string(oname), string(iname)]
-            catch e
-                if !isa(e, KeyError)
-                    rethrow()
-                end
-            else
-                # Now we should be able to write the partials to the OpenMDAO Python array.
-                Jsub_out .= Jsub_in
-            end
-        end
-    end
+    _copy_dense_partials!(partials, J_ca, self.deriv_prep.partial_copy_prep)
 
     return nothing
 end

@@ -65,6 +65,24 @@ end
 OpenMDAOCore._maybe_nonzeros(A::AbstractSparseArray) = nonzeros(A)
 OpenMDAOCore._maybe_nonzeros(A::Base.ReshapedArray{T,N,P}) where {T,N,P<:AbstractSparseArray} = nonzeros(parent(A))
 
+function OpenMDAOCore._assemble_sparse_partials!(partials, J_ca, blocks)
+    J_data = OpenMDAOCore.getdata(J_ca)
+    for block in blocks
+        local output
+        try
+            output = partials[block.output_name, block.input_name]
+        catch e
+            isa(e, KeyError) || rethrow()
+        else
+            output = OpenMDAOCore._maybe_nonzeros(output)
+            @inbounds for i in eachindex(block.rows, block.cols)
+                output[i] = J_data[block.rows[i], block.cols[i]]
+            end
+        end
+    end
+    return nothing
+end
+
 # PerturbedDenseSparsityDetector --------------------------------------------
 # The `PerturbedDenseSparsityDetector` *type* (struct, `show`, constructor) is
 # declared in the parent `OpenMDAOCore` module so it can be imported without the
@@ -341,7 +359,7 @@ function OpenMDAOCore.ADExplicitComp(::OpenMDAOCore.SparseFlavor, ad_backend::TA
     end
 
     return OpenMDAOCore.ADExplicitComp{OpenMDAOCore.SparseFlavor, true}(ad_backend, f!, params, compute_adable, X_ca, Y_ca, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, OpenMDAOCore.InputCopyPrep(X_ca), OpenMDAOCore.InputCopyPrep(Y_ca))
 end
 
 """
@@ -381,7 +399,7 @@ function OpenMDAOCore.ADExplicitComp(::OpenMDAOCore.SparseFlavor, ad_backend::TA
 
     Y_ca_cs = nothing
     return OpenMDAOCore.ADExplicitComp{OpenMDAOCore.SparseFlavor, false}(ad_backend, f, params, compute_adable, X_ca, Y_ca, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, OpenMDAOCore.InputCopyPrep(X_ca), OpenMDAOCore.InputCopyPrep(Y_ca))
 end
 
 function _get_sparse_prep_stuff(ad_backend, f!, Y_ca, X_ca)
@@ -442,7 +460,7 @@ function OpenMDAOCore._update_prep(self::OpenMDAOCore.ADExplicitComp{OpenMDAOCor
         deriv_prep, X_ca_cs, Y_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, Y_ca, X_ca)
 
         self = OpenMDAOCore.ADExplicitComp{OpenMDAOCore.SparseFlavor, true}(ad_backend, self.func, self.params, compute_adable, X_ca, Y_ca, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs)
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs, OpenMDAOCore.InputCopyPrep(X_ca), OpenMDAOCore.InputCopyPrep(Y_ca))
     end
 
     return self
@@ -461,7 +479,7 @@ function OpenMDAOCore._update_prep(self::OpenMDAOCore.ADExplicitComp{OpenMDAOCor
         deriv_prep, X_ca_cs = _get_sparse_prep_stuff(ad_backend, compute_adable, X_ca)
 
         self = OpenMDAOCore.ADExplicitComp{OpenMDAOCore.SparseFlavor, false}(ad_backend, self.func, self.params, compute_adable, X_ca, nothing, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing)
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, OpenMDAOCore.InputCopyPrep(X_ca), OpenMDAOCore.InputCopyPrep(compute_adable(X_ca)))
     end
 
     return self
@@ -518,10 +536,7 @@ end
 function OpenMDAOCore.compute_partials!(self::OpenMDAOCore.ADExplicitComp{OpenMDAOCore.SparseFlavor, true}, inputs, partials)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = OpenMDAOCore.get_input_ca(self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    OpenMDAOCore._copy_component_inputs!(OpenMDAOCore.getdata(X_ca), inputs, self.input_copy_prep)
 
     # Get the Jacobian.
     f! = OpenMDAOCore.get_callback(self)
@@ -533,39 +548,7 @@ function OpenMDAOCore.compute_partials!(self::OpenMDAOCore.ADExplicitComp{OpenMD
     DifferentiationInterface.jacobian!(f!, Y_ca, J_ca_sparse, prep, ad_backend, X_ca)
 
     # Extract the derivatives from `J_ca_sparse` and put them in `partials`.
-    raxis, caxis = getaxes(J_ca_sparse)
-    rcdict = OpenMDAOCore.get_rows_cols_dict(self)
-    for oname in keys(raxis)
-        for iname in keys(caxis)
-            # Grab the subjacobian we're interested in.
-            Jsub_in = @view(J_ca_sparse[oname, iname])
-
-            # Need to reshape the subjacobian to correspond to the rows and cols.
-            nrows = length(raxis[oname])
-            ncols = length(caxis[iname])
-            Jsub_in_reshape = reshape(Jsub_in, nrows, ncols)
-
-            # Grab the entry in partials we're interested in, and write the data we want to it.
-            rows, cols = rcdict[oname, iname]
-
-            # OpenMDAO might not ask for all the partials, and so all combination of output/input keys might not be present in `partials`.
-            local Jsub_out
-            try
-                Jsub_out = partials[string(oname), string(iname)]
-            catch e
-                if !isa(e, KeyError)
-                    rethrow()
-                end
-            else
-                # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
-                Jsub_out_vec = OpenMDAOCore._maybe_nonzeros(Jsub_out)
-
-                # Now write the non-zero entries to Jsub_out_vec.
-                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
-            end
-
-        end
-    end
+    OpenMDAOCore._assemble_sparse_partials!(partials, J_ca_sparse, self.deriv_prep.blocks)
 
     return nothing
 end
@@ -573,10 +556,7 @@ end
 function OpenMDAOCore.compute_partials!(self::OpenMDAOCore.ADExplicitComp{OpenMDAOCore.SparseFlavor, false}, inputs, partials)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = OpenMDAOCore.get_input_ca(self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    OpenMDAOCore._copy_component_inputs!(OpenMDAOCore.getdata(X_ca), inputs, self.input_copy_prep)
 
     # Get the Jacobian.
     f = OpenMDAOCore.get_callback(self)
@@ -587,38 +567,7 @@ function OpenMDAOCore.compute_partials!(self::OpenMDAOCore.ADExplicitComp{OpenMD
     DifferentiationInterface.jacobian!(f, J_ca_sparse, prep, ad_backend, X_ca)
 
     # Extract the derivatives from `J_ca_sparse` and put them in `partials`.
-    raxis, caxis = getaxes(J_ca_sparse)
-    rcdict = OpenMDAOCore.get_rows_cols_dict(self)
-    for oname in keys(raxis)
-        for iname in keys(caxis)
-            # Grab the subjacobian we're interested in.
-            Jsub_in = @view(J_ca_sparse[oname, iname])
-
-            # Need to reshape the subjacobian to correspond to the rows and cols.
-            nrows = length(raxis[oname])
-            ncols = length(caxis[iname])
-            Jsub_in_reshape = reshape(Jsub_in, nrows, ncols)
-
-            # Grab the entry in partials we're interested in, and write the data we want to it.
-            rows, cols = rcdict[oname, iname]
-
-            # OpenMDAO might not ask for all the partials, and so all combination of output/input keys might not be present in `partials`.
-            local Jsub_out
-            try
-                Jsub_out = partials[string(oname), string(iname)]
-            catch e
-                if !isa(e, KeyError)
-                    rethrow()
-                end
-            else
-                # This will get a vector of the non-zero entries of the sparse sub-Jacobian if it's actually sparse, or just a reference to the flattened vector of the dense sub-Jacobian otherwise.
-                Jsub_out_vec = OpenMDAOCore._maybe_nonzeros(Jsub_out)
-
-                # Now write the non-zero entries to Jsub_out_vec.
-                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
-            end
-        end
-    end
+    OpenMDAOCore._assemble_sparse_partials!(partials, J_ca_sparse, self.deriv_prep.blocks)
 
     return nothing
 end
@@ -671,7 +620,7 @@ function OpenMDAOCore.ADImplicitComp(::OpenMDAOCore.SparseFlavor, ::Val{true}, a
         YX_ca_cs = R_ca_cs = nothing
     end
 
-    return OpenMDAOCore.ADImplicitComp{OpenMDAOCore.SparseFlavor, true}(ad_backend, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=guess_func)
+    return OpenMDAOCore.ADImplicitComp{OpenMDAOCore.SparseFlavor, true}(ad_backend, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, OpenMDAOCore.InputCopyPrep(Y_ca), OpenMDAOCore.InputCopyPrep(X_ca), R_ca === nothing ? OpenMDAOCore.InputCopyPrep(Y_ca) : OpenMDAOCore.InputCopyPrep(R_ca); guess_func=guess_func)
 end
 
 """
@@ -707,7 +656,7 @@ function OpenMDAOCore.ADImplicitComp(::OpenMDAOCore.SparseFlavor, ::Val{false}, 
     R_ca = nothing
     R_ca_cs = nothing
 
-    return OpenMDAOCore.ADImplicitComp{OpenMDAOCore.SparseFlavor, false}(ad_backend, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=guess_func)
+    return OpenMDAOCore.ADImplicitComp{OpenMDAOCore.SparseFlavor, false}(ad_backend, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, OpenMDAOCore.InputCopyPrep(Y_ca), OpenMDAOCore.InputCopyPrep(X_ca), R_ca === nothing ? OpenMDAOCore.InputCopyPrep(Y_ca) : OpenMDAOCore.InputCopyPrep(R_ca); guess_func=guess_func)
 end
 
 # Compute dR/d(Y, X) with a single sparse `jacobian!` call, then scatter the
@@ -731,7 +680,7 @@ function OpenMDAOCore._update_prep(comp::OpenMDAOCore.ADImplicitComp{OpenMDAOCor
         deriv_prep, YX_ca_cs, R_ca_cs = _get_sparse_prep_stuff(OpenMDAOCore.get_backend(comp), compute_adable, R_ca, YX_ca)
 
         comp = OpenMDAOCore.ADImplicitComp{OpenMDAOCore.SparseFlavor, true}(OpenMDAOCore.get_backend(comp), compute_adable, comp.func, comp.params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, OpenMDAOCore.InputCopyPrep(Y_ca), OpenMDAOCore.InputCopyPrep(X_ca), R_ca === nothing ? OpenMDAOCore.InputCopyPrep(Y_ca) : OpenMDAOCore.InputCopyPrep(R_ca); guess_func=comp.guess_func)
     end
 
     return comp
@@ -739,14 +688,8 @@ end
 
 function OpenMDAOCore.linearize!(comp::OpenMDAOCore.ADImplicitComp{OpenMDAOCore.SparseFlavor, true}, inputs, outputs, partials)
     YX_ca = OpenMDAOCore.get_combined_ca(comp)
-    okeys = OpenMDAOCore.output_keys(comp)
-    ikeys = OpenMDAOCore.input_keys(comp)
-    for uname in okeys
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in ikeys
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    OpenMDAOCore._copy_component_inputs!(view(OpenMDAOCore.getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    OpenMDAOCore._copy_component_inputs!(view(OpenMDAOCore.getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     f! = OpenMDAOCore.get_callback(comp)
     R_ca = OpenMDAOCore.get_residual_ca(comp)
@@ -756,49 +699,7 @@ function OpenMDAOCore.linearize!(comp::OpenMDAOCore.ADImplicitComp{OpenMDAOCore.
     J_ca === nothing && throw(_prep_not_created_error(comp, "linearize!"))
     DifferentiationInterface.jacobian!(f!, R_ca, J_ca, prep, ad_backend, YX_ca)
 
-    rcdict = OpenMDAOCore.get_rows_cols_dict(comp)
-    R_axis, YX_axis = getaxes(J_ca)
-    for rname in keys(R_axis)
-        rstr = string(rname)
-
-        # dR/dY block
-        for uname in okeys
-            ustr = string(uname)
-            Jsub_in = @view(J_ca[rname, uname])
-            nrows = length(R_axis[rname])
-            ncols = length(YX_axis[uname])
-            Jsub_in_reshape = reshape(Jsub_in, nrows, ncols)
-            rows, cols = rcdict[rname, uname]
-            local Jsub_out
-            try
-                Jsub_out = partials[rstr, ustr]
-            catch e
-                isa(e, KeyError) || rethrow()
-            else
-                Jsub_out_vec = OpenMDAOCore._maybe_nonzeros(Jsub_out)
-                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
-            end
-        end
-
-        # dR/dX block
-        for iname in ikeys
-            istr = string(iname)
-            Jsub_in = @view(J_ca[rname, iname])
-            nrows = length(R_axis[rname])
-            ncols = length(YX_axis[iname])
-            Jsub_in_reshape = reshape(Jsub_in, nrows, ncols)
-            rows, cols = rcdict[rname, iname]
-            local Jsub_out
-            try
-                Jsub_out = partials[rstr, istr]
-            catch e
-                isa(e, KeyError) || rethrow()
-            else
-                Jsub_out_vec = OpenMDAOCore._maybe_nonzeros(Jsub_out)
-                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
-            end
-        end
-    end
+    OpenMDAOCore._assemble_sparse_partials!(partials, J_ca, comp.deriv_prep.blocks)
 
     return nothing
 end
@@ -824,7 +725,7 @@ function OpenMDAOCore._update_prep(comp::OpenMDAOCore.ADImplicitComp{OpenMDAOCor
         R_ca_cs = nothing
 
         comp = OpenMDAOCore.ADImplicitComp{OpenMDAOCore.SparseFlavor, false}(OpenMDAOCore.get_backend(comp), compute_adable, comp.func, comp.params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, OpenMDAOCore.InputCopyPrep(Y_ca), OpenMDAOCore.InputCopyPrep(X_ca), R_ca === nothing ? OpenMDAOCore.InputCopyPrep(Y_ca) : OpenMDAOCore.InputCopyPrep(R_ca); guess_func=comp.guess_func)
     end
 
     return comp
@@ -832,14 +733,8 @@ end
 
 function OpenMDAOCore.linearize!(comp::OpenMDAOCore.ADImplicitComp{OpenMDAOCore.SparseFlavor, false}, inputs, outputs, partials)
     YX_ca = OpenMDAOCore.get_combined_ca(comp)
-    okeys = OpenMDAOCore.output_keys(comp)
-    ikeys = OpenMDAOCore.input_keys(comp)
-    for uname in okeys
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in ikeys
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    OpenMDAOCore._copy_component_inputs!(view(OpenMDAOCore.getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    OpenMDAOCore._copy_component_inputs!(view(OpenMDAOCore.getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     f = OpenMDAOCore.get_callback(comp)
     J_ca = OpenMDAOCore.get_jacobian_ca(comp)
@@ -848,49 +743,7 @@ function OpenMDAOCore.linearize!(comp::OpenMDAOCore.ADImplicitComp{OpenMDAOCore.
     J_ca === nothing && throw(_prep_not_created_error(comp, "linearize!"))
     DifferentiationInterface.jacobian!(f, J_ca, prep, ad_backend, YX_ca)
 
-    rcdict = OpenMDAOCore.get_rows_cols_dict(comp)
-    R_axis, YX_axis = getaxes(J_ca)
-    for rname in keys(R_axis)
-        rstr = string(rname)
-
-        # dR/dY block
-        for uname in okeys
-            ustr = string(uname)
-            Jsub_in = @view(J_ca[rname, uname])
-            nrows = length(R_axis[rname])
-            ncols = length(YX_axis[uname])
-            Jsub_in_reshape = reshape(Jsub_in, nrows, ncols)
-            rows, cols = rcdict[rname, uname]
-            local Jsub_out
-            try
-                Jsub_out = partials[rstr, ustr]
-            catch e
-                isa(e, KeyError) || rethrow()
-            else
-                Jsub_out_vec = OpenMDAOCore._maybe_nonzeros(Jsub_out)
-                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
-            end
-        end
-
-        # dR/dX block
-        for iname in ikeys
-            istr = string(iname)
-            Jsub_in = @view(J_ca[rname, iname])
-            nrows = length(R_axis[rname])
-            ncols = length(YX_axis[iname])
-            Jsub_in_reshape = reshape(Jsub_in, nrows, ncols)
-            rows, cols = rcdict[rname, iname]
-            local Jsub_out
-            try
-                Jsub_out = partials[rstr, istr]
-            catch e
-                isa(e, KeyError) || rethrow()
-            else
-                Jsub_out_vec = OpenMDAOCore._maybe_nonzeros(Jsub_out)
-                Jsub_out_vec .= getindex.(Ref(Jsub_in_reshape), rows, cols)
-            end
-        end
-    end
+    OpenMDAOCore._assemble_sparse_partials!(partials, J_ca, comp.deriv_prep.blocks)
 
     return nothing
 end

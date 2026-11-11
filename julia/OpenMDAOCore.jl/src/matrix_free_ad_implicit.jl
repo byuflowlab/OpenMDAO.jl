@@ -45,7 +45,7 @@ function ADImplicitComp(::MatrixFreeForwardFlavor, ::Val{true}, ad_backend::TAD,
         deriv_prep = MatrixFreeDerivPrep(dYX_ca, dR_ca, nothing)
     end
 
-    return ADImplicitComp{MatrixFreeForwardFlavor, true}(ad_backend, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=guess_func)
+    return ADImplicitComp{MatrixFreeForwardFlavor, true}(ad_backend, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=guess_func)
 end
 
 """
@@ -84,7 +84,7 @@ function ADImplicitComp(::MatrixFreeForwardFlavor, ::Val{false}, ad_backend::TAD
 
     R_ca = R_ca_cs = nothing
 
-    return ADImplicitComp{MatrixFreeForwardFlavor, false}(ad_backend, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=guess_func)
+    return ADImplicitComp{MatrixFreeForwardFlavor, false}(ad_backend, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=guess_func)
 end
 
 """
@@ -123,7 +123,7 @@ function ADImplicitComp(::MatrixFreeReverseFlavor, ::Val{true}, ad_backend::TAD,
         deriv_prep = MatrixFreeDerivPrep(dYX_ca, dR_ca, nothing)
     end
 
-    return ADImplicitComp{MatrixFreeReverseFlavor, true}(ad_backend, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=guess_func)
+    return ADImplicitComp{MatrixFreeReverseFlavor, true}(ad_backend, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=guess_func)
 end
 
 """
@@ -162,7 +162,7 @@ function ADImplicitComp(::MatrixFreeReverseFlavor, ::Val{false}, ad_backend::TAD
 
     R_ca = R_ca_cs = nothing
 
-    return ADImplicitComp{MatrixFreeReverseFlavor, false}(ad_backend, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=guess_func)
+    return ADImplicitComp{MatrixFreeReverseFlavor, false}(ad_backend, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=guess_func)
 end
 
 """
@@ -203,7 +203,7 @@ function ADImplicitComp(::MatrixFreeForwardReverseFlavor, ::Val{true}, ad_backen
         deriv_prep = MatrixFreeForwardReverseDerivPrep(dYX_ca, dR_ca, nothing, nothing)
     end
 
-    return ADImplicitComp{MatrixFreeForwardReverseFlavor, true}(ad_backend_fwd, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; ad_backend_rev=ad_backend_rev, guess_func=guess_func)
+    return ADImplicitComp{MatrixFreeForwardReverseFlavor, true}(ad_backend_fwd, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); ad_backend_rev=ad_backend_rev, guess_func=guess_func)
 end
 
 """
@@ -244,7 +244,7 @@ function ADImplicitComp(::MatrixFreeForwardReverseFlavor, ::Val{false}, ad_backe
 
     R_ca = R_ca_cs = nothing
 
-    return ADImplicitComp{MatrixFreeForwardReverseFlavor, false}(ad_backend_fwd, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; ad_backend_rev=ad_backend_rev, guess_func=guess_func)
+    return ADImplicitComp{MatrixFreeForwardReverseFlavor, false}(ad_backend_fwd, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); ad_backend_rev=ad_backend_rev, guess_func=guess_func)
 end
 
 function _update_prep(comp::ADImplicitComp{MatrixFreeForwardFlavor, true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
@@ -267,7 +267,7 @@ function _update_prep(comp::ADImplicitComp{MatrixFreeForwardFlavor, true}, input
         deriv_prep, YX_ca_cs, R_ca_cs = _get_matrix_free_forward_prep_in_place(ad_backend, compute_adable, R_ca, YX_ca, false)
 
         comp = ADImplicitComp{MatrixFreeForwardFlavor, true}(get_backend(comp), compute_adable, comp.func, comp.params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=comp.guess_func)
     end
 
     return comp
@@ -275,23 +275,13 @@ end
 
 function _compute_implicit_pushforward!(comp::ADImplicitComp{<:MatrixFreeFlavor, true}, inputs, outputs, dinputs, doutputs, dresids, prep, backend)
     YX_ca = get_combined_ca(comp)
-    for uname in output_keys(comp)
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in input_keys(comp)
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(view(getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(view(getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     # Assemble the YX tangent from doutputs (Y part) and dinputs (X part).
     dYX_ca = get_dcombined_ca(comp)
-    for uname in output_keys(comp)
-        ustr = string(uname)
-        @view(dYX_ca[uname]) .= doutputs[ustr]
-    end
-    for iname in input_keys(comp)
-        istr = string(iname)
-        @view(dYX_ca[iname]) .= dinputs[istr]
-    end
+    _copy_component_deriv_inputs!(view(getdata(dYX_ca), comp.Y_range), doutputs, comp.state_copy_prep)
+    _copy_component_deriv_inputs!(view(getdata(dYX_ca), comp.X_range), dinputs, comp.input_copy_prep)
 
     R_ca = get_residual_ca(comp)
     dR_ca = get_dresidual_ca(comp)
@@ -306,14 +296,7 @@ function _compute_implicit_pushforward!(comp::ADImplicitComp{<:MatrixFreeFlavor,
     DifferentiationInterface.pushforward!(compute_adable, R_ca, (dR_ca,), prep, backend, YX_ca, (dYX_ca,))
     end
 
-    for rname in keys(dR_ca)
-        rstr = string(rname)
-        if typeof(dresids[rstr]) <: AbstractArray
-            dresids[rstr] .+= @view(dR_ca[rname])
-        else
-            dresids[rstr] += only(dR_ca[rname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dR_ca), dresids, comp.residual_copy_prep)
 
     return nothing
 end
@@ -339,7 +322,7 @@ function _update_prep(comp::ADImplicitComp{MatrixFreeForwardFlavor, false}, inpu
         deriv_prep, YX_ca_cs = _get_matrix_free_forward_prep_out_of_place(ad_backend, compute_adable, similar(Y_ca), YX_ca, false)
 
         comp = ADImplicitComp{MatrixFreeForwardFlavor, false}(get_backend(comp), compute_adable, comp.func, comp.params, YX_ca, nothing, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), InputCopyPrep(Y_ca); guess_func=comp.guess_func)
     end
 
     return comp
@@ -347,22 +330,12 @@ end
 
 function _compute_implicit_pushforward!(comp::ADImplicitComp{<:MatrixFreeFlavor, false}, inputs, outputs, dinputs, doutputs, dresids, prep, backend)
     YX_ca = get_combined_ca(comp)
-    for uname in output_keys(comp)
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in input_keys(comp)
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(view(getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(view(getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     dYX_ca = get_dcombined_ca(comp)
-    for uname in output_keys(comp)
-        ustr = string(uname)
-        @view(dYX_ca[uname]) .= doutputs[ustr]
-    end
-    for iname in input_keys(comp)
-        istr = string(iname)
-        @view(dYX_ca[iname]) .= dinputs[istr]
-    end
+    _copy_component_deriv_inputs!(view(getdata(dYX_ca), comp.Y_range), doutputs, comp.state_copy_prep)
+    _copy_component_deriv_inputs!(view(getdata(dYX_ca), comp.X_range), dinputs, comp.input_copy_prep)
 
     dR_ca = get_dresidual_ca(comp)
     compute_adable = get_callback(comp)
@@ -376,14 +349,7 @@ function _compute_implicit_pushforward!(comp::ADImplicitComp{<:MatrixFreeFlavor,
     DifferentiationInterface.pushforward!(compute_adable, (dR_ca,), prep, backend, YX_ca, (dYX_ca,))
     end
 
-    for rname in keys(dR_ca)
-        rstr = string(rname)
-        if typeof(dresids[rstr]) <: AbstractArray
-            dresids[rstr] .+= @view(dR_ca[rname])
-        else
-            dresids[rstr] += only(dR_ca[rname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dR_ca), dresids, comp.residual_copy_prep)
 
     return nothing
 end
@@ -408,7 +374,7 @@ function _update_prep(comp::ADImplicitComp{MatrixFreeReverseFlavor, true}, input
         deriv_prep, YX_ca_cs, R_ca_cs = _get_matrix_free_reverse_prep_in_place(ad_backend, compute_adable, R_ca, YX_ca, false)
 
         comp = ADImplicitComp{MatrixFreeReverseFlavor, true}(get_backend(comp), compute_adable, comp.func, comp.params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=comp.guess_func)
     end
 
     return comp
@@ -416,19 +382,12 @@ end
 
 function _compute_implicit_pullback!(comp::ADImplicitComp{<:MatrixFreeFlavor, true}, inputs, outputs, dinputs, doutputs, dresids, prep, backend)
     YX_ca = get_combined_ca(comp)
-    for uname in output_keys(comp)
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in input_keys(comp)
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(view(getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(view(getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     # Load the residual cotangent seed from dresids.
     dR_ca = get_dresidual_ca(comp)
-    for rname in keys(dR_ca)
-        rstr = string(rname)
-        @view(dR_ca[rname]) .= dresids[rstr]
-    end
+    _copy_component_inputs!(getdata(dR_ca), dresids, comp.residual_copy_prep)
 
     R_ca = get_residual_ca(comp)
     dYX_ca = get_dcombined_ca(comp)
@@ -444,22 +403,8 @@ function _compute_implicit_pullback!(comp::ADImplicitComp{<:MatrixFreeFlavor, tr
     end
 
     # Scatter dYX cotangents back: Y part → doutputs, X part → dinputs.
-    for uname in output_keys(comp)
-        ustr = string(uname)
-        if typeof(doutputs[ustr]) <: AbstractArray
-            doutputs[ustr] .+= @view(dYX_ca[uname])
-        else
-            doutputs[ustr] += only(dYX_ca[uname])
-        end
-    end
-    for iname in input_keys(comp)
-        istr = string(iname)
-        if typeof(dinputs[istr]) <: AbstractArray
-            dinputs[istr] .+= @view(dYX_ca[iname])
-        else
-            dinputs[istr] += only(dYX_ca[iname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dYX_ca), doutputs, comp.state_copy_prep)
+    _copy_component_outputs_accum!(getdata(dYX_ca), dinputs, comp.input_copy_prep)
 
     return nothing
 end
@@ -485,7 +430,7 @@ function _update_prep(comp::ADImplicitComp{MatrixFreeReverseFlavor, false}, inpu
         deriv_prep, YX_ca_cs = _get_matrix_free_reverse_prep_out_of_place(ad_backend, compute_adable, similar(Y_ca), YX_ca, false)
 
         comp = ADImplicitComp{MatrixFreeReverseFlavor, false}(get_backend(comp), compute_adable, comp.func, comp.params, YX_ca, nothing, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), InputCopyPrep(Y_ca); guess_func=comp.guess_func)
     end
 
     return comp
@@ -512,7 +457,7 @@ function _update_prep(comp::ADImplicitComp{MatrixFreeForwardReverseFlavor, true}
         deriv_prep, YX_ca_cs, R_ca_cs = _get_matrix_free_forward_reverse_prep_in_place(backend_fwd, backend_rev, compute_adable, R_ca, YX_ca, false)
 
         comp = ADImplicitComp{MatrixFreeForwardReverseFlavor, true}(backend_fwd, compute_adable, comp.func, comp.params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; ad_backend_rev=backend_rev, guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); ad_backend_rev=backend_rev, guess_func=comp.guess_func)
     end
 
     return comp
@@ -540,7 +485,7 @@ function _update_prep(comp::ADImplicitComp{MatrixFreeForwardReverseFlavor, false
         deriv_prep, YX_ca_cs = _get_matrix_free_forward_reverse_prep_out_of_place(backend_fwd, backend_rev, compute_adable, similar(Y_ca), YX_ca, false)
 
         comp = ADImplicitComp{MatrixFreeForwardReverseFlavor, false}(backend_fwd, compute_adable, comp.func, comp.params, YX_ca, nothing, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; ad_backend_rev=backend_rev, guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), InputCopyPrep(Y_ca); ad_backend_rev=backend_rev, guess_func=comp.guess_func)
     end
 
     return comp
@@ -548,18 +493,11 @@ end
 
 function _compute_implicit_pullback!(comp::ADImplicitComp{<:MatrixFreeFlavor, false}, inputs, outputs, dinputs, doutputs, dresids, prep, backend)
     YX_ca = get_combined_ca(comp)
-    for uname in output_keys(comp)
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in input_keys(comp)
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(view(getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(view(getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     dR_ca = get_dresidual_ca(comp)
-    for rname in keys(dR_ca)
-        rstr = string(rname)
-        @view(dR_ca[rname]) .= dresids[rstr]
-    end
+    _copy_component_inputs!(getdata(dR_ca), dresids, comp.residual_copy_prep)
 
     dYX_ca = get_dcombined_ca(comp)
     compute_adable = get_callback(comp)
@@ -573,22 +511,8 @@ function _compute_implicit_pullback!(comp::ADImplicitComp{<:MatrixFreeFlavor, fa
     DifferentiationInterface.pullback!(compute_adable, (dYX_ca,), prep, backend, YX_ca, (dR_ca,))
     end
 
-    for uname in output_keys(comp)
-        ustr = string(uname)
-        if typeof(doutputs[ustr]) <: AbstractArray
-            doutputs[ustr] .+= @view(dYX_ca[uname])
-        else
-            doutputs[ustr] += only(dYX_ca[uname])
-        end
-    end
-    for iname in input_keys(comp)
-        istr = string(iname)
-        if typeof(dinputs[istr]) <: AbstractArray
-            dinputs[istr] .+= @view(dYX_ca[iname])
-        else
-            dinputs[istr] += only(dYX_ca[iname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dYX_ca), doutputs, comp.state_copy_prep)
+    _copy_component_outputs_accum!(getdata(dYX_ca), dinputs, comp.input_copy_prep)
 
     return nothing
 end

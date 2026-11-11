@@ -145,6 +145,268 @@ function rcdict2strdict(::Type{T}, rcdict) where {T}
 end
 rcdict2strdict(rcdict) = rcdict2strdict(Float64, rcdict)
 
+# ---------------------------------------------------------------------------
+# Prepared copying between `Dict`s and `ComponentVector`/`ComponentMatrix`
+# storage (ported from OpenMDAO4Core.jl).
+#
+# The copy "preps" hold the per-component names and flat index ranges of a
+# `ComponentVector` (or `ComponentMatrix`), computed once at component-creation
+# time. The copy functions then operate directly on the flat data via
+# `getdata`, avoiding per-call `ComponentArray` axis lookups, view
+# construction, and `string` conversions.
+# ---------------------------------------------------------------------------
+
+"""
+    InputCopyPrep
+
+Prepared metadata for copying string-keyed component variables into the flat
+storage of a `ComponentVector` (or out of it).
+"""
+struct InputCopyPrep
+    input_names::Vector{String}
+    input_ranges::Vector{UnitRange{Int}}
+end
+
+function _component_ranges(ca::ComponentVector)
+    axis = only(getaxes(ca))
+    names = String[]
+    ranges = UnitRange{Int}[]
+    for name in keys(axis)
+        indices = axis[name]
+        range = indices isa Integer ? (indices:indices) : getfield(indices, :idx)
+        push!(names, string(name))
+        push!(ranges, first(range):last(range))
+    end
+    return names, ranges
+end
+
+InputCopyPrep(ca::ComponentVector) = InputCopyPrep(_component_ranges(ca)...)
+
+"""
+    _copy_component_inputs!(data, inputs, names, ranges)
+
+Copy dictionary-backed component variables into flat `ComponentVector` storage.
+The source and destination fields are expected to have the same logical shape;
+copying by Cartesian index preserves that shape even when their storage layouts
+differ.
+"""
+function _copy_component_inputs!(data, inputs, names, ranges)
+    for (name, range) in zip(names, ranges)
+        source = inputs[name]
+        destination = view(data, range)
+        if source isa AbstractArray
+            destination_indices = LinearIndices(size(source))
+            @inbounds for I in CartesianIndices(source)
+                destination[destination_indices[I]] = source[I]
+            end
+        else
+            destination[1] = source
+        end
+    end
+    return nothing
+end
+
+_copy_component_inputs!(data, inputs, prep::InputCopyPrep) =
+    _copy_component_inputs!(data, inputs, prep.input_names, prep.input_ranges)
+
+"""Copy positionally ordered component variables into prepared flat ranges."""
+function _copy_component_inputs!(data, inputs::Tuple, ranges)
+    for (source, range) in zip(inputs, ranges)
+        destination = view(data, range)
+        if source isa AbstractArray
+            destination_indices = LinearIndices(size(source))
+            @inbounds for I in CartesianIndices(source)
+                destination[destination_indices[I]] = source[I]
+            end
+        else
+            destination[1] = source
+        end
+    end
+    return nothing
+end
+
+"""
+    _copy_component_deriv_inputs!(data, d_inputs, names, ranges)
+
+Copy dictionary-backed derivative (seed) variables into flat `ComponentVector`
+storage, filling any variable that is missing from the dictionary with zeros.
+Copying is by Cartesian index so that differing storage layouts are handled.
+"""
+function _copy_component_deriv_inputs!(data, d_inputs, names, ranges)
+    for (name, range) in zip(names, ranges)
+        destination = view(data, range)
+        if name in keys(d_inputs)
+            source = d_inputs[name]
+            if source isa AbstractArray
+                destination_indices = LinearIndices(size(source))
+                @inbounds for I in CartesianIndices(source)
+                    destination[destination_indices[I]] = source[I]
+                end
+            else
+                destination[1] = source
+            end
+        else
+            fill!(destination, zero(eltype(destination)))
+        end
+    end
+    return nothing
+end
+
+_copy_component_deriv_inputs!(data, d_inputs, prep::InputCopyPrep) =
+    _copy_component_deriv_inputs!(data, d_inputs, prep.input_names, prep.input_ranges)
+
+"""
+    _copy_component_outputs!(data, outputs, names, ranges)
+
+Copy flat component data into dictionary-backed output arrays or scalars. The
+logical shape is taken from each destination dictionary entry, so source and
+destination storage layouts may differ.
+"""
+function _copy_component_outputs!(data, outputs, names, ranges)
+    for (name, range) in zip(names, ranges)
+        source = view(data, range)
+        destination = outputs[name]
+        if destination isa AbstractArray
+            source_indices = LinearIndices(size(destination))
+            @inbounds for I in CartesianIndices(destination)
+                destination[I] = source[source_indices[I]]
+            end
+        else
+            outputs[name] = only(source)
+        end
+    end
+    return nothing
+end
+
+_copy_component_outputs!(data, outputs, prep::InputCopyPrep) =
+    _copy_component_outputs!(data, outputs, prep.input_names, prep.input_ranges)
+
+"""
+    _copy_component_outputs_accum!(data, outputs, names, ranges)
+
+Accumulate flat component data into dictionary-backed output arrays or scalars.
+The logical shape is taken from each destination dictionary entry, so source and
+destination storage layouts may differ.
+"""
+function _copy_component_outputs_accum!(data, outputs, names, ranges)
+    for (name, range) in zip(names, ranges)
+        source = view(data, range)
+        destination = outputs[name]
+        if destination isa AbstractArray
+            source_indices = LinearIndices(size(destination))
+            @inbounds for I in CartesianIndices(destination)
+                destination[I] += source[source_indices[I]]
+            end
+        else
+            outputs[name] += only(source)
+        end
+    end
+    return nothing
+end
+
+_copy_component_outputs_accum!(data, outputs, prep::InputCopyPrep) =
+    _copy_component_outputs_accum!(data, outputs, prep.input_names, prep.input_ranges)
+
+"""
+    DensePartialCopyPrep
+
+Prepared metadata for copying the sub-Jacobians of a dense
+`ComponentMatrix`-backed Jacobian into a string-tuple-keyed partials
+dictionary.
+"""
+struct DensePartialCopyPrep
+    output_names::Vector{String}
+    input_names::Vector{String}
+    output_ranges::Vector{UnitRange{Int}}
+    input_ranges::Vector{UnitRange{Int}}
+end
+
+function DensePartialCopyPrep(J_ca::ComponentMatrix)
+    row_axis, col_axis = getaxes(J_ca)
+    output_names = String[]
+    input_names = String[]
+    output_ranges = UnitRange{Int}[]
+    input_ranges = UnitRange{Int}[]
+    for output_name in keys(row_axis), input_name in keys(col_axis)
+        output_indices = row_axis[output_name]
+        input_indices = col_axis[input_name]
+        output_range = output_indices isa Integer ? (output_indices:output_indices) : getfield(output_indices, :idx)
+        input_range = input_indices isa Integer ? (input_indices:input_indices) : getfield(input_indices, :idx)
+        push!(output_names, string(output_name))
+        push!(input_names, string(input_name))
+        push!(output_ranges, first(output_range):last(output_range))
+        push!(input_ranges, first(input_range):last(input_range))
+    end
+    return DensePartialCopyPrep(output_names, input_names, output_ranges, input_ranges)
+end
+
+"""
+    _prepare_sparse_blocks(J_ca, rcdict)
+
+Build a `Vector{SparsePartialBlock}` from a sparse `ComponentMatrix`-backed
+Jacobian `J_ca` and a row/column index dictionary `rcdict` mapping each
+`(output_name, input_name)` sub-Jacobian to its 1-based nonzero row and column
+indices (relative to the sub-Jacobian). The block rows/cols are converted to
+global (whole-Jacobian) indices so that values can be scattered without any
+per-call sub-Jacobian lookups.
+"""
+function _prepare_sparse_blocks(J_ca::ComponentMatrix, rcdict)
+    row_axis, col_axis = getaxes(J_ca)
+    row_starts = Dict{Symbol,Int}()
+    col_starts = Dict{Symbol,Int}()
+    for name in keys(row_axis)
+        indices = row_axis[name]
+        range = indices isa Integer ? (indices:indices) : getfield(indices, :idx)
+        row_starts[name] = first(range)
+    end
+    for name in keys(col_axis)
+        indices = col_axis[name]
+        range = indices isa Integer ? (indices:indices) : getfield(indices, :idx)
+        col_starts[name] = first(range)
+    end
+
+    blocks = SparsePartialBlock[]
+    for ((output_name, input_name), (rows, cols)) in rcdict
+        global_rows = [row_starts[output_name] + row - 1 for row in rows]
+        global_cols = [col_starts[input_name] + col - 1 for col in cols]
+        push!(blocks, SparsePartialBlock(
+            string(output_name),
+            string(input_name),
+            global_rows,
+            global_cols,
+        ))
+    end
+    return blocks
+end
+
+# Sparse partials assembly: core declares the function; the sparse extension
+# (which knows about `SparseMatrixCSC` specifics) provides the implementation.
+function _assemble_sparse_partials! end
+
+"""
+    _copy_dense_partials!(partials, J_ca, prep)
+
+Scatter the sub-Jacobians of the dense `ComponentMatrix`-backed Jacobian
+`J_ca` into the string-tuple-keyed `partials` mapping, reshaping each
+sub-Jacobian as needed. Keys not present in `partials` (i.e., OpenMDAO did not
+ask for them) are skipped.
+"""
+function _copy_dense_partials!(partials, J_ca, prep::DensePartialCopyPrep)
+    J_data = getdata(J_ca)
+    for i in eachindex(prep.output_names)
+        local partial
+        try
+            partial = partials[prep.output_names[i], prep.input_names[i]]
+        catch e
+            isa(e, KeyError) || rethrow()
+        else
+            source = @view J_data[prep.output_ranges[i], prep.input_ranges[i]]
+            partial .= reshape(source, size(partial))
+        end
+    end
+    return nothing
+end
+
 # Dense fallback for `_maybe_nonzeros`: return the array unchanged.
 # Sparse-specific overloads (for `AbstractSparseArray` and reshaped sparse views)
 # are provided by the `OpenMDAOCoreSparseMatrixColoringsExt` extension.

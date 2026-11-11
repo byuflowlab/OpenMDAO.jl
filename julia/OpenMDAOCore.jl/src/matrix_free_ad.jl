@@ -151,7 +151,7 @@ function ADExplicitComp(::MatrixFreeForwardFlavor, ad_backend, f!, Y_ca::Compone
     end
 
     return ADExplicitComp{MatrixFreeForwardFlavor, true}(ad_backend, f!, params, compute_adable, X_ca, Y_ca, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
 end
 
 """
@@ -181,7 +181,7 @@ function ADExplicitComp(::MatrixFreeReverseFlavor, ad_backend, f!, Y_ca::Compone
     end
 
     return ADExplicitComp{MatrixFreeReverseFlavor, true}(ad_backend, f!, params, compute_adable, X_ca, Y_ca, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
 end
 
 """
@@ -213,7 +213,7 @@ function ADExplicitComp(::MatrixFreeForwardFlavor, ad_backend, f, X_ca::Componen
 
     Y_ca_cs = nothing
     return ADExplicitComp{MatrixFreeForwardFlavor, false}(ad_backend, f, params, compute_adable, X_ca, nothing, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
 end
 
 """
@@ -245,7 +245,7 @@ function ADExplicitComp(::MatrixFreeReverseFlavor, ad_backend, f, X_ca::Componen
 
     Y_ca_cs = nothing
     return ADExplicitComp{MatrixFreeReverseFlavor, false}(ad_backend, f, params, compute_adable, X_ca, nothing, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs)
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
 end
 
 """
@@ -277,7 +277,7 @@ function ADExplicitComp(::MatrixFreeForwardReverseFlavor, ad_backend_fwd, ad_bac
     end
 
     return ADExplicitComp{MatrixFreeForwardReverseFlavor, true}(ad_backend_fwd, f!, params, compute_adable, X_ca, Y_ca, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs;
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca);
         ad_backend_rev=ad_backend_rev)
 end
 
@@ -312,7 +312,7 @@ function ADExplicitComp(::MatrixFreeForwardReverseFlavor, ad_backend_fwd, ad_bac
 
     Y_ca_cs = nothing
     return ADExplicitComp{MatrixFreeForwardReverseFlavor, false}(ad_backend_fwd, f, params, compute_adable, X_ca, nothing, deriv_prep,
-        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs;
+        units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca));
         ad_backend_rev=ad_backend_rev)
 end
 
@@ -333,7 +333,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeForwardFlavor, true}, input
         deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_forward_prep_in_place(ad_backend, f!, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeForwardFlavor, true}(ad_backend, self.func, self.params, f!, X_ca, Y_ca, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs)
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
     end
     return self
 end
@@ -351,7 +351,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeReverseFlavor, true}, input
         deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_reverse_prep_in_place(ad_backend, f!, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeReverseFlavor, true}(ad_backend, self.func, self.params, f!, X_ca, Y_ca, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs)
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca))
     end
     return self
 end
@@ -369,7 +369,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeForwardFlavor, false}, inpu
         deriv_prep, X_ca_cs = _get_matrix_free_forward_prep_out_of_place(ad_backend, f, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeForwardFlavor, false}(ad_backend, self.func, self.params, f, X_ca, nothing, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing)
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
     end
     return self
 end
@@ -387,7 +387,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeReverseFlavor, false}, inpu
         deriv_prep, X_ca_cs = _get_matrix_free_reverse_prep_out_of_place(ad_backend, f, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeReverseFlavor, false}(ad_backend, self.func, self.params, f, X_ca, nothing, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing)
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca)))
     end
     return self
 end
@@ -406,7 +406,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeForwardReverseFlavor, true}
         deriv_prep, X_ca_cs, Y_ca_cs = _get_matrix_free_forward_reverse_prep_in_place(backend_fwd, backend_rev, f!, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeForwardReverseFlavor, true}(backend_fwd, self.func, self.params, f!, X_ca, Y_ca, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs;
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, Y_ca_cs, InputCopyPrep(X_ca), InputCopyPrep(Y_ca);
             ad_backend_rev=backend_rev)
     end
     return self
@@ -426,7 +426,7 @@ function _update_prep(self::ADExplicitComp{MatrixFreeForwardReverseFlavor, false
         deriv_prep, X_ca_cs = _get_matrix_free_forward_reverse_prep_out_of_place(backend_fwd, backend_rev, f, Y_ca, X_ca, false)
 
         self = ADExplicitComp{MatrixFreeForwardReverseFlavor, false}(backend_fwd, self.func, self.params, f, X_ca, nothing, deriv_prep,
-            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing;
+            self.units_dict, self.tags_dict, self.shape_by_conn_dict, self.copy_shape_dict, X_ca_cs, nothing, InputCopyPrep(X_ca), InputCopyPrep(compute_adable(X_ca));
             ad_backend_rev=backend_rev)
     end
     return self
@@ -453,21 +453,11 @@ end
 function _compute_pushforward!(self::ADExplicitComp{<:MatrixFreeFlavor, true}, inputs, d_inputs, d_outputs, prep, backend)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     # d_inputs has the derivative of each input wrt some upstream input.
     dX_ca = get_dinput_ca(self)
-    for iname in keys(dX_ca)
-        iname_str = string(iname)
-        if iname_str in keys(d_inputs)
-            @view(dX_ca[iname]) .= d_inputs[iname_str]
-        else
-            @view(dX_ca[iname]) .= zero(eltype(dX_ca))
-        end
-    end
+    _copy_component_deriv_inputs!(getdata(dX_ca), d_inputs, self.input_copy_prep)
 
     # The AD library will need the output component array to do the Jacobian-vector product.
     Y_ca = get_output_ca(self)
@@ -489,14 +479,7 @@ function _compute_pushforward!(self::ADExplicitComp{<:MatrixFreeFlavor, true}, i
     end
 
     # Now copy the output derivatives to `d_outputs`:
-    for oname in keys(dY_ca)
-        oname_str = string(oname)
-        if typeof(d_outputs[oname_str]) <: AbstractArray
-            d_outputs[oname_str] .+= @view(dY_ca[oname])
-        else
-            d_outputs[oname_str] += only(dY_ca[oname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dY_ca), d_outputs, self.output_copy_prep)
 
     return nothing
 end
@@ -504,20 +487,10 @@ end
 function _compute_pushforward!(self::ADExplicitComp{<:MatrixFreeFlavor, false}, inputs, d_inputs, d_outputs, prep, backend)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     dX_ca = get_dinput_ca(self)
-    for iname in keys(dX_ca)
-        iname_str = string(iname)
-        if iname_str in keys(d_inputs)
-            @view(dX_ca[iname]) .= d_inputs[iname_str]
-        else
-            @view(dX_ca[iname]) .= zero(eltype(dX_ca))
-        end
-    end
+    _copy_component_deriv_inputs!(getdata(dX_ca), d_inputs, self.input_copy_prep)
 
     # We'll write the result of the Jacobian-vector product to a different component array.
     dY_ca = get_doutput_ca(self)
@@ -536,14 +509,7 @@ function _compute_pushforward!(self::ADExplicitComp{<:MatrixFreeFlavor, false}, 
     end
 
     # Now copy the output derivatives to `d_outputs`:
-    for oname in keys(dY_ca)
-        oname_str = string(oname)
-        if typeof(d_outputs[oname_str]) <: AbstractArray
-            d_outputs[oname_str] .+= @view(dY_ca[oname])
-        else
-            d_outputs[oname_str] += only(dY_ca[oname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dY_ca), d_outputs, self.output_copy_prep)
 
     return nothing
 end
@@ -551,20 +517,10 @@ end
 function _compute_pullback!(self::ADExplicitComp{<:MatrixFreeFlavor, true}, inputs, d_inputs, d_outputs, prep, backend)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     dY_ca = get_doutput_ca(self)
-    for oname in keys(dY_ca)
-        oname_str = string(oname)
-        if oname_str in keys(d_outputs)
-            @view(dY_ca[oname]) .= d_outputs[oname_str]
-        else
-            @view(dY_ca[oname]) .= zero(eltype(dY_ca))
-        end
-    end
+    _copy_component_deriv_inputs!(getdata(dY_ca), d_outputs, self.output_copy_prep)
 
     # The AD library will need the output component array to do the Jacobian-vector product.
     Y_ca = get_output_ca(self)
@@ -586,14 +542,7 @@ function _compute_pullback!(self::ADExplicitComp{<:MatrixFreeFlavor, true}, inpu
     end
 
     # Now copy the input derivatives to `d_inputs`:
-    for iname in keys(dX_ca)
-        iname_str = string(iname)
-        if typeof(d_inputs[iname_str]) <: AbstractArray
-            d_inputs[iname_str] .+= @view(dX_ca[iname])
-        else
-            d_inputs[iname_str] += only(dX_ca[iname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dX_ca), d_inputs, self.input_copy_prep)
 
     return nothing
 end
@@ -601,20 +550,10 @@ end
 function _compute_pullback!(self::ADExplicitComp{<:MatrixFreeFlavor, false}, inputs, d_inputs, d_outputs, prep, backend)
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     dY_ca = get_doutput_ca(self)
-    for oname in keys(dY_ca)
-        oname_str = string(oname)
-        if oname_str in keys(d_outputs)
-            @view(dY_ca[oname]) .= d_outputs[oname_str]
-        else
-            @view(dY_ca[oname]) .= zero(eltype(dY_ca))
-        end
-    end
+    _copy_component_deriv_inputs!(getdata(dY_ca), d_outputs, self.output_copy_prep)
 
     # We'll write the result of the vector-Jacobian product to a different component array.
     dX_ca = get_dinput_ca(self)
@@ -633,14 +572,7 @@ function _compute_pullback!(self::ADExplicitComp{<:MatrixFreeFlavor, false}, inp
     end
 
     # Now copy the input derivatives to `d_inputs`:
-    for iname in keys(dX_ca)
-        iname_str = string(iname)
-        if typeof(d_inputs[iname_str]) <: AbstractArray
-            d_inputs[iname_str] .+= @view(dX_ca[iname])
-        else
-            d_inputs[iname_str] += only(dX_ca[iname])
-        end
-    end
+    _copy_component_outputs_accum!(getdata(dX_ca), d_inputs, self.input_copy_prep)
 
     return nothing
 end

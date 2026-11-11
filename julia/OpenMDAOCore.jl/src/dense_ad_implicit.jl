@@ -52,7 +52,7 @@ function ADImplicitComp(::DenseFlavor, ::Val{true}, ad_backend::TAD, f!, Y_ca::C
         YX_ca_cs = R_ca_cs = nothing
     end
 
-    return ADImplicitComp{DenseFlavor, true}(ad_backend, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=guess_func)
+    return ADImplicitComp{DenseFlavor, true}(ad_backend, compute_adable, f!, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=guess_func)
 end
 
 """
@@ -99,46 +99,7 @@ function ADImplicitComp(::DenseFlavor, ::Val{false}, ad_backend::TAD, f, Y_ca::C
     R_ca = nothing
     R_ca_cs = nothing
 
-    return ADImplicitComp{DenseFlavor, false}(ad_backend, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=guess_func)
-end
-
-# Scatter the entries of the dense (R, YX) Jacobian `J_ca` into the `partials`
-# dict, reshaping each sub-Jacobian as needed. Sub-Jacobian keys that are not
-# present in `partials` (i.e., OpenMDAO didn't ask for them) are skipped.
-function _scatter_implicit_partials!(J_ca, okeys, ikeys, partials)
-    R_axis, YX_axis = getaxes(J_ca)
-    for rname in keys(R_axis)
-        rstr = string(rname)
-
-        # dR/dY block
-        for uname in okeys
-            ustr = string(uname)
-            Jsub_in = @view(J_ca[rname, uname])
-            local Jsub_out
-            try
-                Jsub_out = partials[rstr, ustr]
-            catch e
-                isa(e, KeyError) || rethrow()
-            else
-                Jsub_out .= reshape(Jsub_in, size(Jsub_out))
-            end
-        end
-
-        # dR/dX block
-        for iname in ikeys
-            istr = string(iname)
-            Jsub_in = @view(J_ca[rname, iname])
-            local Jsub_out
-            try
-                Jsub_out = partials[rstr, istr]
-            catch e
-                isa(e, KeyError) || rethrow()
-            else
-                Jsub_out .= reshape(Jsub_in, size(Jsub_out))
-            end
-        end
-    end
-    return nothing
+    return ADImplicitComp{DenseFlavor, false}(ad_backend, compute_adable, f, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=guess_func)
 end
 
 function _update_prep(comp::ADImplicitComp{DenseFlavor, true}, input_sizes::AbstractDict{Symbol,<:Any}, output_sizes::AbstractDict{Symbol,<:Any})
@@ -160,7 +121,7 @@ function _update_prep(comp::ADImplicitComp{DenseFlavor, true}, input_sizes::Abst
         deriv_prep, YX_ca_cs, R_ca_cs = _get_dense_prep_stuff(get_backend(comp), compute_adable, R_ca, YX_ca)
 
         comp = ADImplicitComp{DenseFlavor, true}(get_backend(comp), compute_adable, comp.func, comp.params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=comp.guess_func)
     end
 
     return comp
@@ -187,7 +148,7 @@ function _update_prep(comp::ADImplicitComp{DenseFlavor, false}, input_sizes::Abs
         R_ca_cs = nothing
 
         comp = ADImplicitComp{DenseFlavor, false}(get_backend(comp), compute_adable, comp.func, comp.params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep,
-            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes; guess_func=comp.guess_func)
+            comp.units_dict, comp.tags_dict, comp.shape_by_conn_dict, comp.copy_shape_dict, Y_range, X_range, Y_axes, X_axes, InputCopyPrep(Y_ca), InputCopyPrep(X_ca), R_ca === nothing ? InputCopyPrep(Y_ca) : InputCopyPrep(R_ca); guess_func=comp.guess_func)
     end
 
     return comp
@@ -195,16 +156,9 @@ end
 
 function linearize!(comp::ADImplicitComp{DenseFlavor, true}, inputs, outputs, partials)
     YX_ca = get_combined_ca(comp)
-    okeys = output_keys(comp)
-    ikeys = input_keys(comp)
-    
     # Copy outputs (states) and inputs into the combined YX vector
-    for uname in okeys
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in ikeys
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(view(getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(view(getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     # Single jacobian! call for the full [dR/dY | dR/dX] block.
     f! = get_callback(comp)
@@ -220,22 +174,15 @@ function linearize!(comp::ADImplicitComp{DenseFlavor, true}, inputs, outputs, pa
         DifferentiationInterface.jacobian!(f!, R_ca, J_ca, prep, ad_backend, YX_ca)
     end
 
-    _scatter_implicit_partials!(J_ca, okeys, ikeys, partials)
+    _copy_dense_partials!(partials, J_ca, comp.deriv_prep.partial_copy_prep)
     return nothing
 end
 
 function linearize!(comp::ADImplicitComp{DenseFlavor, false}, inputs, outputs, partials)
     YX_ca = get_combined_ca(comp)
-    okeys = output_keys(comp)
-    ikeys = input_keys(comp)
-    
     # Copy outputs (states) and inputs into the combined YX vector
-    for uname in okeys
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in ikeys
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(view(getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(view(getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     # Single jacobian! call for the full [dR/dY | dR/dX] block.
     f = get_callback(comp)
@@ -250,6 +197,6 @@ function linearize!(comp::ADImplicitComp{DenseFlavor, false}, inputs, outputs, p
         DifferentiationInterface.jacobian!(f, J_ca, prep, ad_backend, YX_ca)
     end
 
-    _scatter_implicit_partials!(J_ca, okeys, ikeys, partials)
+    _copy_dense_partials!(partials, J_ca, comp.deriv_prep.partial_copy_prep)
     return nothing
 end

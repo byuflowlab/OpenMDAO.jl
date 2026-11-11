@@ -108,6 +108,18 @@ Derivative preparation data for [`DenseFlavor`](@ref) components.
 struct DenseDerivPrep{TJ,TPrep}
     J_ca::TJ
     prep::TPrep
+    partial_copy_prep::DensePartialCopyPrep
+end
+
+# Convenience constructor: builds the dense partials copy prep from `J_ca`.
+# For the skip variant (`J_ca === nothing`), an empty prep is stored.
+function DenseDerivPrep(J_ca, prep)
+    if J_ca === nothing
+        partial_copy_prep = DensePartialCopyPrep(String[], String[], UnitRange{Int}[], UnitRange{Int}[])
+    else
+        partial_copy_prep = DensePartialCopyPrep(J_ca)
+    end
+    return DenseDerivPrep(J_ca, prep, partial_copy_prep)
 end
 
 """
@@ -166,10 +178,46 @@ Derivative preparation data for [`SparseFlavor`](@ref) components.
   each `(output_name, input_name)` sub-Jacobian to its nonzero row and column
   indices (1-based)
 """
+struct SparsePartialBlock
+    output_name::String
+    input_name::String
+    rows::Vector{Int}
+    cols::Vector{Int}
+end
+
+"""
+    SparseDerivPrep{TJ, TPrep}
+
+Derivative preparation data for [`SparseFlavor`](@ref) components.
+
+# Fields
+* `J_ca_sparse::TJ`: sparse `ComponentMatrix` (SparseMatrixCSC-backed) storing the
+  Jacobian sparsity pattern and values
+* `prep::TPrep`: `DifferentiationInterface.JacobianPrep` with graph coloring
+  information
+* `rcdict`: `Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}` mapping
+  each `(output_name, input_name)` sub-Jacobian to its nonzero row and column
+  indices (1-based)
+* `blocks`: `Vector{SparsePartialBlock}` with the prepared global row/column
+  indices used to scatter the sparse sub-Jacobians into the partials dictionary
+"""
 struct SparseDerivPrep{TJ,TPrep}
     J_ca_sparse::TJ
     prep::TPrep
     rcdict::Dict{Tuple{Symbol,Symbol}, Tuple{Vector{Int},Vector{Int}}}
+    blocks::Vector{SparsePartialBlock}
+end
+
+# Convenience constructor: builds the sparse partials blocks from `J_ca_sparse`
+# and `rcdict`. For the skip variant (`J_ca_sparse === nothing`), an empty block
+# vector is stored.
+function SparseDerivPrep(J_ca_sparse, prep, rcdict)
+    if J_ca_sparse === nothing
+        blocks = SparsePartialBlock[]
+    else
+        blocks = _prepare_sparse_blocks(J_ca_sparse, rcdict)
+    end
+    return SparseDerivPrep(J_ca_sparse, prep, rcdict, blocks)
 end
 
 
@@ -227,11 +275,13 @@ struct ADExplicitComp{F<:DerivativeFlavor, InPlace, TAD, TADRev, TFunc, TParams,
     copy_shape_dict::Dict{Symbol,Symbol}
     X_ca_cs::TXCS
     Y_ca_cs::TYCS       # nothing for out-of-place
+    input_copy_prep::InputCopyPrep
+    output_copy_prep::InputCopyPrep
 
     function ADExplicitComp{F, InPlace}(
             ad_backend, func, params, compute_adable, X_ca, Y_ca, deriv_prep,
             units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict,
-            X_ca_cs, Y_ca_cs;
+            X_ca_cs, Y_ca_cs, input_copy_prep, output_copy_prep;
             ad_backend_rev = nothing
         ) where {F<:DerivativeFlavor, InPlace}
         return new{F, InPlace,
@@ -241,7 +291,7 @@ struct ADExplicitComp{F<:DerivativeFlavor, InPlace, TAD, TADRev, TFunc, TParams,
                    typeof(X_ca_cs), typeof(Y_ca_cs)}(
             ad_backend, ad_backend_rev, func, params, compute_adable, X_ca, Y_ca, deriv_prep,
             units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict,
-            X_ca_cs, Y_ca_cs)
+            X_ca_cs, Y_ca_cs, input_copy_prep, output_copy_prep)
     end
 end
 
@@ -347,10 +397,7 @@ function OpenMDAOCore.compute!(self::ADExplicitComp{<:DerivativeFlavor, true}, i
 
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(TF, self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     # Call the actual function.
     Y_ca = get_output_ca(TF, self)
@@ -358,14 +405,7 @@ function OpenMDAOCore.compute!(self::ADExplicitComp{<:DerivativeFlavor, true}, i
     f!(Y_ca, X_ca)
 
     # Copy the output `ComponentArray` to the outputs.
-    for oname in keys(Y_ca)
-        oname_str = string(oname)
-        if typeof(outputs[oname_str]) <: AbstractArray
-            outputs[oname_str] .= @view(Y_ca[oname])
-        else
-            outputs[oname_str] = only(Y_ca[oname])
-        end
-    end
+    _copy_component_outputs!(getdata(Y_ca), outputs, self.output_copy_prep)
 
     return nothing
 end
@@ -375,25 +415,14 @@ function OpenMDAOCore.compute!(self::ADExplicitComp{<:DerivativeFlavor, false}, 
     TF = eltype(inputs[first(keys(inputs))])
     # Copy the inputs into the input `ComponentArray`.
     X_ca = get_input_ca(TF, self)
-    for iname in keys(X_ca)
-        # This works even if `X_ca[iname]` is a scalar, because of the `@view`!
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, self.input_copy_prep)
 
     # Call the actual function.
     f = get_callback(self)
     Y_ca = f(X_ca)
 
     # Copy the output `ComponentArray` to the outputs.
-    for oname in keys(Y_ca)
-        # This requires that each output is at least a vector.
-        oname_str = string(oname)
-        if typeof(outputs[oname_str]) <: AbstractArray
-            outputs[oname_str] .= @view(Y_ca[oname])
-        else
-            outputs[oname_str] = only(Y_ca[oname])
-        end
-    end
+    _copy_component_outputs!(getdata(Y_ca), outputs, self.output_copy_prep)
 
     return nothing
 end
@@ -501,8 +530,11 @@ struct ADImplicitComp{F<:DerivativeFlavor,InPlace,TAD,TADRev,TFunc,TParams,TGues
     X_range::TXR
     Y_axes::TYAx
     X_axes::TXAx
+    state_copy_prep::InputCopyPrep
+    input_copy_prep::InputCopyPrep
+    residual_copy_prep::InputCopyPrep
 
-    function ADImplicitComp{F, InPlace}(ad_backend, compute_adable, func, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes; ad_backend_rev = nothing, guess_func = nothing) where {F<:DerivativeFlavor, InPlace}
+    function ADImplicitComp{F, InPlace}(ad_backend, compute_adable, func, params, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, state_copy_prep, input_copy_prep, residual_copy_prep; ad_backend_rev = nothing, guess_func = nothing) where {F<:DerivativeFlavor, InPlace}
         return new{F, InPlace,
                    typeof(ad_backend), typeof(ad_backend_rev), typeof(func), typeof(params), typeof(guess_func), typeof(compute_adable),
                    typeof(YX_ca), typeof(R_ca),
@@ -511,7 +543,7 @@ struct ADImplicitComp{F<:DerivativeFlavor,InPlace,TAD,TADRev,TFunc,TParams,TGues
                    typeof(units_dict), typeof(tags_dict),
                    typeof(shape_by_conn_dict), typeof(copy_shape_dict),
                    typeof(Y_range), typeof(X_range), typeof(Y_axes), typeof(X_axes)}(
-            ad_backend, ad_backend_rev, compute_adable, func, params, guess_func, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes)
+            ad_backend, ad_backend_rev, compute_adable, func, params, guess_func, YX_ca, R_ca, YX_ca_cs, R_ca_cs, deriv_prep, units_dict, tags_dict, shape_by_conn_dict, copy_shape_dict, Y_range, X_range, Y_axes, X_axes, state_copy_prep, input_copy_prep, residual_copy_prep)
     end
 end
 
@@ -707,26 +739,15 @@ function apply_nonlinear!(comp::ADImplicitComp{<:DerivativeFlavor, true}, inputs
     R_ca = get_residual_ca(TF, comp)
 
     # Copy outputs (states) and inputs into the combined YX vector
-    for uname in output_keys(comp)
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in input_keys(comp)
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(view(getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(view(getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     # Call the compute_adable closure directly.
     f! = get_callback(comp)
     f!(R_ca, YX_ca)
 
     # Scatter R_ca back to the residuals dict.
-    for rname in keys(R_ca)
-        rstr = string(rname)
-        if typeof(residuals[rstr]) <: AbstractArray
-            residuals[rstr] .= @view(R_ca[rname])
-        else
-            residuals[rstr] = only(R_ca[rname])
-        end
-    end
+    _copy_component_outputs!(getdata(R_ca), residuals, comp.residual_copy_prep)
 
     return nothing
 end
@@ -752,15 +773,9 @@ function OpenMDAOCore.guess_nonlinear!(comp::ADImplicitComp{<:DerivativeFlavor, 
     R_ca = get_residual_ca(TF, comp)
 
     # Copy the inputs, outputs (states), and residuals into the ComponentArrays.
-    for iname in input_keys(comp)
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
-    for uname in output_keys(comp)
-        @view(Y_ca[uname]) .= outputs[string(uname)]
-    end
-    for rname in keys(R_ca)
-        @view(R_ca[rname]) .= residuals[string(rname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, comp.input_copy_prep)
+    _copy_component_inputs!(getdata(Y_ca), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(getdata(R_ca), residuals, comp.residual_copy_prep)
 
     # Let the user update the guesses in place.
     f_guess! = comp.guess_func
@@ -770,14 +785,7 @@ function OpenMDAOCore.guess_nonlinear!(comp::ADImplicitComp{<:DerivativeFlavor, 
     # Scatter the guesses back to the outputs dict. Note that the residuals
     # are deliberately NOT written back: OpenMDAO makes the residual vector
     # read-only in `guess_nonlinear`.
-    for uname in output_keys(comp)
-        ustr = string(uname)
-        if typeof(outputs[ustr]) <: AbstractArray
-            outputs[ustr] .= @view(Y_ca[uname])
-        else
-            outputs[ustr] = only(Y_ca[uname])
-        end
-    end
+    _copy_component_outputs!(getdata(Y_ca), outputs, comp.state_copy_prep)
 
     return nothing
 end
@@ -789,15 +797,9 @@ function OpenMDAOCore.guess_nonlinear!(comp::ADImplicitComp{<:DerivativeFlavor, 
     R_ca = get_residual_ca(TF, comp)
 
     # Copy the inputs, outputs (states), and residuals into the ComponentArrays.
-    for iname in input_keys(comp)
-        @view(X_ca[iname]) .= inputs[string(iname)]
-    end
-    for uname in output_keys(comp)
-        @view(Y_ca[uname]) .= outputs[string(uname)]
-    end
-    for rname in keys(R_ca)
-        @view(R_ca[rname]) .= residuals[string(rname)]
-    end
+    _copy_component_inputs!(getdata(X_ca), inputs, comp.input_copy_prep)
+    _copy_component_inputs!(getdata(Y_ca), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(getdata(R_ca), residuals, comp.residual_copy_prep)
 
     # Call the out-of-place guess function, which returns the updated states.
     # The residuals are read-only in `guess_nonlinear`, so the guess function
@@ -809,14 +811,7 @@ function OpenMDAOCore.guess_nonlinear!(comp::ADImplicitComp{<:DerivativeFlavor, 
     # Scatter the guesses back to the outputs dict. Note that the residuals
     # are deliberately NOT written back: OpenMDAO makes the residual vector
     # read-only in `guess_nonlinear`.
-    for uname in output_keys(comp)
-        ustr = string(uname)
-        if typeof(outputs[ustr]) <: AbstractArray
-            outputs[ustr] .= @view(Y_ca_new[uname])
-        else
-            outputs[ustr] = only(Y_ca_new[uname])
-        end
-    end
+    _copy_component_outputs!(getdata(Y_ca_new), outputs, comp.state_copy_prep)
 
     return nothing
 end
@@ -835,26 +830,15 @@ function apply_nonlinear!(comp::ADImplicitComp{<:DerivativeFlavor, false}, input
     YX_ca = get_combined_ca(TF, comp)
 
     # Copy outputs (states) and inputs into the combined YX vector
-    for uname in output_keys(comp)
-        @view(YX_ca[uname]) .= outputs[string(uname)]
-    end
-    for iname in input_keys(comp)
-        @view(YX_ca[iname]) .= inputs[string(iname)]
-    end
+    _copy_component_inputs!(view(getdata(YX_ca), comp.Y_range), outputs, comp.state_copy_prep)
+    _copy_component_inputs!(view(getdata(YX_ca), comp.X_range), inputs, comp.input_copy_prep)
 
     # Call the out-of-place closure and scatter the result.
     f = get_callback(comp)
     R_ca = f(YX_ca)
 
     # Scatter R_ca back to the residuals dict.
-    for rname in keys(R_ca)
-        rstr = string(rname)
-        if typeof(residuals[rstr]) <: AbstractArray
-            residuals[rstr] .= @view(R_ca[rname])
-        else
-            residuals[rstr] = only(R_ca[rname])
-        end
-    end
+    _copy_component_outputs!(getdata(R_ca), residuals, comp.residual_copy_prep)
 
     return nothing
 end
